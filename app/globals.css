@@ -1,26 +1,276 @@
 @import "tailwindcss";
 
+/*
+  Design tokens - AI EMS marketing site
+  ------------------------------------------------------------------
+  Direction: illustrated / playful. The page is built around hand-drawn
+  character art, so the interface stays warm, round, and high contrast.
+
+  Theme strategy: CSS variables (single strategy for the whole project).
+  Do not reach for Tailwind's `dark:` variant here, it would follow the OS and
+  ignore the manual switch below, so the two systems would disagree.
+
+  Three states, resolved in this order:
+    1. no data-theme  ->  follow prefers-color-scheme (also the no-JS path)
+    2. data-theme="dark"   ->  dark, whatever the OS says
+    3. data-theme="light"  ->  light, whatever the OS says
+  The attribute is written by the inline script in app/layout.tsx before the
+  first paint, so switching themes never flashes.
+
+  The dark block is written twice on purpose (media query and attribute).
+  CSS has no way to share one declaration block between the two, so treat
+  them as a pair: any value edited in one has to be edited in the other.
+
+  Sections never invert on their own, they only pick between --paper and
+  --surface-2 inside whichever theme is active.
+
+  Accent lock: one accent (orange), same hue as the illustration palette but
+  a step deeper or lighter than the art depending on the theme, so a solid
+  accent surface always separates from the page behind it. One bright orange
+  used in both themes cannot do that: on paper it only reaches 3.2:1 against
+  the background, which reads as a washed-out button no matter how legible
+  its label is. So the accent flips lightness per theme and the label flips
+  with it:
+    light  #c2410c with white       label 5.18:1, against paper 5.02:1
+    dark   #ff9a34 with near-black  label 8.20:1, against paper 9.10:1
+    --accent       solid accent surface (buttons, meters, logo mark)
+    --accent-fg    label color on top of --accent
+    --accent-text  accent as a text or icon color, retuned per theme
+    --art-bg       panel behind illustrations. Deliberately light in both
+                   themes: the art is black line work and would disappear
+                   on a dark surface, the same way a photo keeps its own
+                   colors on a dark page.
+
+  Radius rule, three steps and nothing else: buttons and chips are pills,
+  containers and media use --radius-card, form controls use --radius-field
+  (a pill-shaped text input reads as a search box, which these are not).
+
+  --danger is a semantic state color, not a second accent. It appears only on
+  invalid form controls and their messages.
+*/
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --paper: #fefdfb;
+  --surface: #ffffff;
+  --surface-2: #f6f1ea;
+  --ink: #1c1917;
+  --muted: #6f6a66;
+  --line: rgb(28 25 23 / 0.12);
+  --accent: #c2410c;
+  --accent-hover: #a83709;
+  --accent-fg: #ffffff;
+  --accent-text: #b23c0a;
+  --accent-soft: rgb(235 100 33 / 0.1);
+  --danger: #b42318;
+  --art-bg: #fff1e3;
+  --shadow-card: 0 1px 2px rgb(28 25 23 / 0.04), 0 12px 28px rgb(28 25 23 / 0.06);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
+/* Dark, block 1 of 2: reader has expressed no choice, follow the OS. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #100e0d;
+    --surface: #1a1716;
+    --surface-2: #1f1c1a;
+    --ink: #f7f4f1;
+    --muted: #a8a29b;
+    --line: rgb(247 244 241 / 0.14);
+    --accent: #ff9a34;
+    --accent-hover: #ffad57;
+    --accent-fg: #1c1917;
+    --accent-text: #ff9a34;
+    --accent-soft: rgb(255 154 52 / 0.13);
+    --danger: #fca5a5;
+    --art-bg: #f2e3d4;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 28px rgb(0 0 0 / 0.28);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Dark, block 2 of 2: reader picked dark, so it wins over a light OS. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #100e0d;
+  --surface: #1a1716;
+  --surface-2: #1f1c1a;
+  --ink: #f7f4f1;
+  --muted: #a8a29b;
+  --line: rgb(247 244 241 / 0.14);
+  --accent: #ff9a34;
+  --accent-hover: #ffad57;
+  --accent-fg: #1c1917;
+  --accent-text: #ff9a34;
+  --accent-soft: rgb(255 154 52 / 0.13);
+  --danger: #fca5a5;
+  --art-bg: #f2e3d4;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 28px rgb(0 0 0 / 0.28);
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-art: var(--art-bg);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-outfit);
+
+  --radius-card: 1.5rem;
+  --radius-field: 0.875rem;
+
+  --shadow-card: var(--shadow-card);
+}
+
+@layer base {
+  html {
+    /* sticky header is 64px mobile / 68px desktop */
+    scroll-padding-top: 5rem;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  body {
+    background-color: var(--paper);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Rounded geometric display face for every heading, body stays on Geist. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-outfit), var(--font-geist-sans), sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  ::selection {
+    background-color: var(--accent);
+    color: var(--accent-fg);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent-text);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+}
+
+@layer components {
+  /* Vocabulary marquee. Track holds the word list twice, so a -50% shift loops
+     seamlessly. Transform only, no layout properties animated. */
+  .marquee-track {
+    animation: marquee-x var(--marquee-duration, 30s) linear infinite;
+    will-change: transform;
+  }
+
+  /* Both ends fade out so words enter and leave the belt instead of being
+     chopped off at the viewport edge. */
+  .marquee {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 7%,
+      #000 93%,
+      transparent
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 7%,
+      #000 93%,
+      transparent
+    );
+  }
+
+  /* The belt is the one element on the page that keeps moving under reduced
+     motion (see word-marquee.tsx for why). This rule only covers readers with
+     JS disabled: they cannot reach the pause button, so for them the
+     preference still stops it. With JS, the component writes
+     animation-play-state inline and an inline style outranks this. */
+  @media (prefers-reduced-motion: reduce) {
+    .marquee-track {
+      animation-play-state: paused;
+    }
+  }
+
+  /* Theme toggle glyph. Swapped in CSS rather than from React state, so the
+     button already shows the right icon on the first paint, before hydration,
+     and never has to guess the theme during server rendering.
+     Moon = light is active, press to go dark. Sun = the reverse.
+     The [data-theme] rules sit after the media query so an explicit choice
+     wins on equal specificity. */
+  .theme-icon-sun {
+    display: none;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .theme-icon-sun {
+      display: block;
+    }
+
+    :root:not([data-theme="light"]) .theme-icon-moon {
+      display: none;
+    }
+  }
+
+  :root[data-theme="dark"] .theme-icon-sun {
+    display: block;
+  }
+
+  :root[data-theme="dark"] .theme-icon-moon {
+    display: none;
+  }
+
+  :root[data-theme="light"] .theme-icon-sun {
+    display: none;
+  }
+
+  :root[data-theme="light"] .theme-icon-moon {
+    display: block;
+  }
+
+  /* Cards lift on hover to signal they are a single readable object.
+     Transform and shadow only. */
+  .card-lift {
+    transition:
+      transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .card-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-card);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card-lift,
+    .card-lift:hover {
+      transition: none;
+      transform: none;
+    }
+  }
+}
+
+@keyframes marquee-x {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
 }
