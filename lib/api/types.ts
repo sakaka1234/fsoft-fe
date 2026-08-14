@@ -60,7 +60,13 @@ export type LoginRequest = {
 export type RegisterRequest = {
   fullName: string;
   email: string;
-  /** Verified optional against the live API: omitting it returns 201. */
+  /**
+   * Optional in the contract, required in practice. Re-verified after the
+   * latest deploy: a brand new email with no phone still answers 400
+   * "Email or Phone already exists", because the duplicate check turns a null
+   * phone into `phone IS NULL` and matches any existing row without one.
+   * register-form.tsx makes the field mandatory to route around it.
+   */
   phone?: string;
   /** Yes, capital W. The register endpoint spells it differently from login. */
   passWord: string;
@@ -78,8 +84,10 @@ export type PageResponse<T> = {
   totalElements: number;
   totalPages: number;
   /**
-   * Verified unreliable: a single full page came back with `last: false`.
-   * Derive the real answer from `pageNo + 1 >= totalPages` instead.
+   * Was unreliable and now answers correctly, but decks and cards number their
+   * pages differently (decks from 1, cards from 0), so `last` is the only
+   * safe cross-entity end-of-list check. Do not compare pageNo to totalPages
+   * without knowing which entity you are holding.
    */
   last: boolean;
 };
@@ -101,7 +109,11 @@ export type DeckResponse = {
   sourceLanguage: string;
   targetLanguage: string;
   visibility: DeckVisibility;
-  /** Verified stale: stays 0 after cards are added. Count cards separately. */
+  /**
+   * Now maintained when cards are written, but not backfilled: decks created
+   * before the fix still report 0 while holding cards. Fine for a list badge,
+   * not something to assert on.
+   */
   totalCards: number;
   forkCount: number;
   createdAt: string;
@@ -115,6 +127,9 @@ export type DeckResponse = {
  * OpenAPI document both call it `official`. It is a primitive boolean on the
  * server, so leaving it out is not "use the default", it is a 500:
  * "Cannot map `null` into type `boolean`". Always send it.
+ *
+ * Re-verified against the live API after the latest backend deploy: sending
+ * `official` still returns 500, `isOfficial` still returns 201.
  */
 export type DeckWriteRequest = {
   title: string;
@@ -160,4 +175,42 @@ export type CardWriteRequest = {
 export type CardPositionRequest = {
   cardId: number;
   newPosition: number;
+};
+
+export type PublicDeckQuery = {
+  page?: number;
+  size?: number;
+  keyword?: string;
+  tagId?: number;
+  sourceLang?: string;
+  targetLang?: string;
+};
+
+export type ForgotPasswordRequest = {
+  email: string;
+};
+
+export type ResetPasswordRequest = {
+  email: string;
+  otp: string;
+  newPassword: string;
+};
+
+/**
+ * Declared by the OpenAPI document but never sent: the endpoint reads the
+ * visibility from the query string instead. Kept as documentation of the gap.
+ * See setDeckVisibility in lib/api/decks.ts.
+ */
+export type DeckVisibilityRequest = {
+  visibility: DeckVisibility;
+};
+
+/**
+ * Share is defined by the API but has no UI yet: it identifies the recipient
+ * by profile UUID and there is no endpoint to look a user up by email, so the
+ * only possible form would ask people to paste a UUID.
+ */
+export type ShareDeckRequest = {
+  profileId: string;
+  permission: "VIEW" | "EDIT";
 };

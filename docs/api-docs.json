@@ -178,6 +178,37 @@
         }
       }
     },
+    "/decks/{id}/visibility": {
+      "put": {
+        "tags": ["Deck Controller"],
+        "operationId": "convertDeckVisibility",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DeckVisibilityRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/cards/{cardId}": {
       "get": {
         "tags": ["Card Controller"],
@@ -350,24 +381,16 @@
         }
       }
     },
-    "/decks": {
+    "/oauth2/callback": {
       "get": {
-        "tags": ["Deck Controller"],
-        "summary": "Lấy danh sách tất cả bộ thẻ",
-        "description": "Lấy danh sách tất cả các bộ thẻ",
-        "operationId": "getAllDecks",
+        "tags": ["oauth-2-controller"],
+        "operationId": "authenticatedUserGoogleGet",
         "parameters": [
           {
-            "name": "tag",
-            "in": "query",
-            "required": false,
-            "schema": { "type": "string" }
-          },
-          {
-            "name": "pageable",
+            "name": "code",
             "in": "query",
             "required": true,
-            "schema": { "$ref": "#/components/schemas/Pageable" }
+            "schema": { "type": "string" }
           }
         ],
         "responses": {
@@ -376,13 +399,39 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponsePageResponseDeckResponse"
+                  "$ref": "#/components/schemas/ApiResponseAuthenticatedResponse"
                 }
               }
             }
           }
         }
       },
+      "post": {
+        "tags": ["oauth-2-controller"],
+        "operationId": "authenticatedUserGooglePost",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAuthenticatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/decks": {
       "post": {
         "tags": ["Deck Controller"],
         "summary": "Tạo mới bộ thẻ",
@@ -405,6 +454,63 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseDeckResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/decks/{id}/share": {
+      "post": {
+        "tags": ["Deck Controller"],
+        "operationId": "shareDeck",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ShareDeckRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/decks/{id}/fork": {
+      "post": {
+        "tags": ["Deck Controller"],
+        "operationId": "forkDeck",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -648,6 +754,128 @@
         }
       }
     },
+    "/auth/forgot-password": {
+      "post": {
+        "tags": ["auth-controller"],
+        "operationId": "forgotPassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ForgotPasswordRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseString" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/decks/status": {
+      "get": {
+        "tags": ["Deck Controller"],
+        "operationId": "getDecksByStatus",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "PUBLIC",
+              "enum": ["PUBLIC", "PRIVATE", "SHARED"]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 1 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 10 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseDeckResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/decks/public": {
+      "get": {
+        "tags": ["Deck Controller"],
+        "operationId": "getPublicDecks",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 1 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 10 }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "tagId",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "sourceLang",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "targetLang",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseDeckResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/decks/my": {
       "get": {
         "tags": ["Deck Controller"],
@@ -656,10 +884,16 @@
         "operationId": "getMyDecks",
         "parameters": [
           {
-            "name": "pageable",
+            "name": "page",
             "in": "query",
-            "required": true,
-            "schema": { "$ref": "#/components/schemas/Pageable" }
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 1 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 10 }
           }
         ],
         "responses": {
@@ -755,6 +989,23 @@
           "official": { "type": "boolean" }
         }
       },
+      "DeckVisibilityRequest": {
+        "type": "object",
+        "properties": {
+          "visibility": {
+            "type": "string",
+            "enum": ["PUBLIC", "PRIVATE", "SHARED"]
+          }
+        }
+      },
+      "ApiResponseVoid": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "type": "object" }
+        }
+      },
       "CardUpdateRequest": {
         "type": "object",
         "properties": {
@@ -807,12 +1058,51 @@
           "newPosition": { "type": "integer", "format": "int32" }
         }
       },
-      "ApiResponseVoid": {
+      "ApiResponseAuthenticatedResponse": {
         "type": "object",
         "properties": {
           "status": { "type": "integer", "format": "int32" },
           "message": { "type": "string" },
-          "data": { "type": "object" }
+          "data": { "$ref": "#/components/schemas/AuthenticatedResponse" }
+        }
+      },
+      "AuthenticatedResponse": {
+        "type": "object",
+        "properties": {
+          "user": { "$ref": "#/components/schemas/UserResponse" },
+          "token": { "$ref": "#/components/schemas/TokenResponse" }
+        }
+      },
+      "RoleResponse": {
+        "type": "object",
+        "properties": { "name": { "type": "string" } }
+      },
+      "TokenResponse": {
+        "type": "object",
+        "properties": {
+          "accessToken": { "type": "string" },
+          "refreshToken": { "type": "string" },
+          "accessExpiresAt": { "type": "string", "format": "date-time" },
+          "refreshExpiresAt": { "type": "string", "format": "date-time" },
+          "accessIssuedAt": { "type": "string", "format": "date-time" },
+          "refreshIssuedAt": { "type": "string", "format": "date-time" },
+          "accessExpirationTime": { "type": "integer", "format": "int64" },
+          "refreshExpirationTime": { "type": "integer", "format": "int64" }
+        }
+      },
+      "UserResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "fullName": { "type": "string" },
+          "email": { "type": "string" },
+          "avatar": { "type": "string" },
+          "phone": { "type": "string" },
+          "roles": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/RoleResponse" },
+            "uniqueItems": true
+          }
         }
       },
       "DeckCreateRequest": {
@@ -836,6 +1126,13 @@
           "official": { "type": "boolean" }
         },
         "required": ["sourceLanguage", "targetLanguage", "title", "visibility"]
+      },
+      "ShareDeckRequest": {
+        "type": "object",
+        "properties": {
+          "profileId": { "type": "string", "format": "uuid" },
+          "permission": { "type": "string", "enum": ["VIEW", "EDIT"] }
+        }
       },
       "CardCreationRequest": {
         "type": "object",
@@ -897,25 +1194,6 @@
           "data": { "$ref": "#/components/schemas/UserResponse" }
         }
       },
-      "RoleResponse": {
-        "type": "object",
-        "properties": { "name": { "type": "string" } }
-      },
-      "UserResponse": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string", "format": "uuid" },
-          "fullName": { "type": "string" },
-          "email": { "type": "string" },
-          "avatar": { "type": "string" },
-          "phone": { "type": "string" },
-          "roles": {
-            "type": "array",
-            "items": { "$ref": "#/components/schemas/RoleResponse" },
-            "uniqueItems": true
-          }
-        }
-      },
       "RefreshTokenRequest": {
         "type": "object",
         "properties": { "refreshToken": { "type": "string" } }
@@ -926,19 +1204,6 @@
           "status": { "type": "integer", "format": "int32" },
           "message": { "type": "string" },
           "data": { "$ref": "#/components/schemas/TokenResponse" }
-        }
-      },
-      "TokenResponse": {
-        "type": "object",
-        "properties": {
-          "accessToken": { "type": "string" },
-          "refreshToken": { "type": "string" },
-          "accessExpiresAt": { "type": "string", "format": "date-time" },
-          "refreshExpiresAt": { "type": "string", "format": "date-time" },
-          "accessIssuedAt": { "type": "string", "format": "date-time" },
-          "refreshIssuedAt": { "type": "string", "format": "date-time" },
-          "accessExpirationTime": { "type": "integer", "format": "int64" },
-          "refreshExpirationTime": { "type": "integer", "format": "int64" }
         }
       },
       "LogoutRequest": {
@@ -954,21 +1219,6 @@
             "maxLength": 2147483647,
             "minLength": 8
           }
-        }
-      },
-      "ApiResponseAuthenticatedResponse": {
-        "type": "object",
-        "properties": {
-          "status": { "type": "integer", "format": "int32" },
-          "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/AuthenticatedResponse" }
-        }
-      },
-      "AuthenticatedResponse": {
-        "type": "object",
-        "properties": {
-          "user": { "$ref": "#/components/schemas/UserResponse" },
-          "token": { "$ref": "#/components/schemas/TokenResponse" }
         }
       },
       "IntrospectTokenRequest": {
@@ -987,6 +1237,10 @@
         "type": "object",
         "properties": { "result": { "type": "boolean" } }
       },
+      "ForgotPasswordRequest": {
+        "type": "object",
+        "properties": { "email": { "type": "string" } }
+      },
       "ApiResponseListTagResponse": {
         "type": "object",
         "properties": {
@@ -996,14 +1250,6 @@
             "type": "array",
             "items": { "$ref": "#/components/schemas/TagResponse" }
           }
-        }
-      },
-      "Pageable": {
-        "type": "object",
-        "properties": {
-          "page": { "type": "integer", "format": "int32", "minimum": 0 },
-          "size": { "type": "integer", "format": "int32", "minimum": 1 },
-          "sort": { "type": "array", "items": { "type": "string" } }
         }
       },
       "ApiResponsePageResponseDeckResponse": {
@@ -1026,6 +1272,14 @@
           "totalElements": { "type": "integer", "format": "int64" },
           "totalPages": { "type": "integer", "format": "int32" },
           "last": { "type": "boolean" }
+        }
+      },
+      "Pageable": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "integer", "format": "int32", "minimum": 0 },
+          "size": { "type": "integer", "format": "int32", "minimum": 1 },
+          "sort": { "type": "array", "items": { "type": "string" } }
         }
       },
       "ApiResponsePageResponseCardResponse": {

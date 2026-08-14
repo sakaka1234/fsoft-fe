@@ -22,10 +22,15 @@ import {
   reorderCards,
   updateCard,
 } from "@/lib/api/cards";
-import { deleteDeck, getDeck, updateDeck } from "@/lib/api/decks";
+import {
+  deleteDeck,
+  getDeck,
+  setDeckVisibility,
+  updateDeck,
+} from "@/lib/api/decks";
 import { listTags } from "@/lib/api/tags";
 import { ApiError } from "@/lib/api/client";
-import type { CardResponse } from "@/lib/api/types";
+import type { CardResponse, DeckVisibility } from "@/lib/api/types";
 import { useAsync } from "@/lib/use-async";
 
 export function DeckDetailView({ deckId }: { deckId: number }) {
@@ -90,6 +95,13 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
         })),
       );
       cards.reload();
+    });
+  }
+
+  async function onVisibilityChange(visibility: DeckVisibility) {
+    await run(async () => {
+      await setDeckVisibility(deckId, visibility);
+      deck.reload();
     });
   }
 
@@ -161,9 +173,28 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                   <span className="font-mono uppercase">
                     {deck.data.sourceLanguage} to {deck.data.targetLanguage}
                   </span>
-                  <span className="rounded-full border border-line px-2.5 py-0.5 text-xs">
-                    {deck.data.visibility}
-                  </span>
+                  {/*
+                    Visibility has its own endpoint, so switching it does not
+                    mean reopening the whole deck form and resending every
+                    field. The label is visually hidden because the control sits
+                    in a meta row where a stacked label would break the line.
+                  */}
+                  <label htmlFor="deck-visibility" className="sr-only">
+                    Visibility
+                  </label>
+                  <select
+                    id="deck-visibility"
+                    value={deck.data.visibility}
+                    disabled={busy}
+                    onChange={(event) =>
+                      onVisibilityChange(event.target.value as DeckVisibility)
+                    }
+                    className="rounded-full border border-line bg-surface px-2.5 py-1 text-xs text-ink transition-colors hover:border-ink/25 disabled:opacity-60"
+                  >
+                    <option value="PRIVATE">Private</option>
+                    <option value="SHARED">Shared</option>
+                    <option value="PUBLIC">Public</option>
+                  </select>
                   {deck.data.tags.map((tag) => (
                     <span
                       key={tag.id}

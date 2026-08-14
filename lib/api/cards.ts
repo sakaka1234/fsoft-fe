@@ -1,4 +1,4 @@
-import { apiFetch, apiUpload, pageQuery } from "@/lib/api/client";
+import { apiFetch, apiUpload, cardPageQuery } from "@/lib/api/client";
 import type {
   CardPositionRequest,
   CardResponse,
@@ -6,6 +6,7 @@ import type {
   PageResponse,
 } from "@/lib/api/types";
 
+/** Cards are zero based, unlike decks. See cardPageQuery in client.ts. */
 export function listCards(
   deckId: number,
   page = 0,
@@ -13,7 +14,7 @@ export function listCards(
   signal?: AbortSignal,
 ) {
   return apiFetch<PageResponse<CardResponse>>(
-    `/cards/deck/${deckId}${pageQuery(page, size)}`,
+    `/cards/deck/${deckId}${cardPageQuery(page, size)}`,
     { auth: true, signal },
   );
 }

@@ -84,7 +84,7 @@ export function SiteHeader() {
                 <span className="max-w-32 truncate px-2 text-sm text-muted">
                   {displayName}
                 </span>
-                <ButtonLink href="/decks">Your decks</ButtonLink>
+                <ButtonLink href="/dashboard">Dashboard</ButtonLink>
                 <Button variant="secondary" onClick={onLogout}>
                   Log out
                 </Button>
@@ -146,8 +146,8 @@ export function SiteHeader() {
                     <span className="truncate text-sm text-muted">
                       Signed in as {displayName}
                     </span>
-                    <ButtonLink href="/decks" size="lg" className="w-full">
-                      Your decks
+                    <ButtonLink href="/dashboard" size="lg" className="w-full">
+                      Dashboard
                     </ButtonLink>
                     <Button
                       variant="secondary"

@@ -144,12 +144,41 @@ export function apiUpload<T>(
   return send<T>(path, { method, body: form, signal }, auth);
 }
 
-/** Serializes Spring's Pageable query parameters. */
-export function pageQuery(page: number, size: number, sort?: string) {
+/*
+  Two pagination conventions live in this API, and mixing them up fails
+  silently rather than erroring, so they get one function each:
+
+  - Cards still bind Spring's Pageable and are ZERO based. Verified live:
+    /cards/deck/9?page=0 answers pageNo=0, page=1 answers pageNo=1 with a
+    different slice.
+  - Decks take flat page/size and are ONE based. Verified live: /decks/my
+    answers pageNo=1 for both page=0 and page=1, because the server clamps
+    anything below 1. Passing a zero based index here quietly reads page 1
+    twice and never reaches the tail of the list.
+*/
+
+/** Zero based. Cards only. */
+export function cardPageQuery(page: number, size: number, sort?: string) {
   const params = new URLSearchParams({
     page: String(page),
     size: String(size),
   });
   if (sort) params.set("sort", sort);
+  return `?${params.toString()}`;
+}
+
+/** One based. Decks only. Undefined and empty filters are dropped. */
+export function deckPageQuery(
+  page: number,
+  size: number,
+  filters: Record<string, string | number | undefined> = {},
+) {
+  const params = new URLSearchParams({
+    page: String(Math.max(1, page)),
+    size: String(size),
+  });
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  }
   return `?${params.toString()}`;
 }

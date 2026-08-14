@@ -3,6 +3,7 @@ import type {
   AuthenticatedResponse,
   LoginRequest,
   RegisterRequest,
+  ResetPasswordRequest,
   UserResponse,
 } from "@/lib/api/types";
 
@@ -28,4 +29,39 @@ export function logout(accessToken: string) {
     method: "POST",
     body: { accessToken },
   });
+}
+
+/**
+ * Mails a one time code.
+ *
+ * Answers 200 "Gửi mã OTP thành công" whether or not the address belongs to an
+ * account, which is the right call: it stops anyone probing the API to find out
+ * who is registered. The UI has to match that and never claim the account was
+ * found.
+ */
+export function forgotPassword(email: string, signal?: AbortSignal) {
+  return apiFetch<string>("/auth/forgot-password", {
+    method: "POST",
+    body: { email },
+    signal,
+  });
+}
+
+export function resetPassword(body: ResetPasswordRequest, signal?: AbortSignal) {
+  return apiFetch<string>("/auth/reset-password", {
+    method: "POST",
+    body,
+    signal,
+  });
+}
+
+/**
+ * Trades the Google authorization code for a session. The code comes back on
+ * our own /callback route, which is the redirect URI registered with Google.
+ */
+export function loginWithGoogle(code: string, signal?: AbortSignal) {
+  return apiFetch<AuthenticatedResponse>(
+    `/oauth2/callback?code=${encodeURIComponent(code)}`,
+    { method: "POST", signal },
+  );
 }

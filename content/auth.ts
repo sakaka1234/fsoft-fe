@@ -10,4 +10,8 @@ export const authArt = {
     src: art("freelancer"),
     alt: "Illustration of a learner starting something new",
   },
+  forgotPassword: {
+    src: art("question-mark"),
+    alt: "Illustration of someone puzzling over a forgotten detail",
+  },
 } as const;

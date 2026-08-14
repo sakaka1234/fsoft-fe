@@ -14,9 +14,20 @@ import { useSession } from "@/lib/auth/use-session";
 import { cn } from "@/lib/cn";
 
 const APP_NAV = [
+  { label: "Dashboard", href: "/dashboard" },
   { label: "Decks", href: "/decks" },
+  { label: "Explore", href: "/explore" },
   { label: "Tags", href: "/tags" },
 ] as const;
+
+/**
+ * Exact match, or a real child segment. A plain startsWith would light up
+ * "/decks" while sitting on a future "/decks-archive", and every prefix that
+ * happens to share leading characters.
+ */
+function isActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 /**
  * Chrome and gate for the signed-in area.
@@ -75,7 +86,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
               <nav aria-label="Workspace" className="flex items-center gap-6">
                 {APP_NAV.map((item) => {
-                  const active = pathname.startsWith(item.href);
+                  const active = isActive(pathname, item.href);
                   return (
                     <Link
                       key={item.href}
