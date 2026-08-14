@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Outfit } from "next/font/google";
 import "./globals.css";
+import { CommunityChatWidget } from "@/components/chat/community-chat-widget";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -52,7 +53,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="flex min-h-full flex-col font-sans">{children}</body>
+      <body className="flex min-h-full flex-col font-sans">
+        {children}
+        <CommunityChatWidget />
+      </body>
     </html>
   );
 }
+
