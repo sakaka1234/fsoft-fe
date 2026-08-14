@@ -9,11 +9,14 @@ import { ArrowUp } from "@phosphor-icons/react/ArrowUp";
 import { PencilSimple } from "@phosphor-icons/react/PencilSimple";
 import { Plus } from "@phosphor-icons/react/Plus";
 import { Trash } from "@phosphor-icons/react/Trash";
+import { Cards as CardsIcon } from "@phosphor-icons/react/Cards";
+import { List } from "@phosphor-icons/react/List";
 
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { CardForm } from "@/components/app/card-form";
 import { DeckForm } from "@/components/app/deck-form";
+import { SingleCardView } from "@/components/app/single-card-view";
 import { EmptyState, ErrorState, RowSkeleton } from "@/components/app/states";
 import {
   createCard,
@@ -32,12 +35,15 @@ import { listTags } from "@/lib/api/tags";
 import { ApiError } from "@/lib/api/client";
 import type { CardResponse, DeckVisibility } from "@/lib/api/types";
 import { useAsync } from "@/lib/use-async";
+import { cn } from "@/lib/cn";
 
 export function DeckDetailView({ deckId }: { deckId: number }) {
   const router = useRouter();
   const [editingDeck, setEditingDeck] = useState(false);
   const [addingCard, setAddingCard] = useState(false);
   const [editingCardId, setEditingCardId] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<"single" | "list">("single");
+  const [singleCardIndex, setSingleCardIndex] = useState(0);
   const [rowError, setRowError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -230,15 +236,50 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
       ) : null}
 
       <section className="mt-12" aria-labelledby="cards-title">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <h2 id="cards-title" className="text-xl font-semibold tracking-tight">
-            Cards
-            {cards.status === "success" ? (
-              <span className="ml-2 font-mono text-base text-muted">
-                {cards.data.totalElements}
-              </span>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <h2 id="cards-title" className="text-xl font-semibold tracking-tight">
+              Cards
+              {cards.status === "success" ? (
+                <span className="ml-2 font-mono text-base text-muted">
+                  {cards.data.totalElements}
+                </span>
+              ) : null}
+            </h2>
+
+            {/* View Mode Switcher */}
+            {cards.status === "success" && cards.data.content.length > 0 ? (
+              <div className="flex items-center gap-1 rounded-full border border-line bg-surface-2 p-1 text-xs font-medium">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("single")}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors",
+                    viewMode === "single"
+                      ? "bg-surface text-ink shadow-sm"
+                      : "text-muted hover:text-ink",
+                  )}
+                >
+                  <CardsIcon size={14} />
+                  Xem từng card
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors",
+                    viewMode === "list"
+                      ? "bg-surface text-ink shadow-sm"
+                      : "text-muted hover:text-ink",
+                  )}
+                >
+                  <List size={14} />
+                  Danh sách
+                </button>
+              </div>
             ) : null}
-          </h2>
+          </div>
+
           {!addingCard ? (
             <Button onClick={() => setAddingCard(true)} disabled={busy}>
               <Plus aria-hidden size={16} weight="bold" />
@@ -297,21 +338,36 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
           ) : null}
 
           {cards.status === "success" && cards.data.content.length > 0 ? (
-            <ul className="flex flex-col gap-3">
-              {cards.data.content.map((card, index) => (
-                <li key={card.id}>
-                  {editingCardId === card.id ? (
-                    <CardForm
-                      card={card}
-                      submitLabel="Save card"
-                      onCancel={() => setEditingCardId(null)}
-                      onSubmit={async (request, files) => {
-                        await updateCard(card.id, request, files);
-                        setEditingCardId(null);
-                        cards.reload();
-                      }}
-                    />
-                  ) : (
+            editingCardId ? (
+              <div className="mb-6">
+                <CardForm
+                  card={cards.data.content.find((c) => c.id === editingCardId)}
+                  submitLabel="Save card"
+                  onCancel={() => setEditingCardId(null)}
+                  onSubmit={async (request, files) => {
+                    await updateCard(editingCardId, request, files);
+                    setEditingCardId(null);
+                    cards.reload();
+                  }}
+                />
+              </div>
+            ) : viewMode === "single" ? (
+              <SingleCardView
+                key={singleCardIndex}
+                cards={cards.data.content}
+                currentIndex={
+                  singleCardIndex >= cards.data.content.length
+                    ? 0
+                    : singleCardIndex
+                }
+                onIndexChange={setSingleCardIndex}
+                onEditCard={(card) => setEditingCardId(card.id)}
+                busy={busy}
+              />
+            ) : (
+              <ul className="flex flex-col gap-3">
+                {cards.data.content.map((card, index) => (
+                  <li key={card.id}>
                     <article className="flex items-start gap-4 rounded-card border border-line bg-surface p-5">
                       <span className="mt-0.5 font-mono text-sm text-muted tabular-nums">
                         {card.position}
@@ -382,10 +438,10 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                         </button>
                       </div>
                     </article>
-                  )}
-                </li>
-              ))}
-            </ul>
+                  </li>
+                ))}
+              </ul>
+            )
           ) : null}
         </div>
       </section>

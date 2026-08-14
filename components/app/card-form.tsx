@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Field, TextArea, TextInput } from "@/components/ui/field";
 import { FormMessage } from "@/components/auth/form-message";
 import { ApiError } from "@/lib/api/client";
 import type { CardResponse, CardWriteRequest } from "@/lib/api/types";
+import { Trash } from "@phosphor-icons/react/Trash";
 
 type CardFiles = { imageFile?: File | null; audioFile?: File | null };
 
@@ -37,6 +38,19 @@ export function CardForm({
   const [note, setNote] = useState(card?.note ?? "");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [audioFile, setAudioFile] = useState<File | null>(null);
+
+  const imagePreviewUrl = useMemo(() => {
+    if (!imageFile) return null;
+    return URL.createObjectURL(imageFile);
+  }, [imageFile]);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
+    };
+  }, [imagePreviewUrl]);
 
   const [pending, setPending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -176,14 +190,49 @@ export function CardForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field id="card-image" label="Image" hint="Optional.">
-          <input
-            id="card-image"
-            type="file"
-            accept="image/*"
-            onChange={(event) => setImageFile(event.target.files?.[0] ?? null)}
-            disabled={pending}
-            className="w-full text-sm text-muted file:mr-4 file:rounded-full file:border file:border-line file:bg-surface file:px-4 file:py-2 file:text-sm file:font-medium file:text-ink"
-          />
+          <div className="flex flex-col gap-3">
+            <input
+              id="card-image"
+              type="file"
+              accept="image/*"
+              onChange={(event) => setImageFile(event.target.files?.[0] ?? null)}
+              disabled={pending}
+              className="w-full text-sm text-muted file:mr-4 file:rounded-full file:border file:border-line file:bg-surface file:px-4 file:py-2 file:text-sm file:font-medium file:text-ink"
+            />
+            {imagePreviewUrl ? (
+              <div className="relative flex items-center gap-3 rounded-lg border border-accent bg-accent-soft/30 p-2.5">
+                <img
+                  src={imagePreviewUrl}
+                  alt="Xem trước ảnh chọn"
+                  className="h-20 w-20 rounded-md object-cover"
+                />
+                <div className="flex flex-1 flex-col text-xs">
+                  <span className="font-semibold text-accent-text">Ảnh mới vừa chọn</span>
+                  <span className="text-muted truncate max-w-[180px]">{imageFile?.name}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setImageFile(null)}
+                  className="rounded-full p-2 text-muted hover:bg-surface hover:text-danger transition-colors"
+                  title="Xóa chọn ảnh"
+                >
+                  <Trash size={16} />
+                </button>
+              </div>
+            ) : card?.imageUrl ? (
+              <div className="flex items-center gap-3 rounded-lg border border-line bg-surface-2 p-2.5">
+                <img
+                  src={card.imageUrl}
+                  alt="Ảnh hiện tại của card"
+                  className="h-20 w-20 rounded-md object-cover"
+                />
+                <div className="flex flex-col text-xs">
+                  <span className="font-semibold text-ink">Ảnh hiện tại</span>
+                  <span className="text-muted">Chọn file trên nếu muốn thay đổi ảnh</span>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </Field>
 
         <Field id="card-audio" label="Audio" hint="Optional.">
