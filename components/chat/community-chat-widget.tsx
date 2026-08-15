@@ -49,6 +49,7 @@ export function CommunityChatWidget() {
 
   // Lấy danh sách tin nhắn ban đầu và số người online
   useEffect(() => {
+    if (!session) return;
     async function initData() {
       setIsLoadingHistory(true);
       try {
@@ -73,15 +74,16 @@ export function CommunityChatWidget() {
     }
 
     initData();
-  }, []);
+  }, [session]);
 
   // Thiết lập kết nối WebSocket STOMP
   useEffect(() => {
+    if (!session) return;
     // Chuyển đổi http/https URL thành ws/wss URL chuẩn bao gồm context path
     const wsBase = API_BASE_URL.replace(/^http/, "ws").replace(/\/$/, "");
     const wsUrl = `${wsBase}/ws-chat/websocket`;
 
-    const token = session?.token.accessToken;
+    const token = session.token.accessToken;
     const client = new Client({
       brokerURL: wsUrl,
       connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
@@ -144,7 +146,7 @@ export function CommunityChatWidget() {
     return () => {
       client.deactivate();
     };
-  }, [session?.token.accessToken]);
+  }, [session]);
 
   // Gửi tin nhắn với Optimistic UI (hiển thị ngay lập tức không cần đợi server)
   const handleSendMessage = async (e?: React.FormEvent) => {
@@ -226,6 +228,10 @@ export function CommunityChatWidget() {
   };
 
   const currentUserId = session?.user.id ? String(session.user.id) : null;
+
+  if (!session) {
+    return null;
+  }
 
   return (
     <>

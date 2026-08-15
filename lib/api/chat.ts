@@ -50,6 +50,6 @@ export async function sendChatMessage(request: ChatMessageRequest) {
 /** Lấy số lượng người dùng đang online */
 export async function fetchOnlineCount() {
   return apiFetch<{ onlineUsers: number }>("/chat/online-count", {
-    auth: false,
+    auth: true,
   });
 }
