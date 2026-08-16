@@ -1,5 +1,6 @@
 "use client";
 
+import { useSession } from "@/lib/auth/use-session";
 import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,6 +12,11 @@ import { Plus } from "@phosphor-icons/react/Plus";
 import { Trash } from "@phosphor-icons/react/Trash";
 import { Cards as CardsIcon } from "@phosphor-icons/react/Cards";
 import { List } from "@phosphor-icons/react/List";
+import { GameController } from "@phosphor-icons/react/GameController";
+import { Users } from "@phosphor-icons/react/Users";
+
+
+import { AudioReflexGame } from "@/components/app/audio-reflex-game";
 
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -39,10 +45,12 @@ import { cn } from "@/lib/cn";
 
 export function DeckDetailView({ deckId }: { deckId: number }) {
   const router = useRouter();
+  const session = useSession();
   const [editingDeck, setEditingDeck] = useState(false);
   const [addingCard, setAddingCard] = useState(false);
   const [editingCardId, setEditingCardId] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<"single" | "list">("single");
+  const [viewMode, setViewMode] = useState<"single" | "list" | "game">("single");
+  const [gameSubMode, setGameSubMode] = useState<null | "solo">(null);
   const [singleCardIndex, setSingleCardIndex] = useState(0);
   const [rowError, setRowError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -61,6 +69,12 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
   const tags = useAsync(
     useCallback((signal: AbortSignal) => listTags(signal), []),
     "tags",
+  );
+
+  const isOwner = Boolean(
+    session?.user?.id &&
+    deck.status === "success" &&
+    String(session.user.id) === String(deck.data.profileId)
   );
 
   /** Wraps a write so every row action reports failure the same way. */
@@ -132,112 +146,45 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
 
   return (
     <Container size="wide">
-      <Link
-        href="/decks"
-        className="inline-flex items-center gap-2 text-sm text-muted transition-colors hover:text-ink"
-      >
-        <ArrowLeft aria-hidden size={15} />
-        All decks
-      </Link>
-
       {deck.status === "loading" ? (
-        <div className="mt-6 h-28 animate-pulse rounded-card border border-line bg-surface-2 motion-reduce:animate-none" />
+        <div className="h-16 animate-pulse rounded-2xl border border-line bg-surface-2 motion-reduce:animate-none" />
       ) : null}
 
       {deck.status === "error" ? (
-        <div className="mt-6">
+        <div className="mb-4">
           <ErrorState message={deck.error} onRetry={deck.reload} />
         </div>
       ) : null}
 
-      {deck.status === "success" ? (
-        <div className="mt-6">
-          {editingDeck ? (
-            <DeckForm
-              deck={deck.data}
-              tags={tags.data ?? []}
-              submitLabel="Save deck"
-              onCancel={() => setEditingDeck(false)}
-              onSubmit={async (request, coverImage) => {
-                await updateDeck(deckId, request, coverImage);
-                setEditingDeck(false);
-                deck.reload();
-              }}
-            />
-          ) : (
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-                  {deck.data.title}
-                </h1>
-                {deck.data.description ? (
-                  <p className="mt-2 max-w-[62ch] text-base leading-relaxed text-muted">
-                    {deck.data.description}
-                  </p>
-                ) : null}
-                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted">
-                  <span className="font-mono uppercase">
-                    {deck.data.sourceLanguage} to {deck.data.targetLanguage}
-                  </span>
-                  {/*
-                    Visibility has its own endpoint, so switching it does not
-                    mean reopening the whole deck form and resending every
-                    field. The label is visually hidden because the control sits
-                    in a meta row where a stacked label would break the line.
-                  */}
-                  <label htmlFor="deck-visibility" className="sr-only">
-                    Visibility
-                  </label>
-                  <select
-                    id="deck-visibility"
-                    value={deck.data.visibility}
-                    disabled={busy}
-                    onChange={(event) =>
-                      onVisibilityChange(event.target.value as DeckVisibility)
-                    }
-                    className="rounded-full border border-line bg-surface px-2.5 py-1 text-xs text-ink transition-colors hover:border-ink/25 disabled:opacity-60"
-                  >
-                    <option value="PRIVATE">Private</option>
-                    <option value="SHARED">Shared</option>
-                    <option value="PUBLIC">Public</option>
-                  </select>
-                  {deck.data.tags.map((tag) => (
-                    <span
-                      key={tag.id}
-                      className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs text-accent-text"
-                    >
-                      {tag.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => setEditingDeck(true)}
-                  disabled={busy}
-                >
-                  <PencilSimple aria-hidden size={15} />
-                  Edit
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={onDeleteDeck}
-                  disabled={busy}
-                >
-                  <Trash aria-hidden size={15} />
-                  Delete
-                </Button>
-              </div>
-            </div>
-          )}
+      {deck.status === "success" && editingDeck ? (
+        <div className="mb-6">
+          <DeckForm
+            deck={deck.data}
+            tags={tags.data ?? []}
+            submitLabel="Save deck"
+            onCancel={() => setEditingDeck(false)}
+            onSubmit={async (request, coverImage) => {
+              await updateDeck(deckId, request, coverImage);
+              setEditingDeck(false);
+              deck.reload();
+            }}
+          />
         </div>
       ) : null}
 
-      <section className="mt-12" aria-labelledby="cards-title">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-4">
+      <section className="-mt-4 md:-mt-6" aria-labelledby="cards-title">
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          {/* Tiêu đề & All Decks navigation - trái */}
+          <div className="flex items-center gap-3">
+            <Link
+              href="/decks"
+              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+              title="Về danh sách deck"
+            >
+              <ArrowLeft aria-hidden size={14} />
+              <span className="hidden sm:inline">Decks</span>
+            </Link>
+
             <h2 id="cards-title" className="text-xl font-semibold tracking-tight">
               Cards
               {cards.status === "success" ? (
@@ -246,47 +193,133 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                 </span>
               ) : null}
             </h2>
-
-            {/* View Mode Switcher */}
-            {cards.status === "success" && cards.data.content.length > 0 ? (
-              <div className="flex items-center gap-1 rounded-full border border-line bg-surface-2 p-1 text-xs font-medium">
-                <button
-                  type="button"
-                  onClick={() => setViewMode("single")}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors",
-                    viewMode === "single"
-                      ? "bg-surface text-ink shadow-sm"
-                      : "text-muted hover:text-ink",
-                  )}
-                >
-                  <CardsIcon size={14} />
-                  Xem từng card
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode("list")}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors",
-                    viewMode === "list"
-                      ? "bg-surface text-ink shadow-sm"
-                      : "text-muted hover:text-ink",
-                  )}
-                >
-                  <List size={14} />
-                  Danh sách
-                </button>
-              </div>
-            ) : null}
           </div>
 
-          {!addingCard ? (
-            <Button onClick={() => setAddingCard(true)} disabled={busy}>
-              <Plus aria-hidden size={16} weight="bold" />
-              Add card
-            </Button>
+          {/* View Mode Switcher — căn giữa */}
+          {cards.status === "success" && cards.data.content.length > 0 ? (
+            <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center gap-1 rounded-full border border-line bg-surface-2 p-1 text-xs font-medium shadow-sm">
+              <button
+                type="button"
+                onClick={() => { setViewMode("single"); setGameSubMode(null); }}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors",
+                  viewMode === "single"
+                    ? "bg-surface text-ink shadow-sm"
+                    : "text-muted hover:text-ink",
+                )}
+              >
+                <CardsIcon size={14} />
+                Xem card
+              </button>
+              <button
+                type="button"
+                onClick={() => { setViewMode("list"); setGameSubMode(null); }}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors",
+                  viewMode === "list"
+                    ? "bg-surface text-ink shadow-sm"
+                    : "text-muted hover:text-ink",
+                )}
+              >
+                <List size={14} />
+                Học
+              </button>
+              <button
+                type="button"
+                onClick={() => { setViewMode("game"); setGameSubMode(null); }}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors",
+                  viewMode === "game"
+                    ? "bg-accent text-accent-fg shadow-sm"
+                    : "text-muted hover:text-ink",
+                )}
+              >
+                <GameController size={14} />
+                Chơi game
+              </button>
+            </div>
           ) : null}
+
+          {/* Action buttons (Edit/Remove/Add) — phải */}
+          <div className="flex items-center gap-2">
+            {isOwner && !editingDeck ? (
+              <>
+                <Button
+                  variant="secondary"
+                  onClick={() => setEditingDeck(true)}
+                  disabled={busy}
+                  title="Chỉnh sửa bộ thẻ"
+                >
+                  <PencilSimple aria-hidden size={14} />
+                  <span className="hidden sm:inline">Edit</span>
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={onDeleteDeck}
+                  disabled={busy}
+                  className="text-danger hover:bg-danger/10 hover:text-danger"
+                  title="Xóa bộ thẻ"
+                >
+                  <Trash aria-hidden size={14} />
+                  <span className="hidden sm:inline">Remove</span>
+                </Button>
+              </>
+            ) : null}
+
+            {!addingCard ? (
+              <Button onClick={() => setAddingCard(true)} disabled={busy}>
+                <Plus aria-hidden size={15} weight="bold" />
+                Add card
+              </Button>
+            ) : null}
+          </div>
         </div>
+
+        {/* View Mode Switcher cho màn hình nhỏ (Mobile) */}
+        {cards.status === "success" && cards.data.content.length > 0 ? (
+          <div className="mt-3 flex md:hidden items-center justify-center gap-1 rounded-full border border-line bg-surface-2 p-1 text-xs font-medium shadow-sm">
+            <button
+              type="button"
+              onClick={() => { setViewMode("single"); setGameSubMode(null); }}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 transition-colors",
+                viewMode === "single"
+                  ? "bg-surface text-ink shadow-sm"
+                  : "text-muted hover:text-ink",
+              )}
+            >
+              <CardsIcon size={14} />
+              Xem card
+            </button>
+            <button
+              type="button"
+              onClick={() => { setViewMode("list"); setGameSubMode(null); }}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 transition-colors",
+                viewMode === "list"
+                  ? "bg-surface text-ink shadow-sm"
+                  : "text-muted hover:text-ink",
+              )}
+            >
+              <List size={14} />
+              Học
+            </button>
+            <button
+              type="button"
+              onClick={() => { setViewMode("game"); setGameSubMode(null); }}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 transition-colors",
+                viewMode === "game"
+                  ? "bg-accent text-accent-fg shadow-sm"
+                  : "text-muted hover:text-ink",
+              )}
+            >
+              <GameController size={14} />
+              Chơi game
+            </button>
+          </div>
+        ) : null}
+
 
         {rowError ? (
           <div className="mt-4">
@@ -318,7 +351,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
           </div>
         ) : null}
 
-        <div className="mt-6">
+        <div className="mt-3">
           {cards.status === "loading" ? <RowSkeleton /> : null}
 
           {cards.status === "error" ? (
@@ -351,7 +384,47 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                   }}
                 />
               </div>
+            ) : viewMode === "game" ? (
+              gameSubMode === "solo" ? (
+                <AudioReflexGame
+                  deckId={deckId}
+                  deckTitle={deck.status === "success" ? deck.data.title : ""}
+                />
+              ) : (
+                // Màn chọn chế độ chơi
+                <div className="flex flex-col items-center gap-4 pt-4 pb-8">
+                  <div className="flex size-14 items-center justify-center rounded-full bg-accent/10 text-accent">
+                    <GameController size={30} weight="fill" />
+                  </div>
+                  <h3 className="text-xl font-bold tracking-tight text-ink">Chọn chế độ chơi</h3>
+
+                  <div className="flex flex-row gap-3">
+                    {/* Solo */}
+                    <button
+                      type="button"
+                      onClick={() => setGameSubMode("solo")}
+                      className="group flex items-center gap-3 rounded-2xl border border-line bg-surface px-5 py-3.5 text-left transition-all hover:border-accent/50 hover:bg-accent/5 hover:shadow-md active:scale-[0.98]"
+                    >
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent group-hover:bg-accent group-hover:text-accent-fg transition-colors">
+                        <GameController size={18} weight="fill" />
+                      </div>
+                      <span className="whitespace-nowrap font-semibold text-ink text-sm">Chơi Solo</span>
+                    </button>
+
+                    {/* Với bạn bè - đang phát triển */}
+                    <div className="flex items-center gap-3 rounded-2xl border border-line bg-surface/50 px-5 py-3.5 opacity-55 cursor-not-allowed select-none">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-muted">
+                        <Users size={18} weight="fill" />
+                      </div>
+                      <span className="whitespace-nowrap font-semibold text-ink text-sm">Với bạn bè</span>
+                      <span className="whitespace-nowrap rounded-full bg-amber-500/15 px-2 py-0.5 text-[0.6rem] font-bold text-amber-600 dark:text-amber-400">Sắp ra mắt</span>
+                    </div>
+                  </div>
+                </div>
+
+              )
             ) : viewMode === "single" ? (
+
               <SingleCardView
                 key={singleCardIndex}
                 cards={cards.data.content}

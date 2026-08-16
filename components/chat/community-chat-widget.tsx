@@ -161,7 +161,7 @@ export function CommunityChatWidget() {
 
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const senderName = session.user.fullName?.trim() || session.user.email || "Tôi";
-    const senderAvatar = session.user.profile?.avatar || null;
+    const senderAvatar = session.user.avatar || null;
 
     const optimisticMsg: ChatMessageResponse = {
       id: tempId,
