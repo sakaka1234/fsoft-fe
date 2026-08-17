@@ -33,6 +33,15 @@ export function CardContextBlock({
       utterance.lang = "en-US";
       utterance.rate = 0.9;
 
+      // Tìm giọng đọc chuẩn tiếng Anh (en-US / en-GB)
+      const voices = window.speechSynthesis.getVoices();
+      const englishVoice = voices.find(
+        (v) => v.lang.includes("en-US") || v.lang.startsWith("en"),
+      );
+      if (englishVoice) {
+        utterance.voice = englishVoice;
+      }
+
       setIsPlaying(true);
       utterance.onend = () => setIsPlaying(false);
       utterance.onerror = () => setIsPlaying(false);
