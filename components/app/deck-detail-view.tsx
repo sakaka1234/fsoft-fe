@@ -360,44 +360,20 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                 />
               </div>
             ) : viewMode === "game" ? (
-              gameSubMode === "solo" ? (
-                <AudioReflexGame
-                  deckId={deckId}
-                  deckTitle={deck.status === "success" ? deck.data.title : ""}
-                />
-              ) : (
-                // Màn chọn chế độ chơi
-                <div className="flex flex-col items-center gap-4 pt-4 pb-8">
-                  <div className="flex size-14 items-center justify-center rounded-full bg-accent/10 text-accent">
-                    <GameController size={30} weight="fill" />
-                  </div>
-                  <h3 className="text-xl font-bold tracking-tight text-ink">Chọn chế độ chơi</h3>
-
-                  <div className="flex flex-row gap-3">
-                    {/* Solo */}
-                    <button
-                      type="button"
-                      onClick={() => setGameSubMode("solo")}
-                      className="group flex items-center gap-3 rounded-2xl border border-line bg-surface px-5 py-3.5 text-left transition-all hover:border-accent/50 hover:bg-accent/5 hover:shadow-md active:scale-[0.98]"
-                    >
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent group-hover:bg-accent group-hover:text-accent-fg transition-colors">
-                        <GameController size={18} weight="fill" />
-                      </div>
-                      <span className="whitespace-nowrap font-semibold text-ink text-sm">Chơi Solo</span>
-                    </button>
-
-                    {/* Với bạn bè - đang phát triển */}
-                    <div className="flex items-center gap-3 rounded-2xl border border-line bg-surface/50 px-5 py-3.5 opacity-55 cursor-not-allowed select-none">
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-muted">
-                        <Users size={18} weight="fill" />
-                      </div>
-                      <span className="whitespace-nowrap font-semibold text-ink text-sm">Với bạn bè</span>
-                      <span className="whitespace-nowrap rounded-full bg-amber-500/15 px-2 py-0.5 text-[0.6rem] font-bold text-amber-600 dark:text-amber-400">Sắp ra mắt</span>
-                    </div>
-                  </div>
+              <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-line bg-surface p-10 text-center shadow-sm max-w-md mx-auto my-6">
+                <div className="flex size-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500">
+                  <GameController size={36} weight="fill" />
                 </div>
-
-              )
+                <div>
+                  <h3 className="text-xl font-bold tracking-tight text-ink">Chơi Game</h3>
+                  <p className="mt-1.5 text-sm text-muted">
+                    Tính năng chơi game đang được phát triển và sẽ sớm ra mắt!
+                  </p>
+                </div>
+                <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-4 py-1 text-xs font-bold text-amber-600 dark:text-amber-400">
+                  🚧 Đang phát triển
+                </span>
+              </div>
             ) : viewMode === "single" ? (
 
               <SingleCardView
