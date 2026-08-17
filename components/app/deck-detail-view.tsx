@@ -24,7 +24,7 @@ import { CardForm } from "@/components/app/card-form";
 import { DeckForm } from "@/components/app/deck-form";
 import { SingleCardView } from "@/components/app/single-card-view";
 import { CardContextBlock } from "@/components/app/card-context-block";
-import { EmptyState, ErrorState, RowSkeleton } from "@/components/app/states";
+import { EmptyState, ErrorState, RowSkeleton, SingleCardSkeleton } from "@/components/app/states";
 import {
   createCard,
   deleteCard,
@@ -147,10 +147,6 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
 
   return (
     <Container size="wide">
-      {deck.status === "loading" ? (
-        <div className="h-16 animate-pulse rounded-2xl border border-line bg-surface-2 motion-reduce:animate-none" />
-      ) : null}
-
       {deck.status === "error" ? (
         <div className="mb-4">
           <ErrorState message={deck.error} onRetry={deck.reload} />
@@ -327,7 +323,13 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
           </div>
         ) : (
           <div className="mt-3">
-          {cards.status === "loading" ? <RowSkeleton /> : null}
+          {cards.status === "loading" ? (
+            viewMode === "single" ? (
+              <SingleCardSkeleton />
+            ) : (
+              <RowSkeleton count={4} />
+            )
+          ) : null}
 
           {cards.status === "error" ? (
             <ErrorState message={cards.error} onRetry={cards.reload} />

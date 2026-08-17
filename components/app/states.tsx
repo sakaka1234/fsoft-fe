@@ -1,19 +1,63 @@
 import { Warning } from "@phosphor-icons/react/dist/ssr/Warning";
-
 import { cn } from "@/lib/cn";
 
 /**
- * Skeleton that matches the shape of what is coming, rather than a spinner, so
- * the layout does not jump when the data lands.
+ * High-contrast, elegant Skeleton loaders matching component dimensions.
  */
-export function CardSkeleton({ count = 3 }: { count?: number }) {
+
+export function SingleCardSkeleton() {
+  return (
+    <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-6 py-4">
+      {/* Flashcard container skeleton */}
+      <div className="relative aspect-[1.58/1] w-full animate-pulse rounded-3xl border border-line bg-surface p-8 shadow-card flex flex-col justify-between overflow-hidden">
+        {/* Top bar */}
+        <div className="flex items-center justify-between">
+          <div className="h-4 w-16 rounded-full bg-black/10 dark:bg-white/15" />
+          <div className="h-6 w-20 rounded-full bg-black/10 dark:bg-white/15" />
+        </div>
+
+        {/* Center content */}
+        <div className="flex flex-col items-center justify-center gap-3 py-6 text-center">
+          <div className="h-9 w-48 rounded-xl bg-black/15 dark:bg-white/20" />
+          <div className="h-4 w-32 rounded-md bg-black/10 dark:bg-white/15" />
+        </div>
+
+        {/* Bottom hint */}
+        <div className="flex items-center justify-center">
+          <div className="h-3.5 w-36 rounded-full bg-black/10 dark:bg-white/15" />
+        </div>
+      </div>
+
+      {/* Control buttons skeleton */}
+      <div className="flex items-center justify-center gap-3">
+        <div className="h-10 w-24 animate-pulse rounded-full bg-black/10 dark:bg-white/15" />
+        <div className="h-10 w-32 animate-pulse rounded-full bg-black/10 dark:bg-white/15" />
+        <div className="h-10 w-24 animate-pulse rounded-full bg-black/10 dark:bg-white/15" />
+      </div>
+    </div>
+  );
+}
+
+export function CardSkeleton({ count = 6 }: { count?: number }) {
   return (
     <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: count }, (_, index) => (
         <li
           key={index}
-          className="h-40 animate-pulse rounded-card border border-line bg-surface-2 motion-reduce:animate-none"
-        />
+          className="flex flex-col justify-between h-44 animate-pulse rounded-card border border-line bg-surface p-6 shadow-2xs"
+        >
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="h-5 w-36 rounded-lg bg-black/15 dark:bg-white/20" />
+              <div className="h-6 w-16 rounded-full bg-black/10 dark:bg-white/15" />
+            </div>
+            <div className="h-3.5 w-4/5 rounded-md bg-black/10 dark:bg-white/15" />
+          </div>
+          <div className="flex items-center justify-between pt-4 border-t border-line/60">
+            <div className="h-4 w-20 rounded-full bg-black/10 dark:bg-white/15" />
+            <div className="h-4 w-12 rounded-full bg-black/10 dark:bg-white/15" />
+          </div>
+        </li>
       ))}
     </ul>
   );
@@ -25,8 +69,29 @@ export function RowSkeleton({ count = 4 }: { count?: number }) {
       {Array.from({ length: count }, (_, index) => (
         <li
           key={index}
-          className="h-20 animate-pulse rounded-card border border-line bg-surface-2 motion-reduce:animate-none"
-        />
+          className="flex items-start gap-4 rounded-card border border-line bg-surface p-5 animate-pulse shadow-2xs"
+        >
+          {/* Index position */}
+          <div className="mt-1 h-5 w-6 rounded bg-black/15 dark:bg-white/20" />
+
+          {/* Card main info */}
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="h-6 w-36 rounded-lg bg-black/15 dark:bg-white/20" />
+              <div className="h-4 w-20 rounded-md bg-black/10 dark:bg-white/15" />
+              <div className="h-5 w-14 rounded-full bg-black/10 dark:bg-white/15" />
+            </div>
+            <div className="h-4 w-2/3 rounded-md bg-black/10 dark:bg-white/15" />
+            <div className="h-10 w-full rounded-xl bg-black/5 dark:bg-white/10" />
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-1">
+            <div className="h-8 w-8 rounded-full bg-black/10 dark:bg-white/15" />
+            <div className="h-8 w-8 rounded-full bg-black/10 dark:bg-white/15" />
+            <div className="h-8 w-8 rounded-full bg-black/10 dark:bg-white/15" />
+          </div>
+        </li>
       ))}
     </ul>
   );
