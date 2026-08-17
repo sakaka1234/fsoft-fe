@@ -6,16 +6,20 @@ import { useRouter } from "next/navigation";
 import { GitFork } from "@phosphor-icons/react/GitFork";
 import { Globe } from "@phosphor-icons/react/Globe";
 import { Lock } from "@phosphor-icons/react/Lock";
+import { PencilSimple } from "@phosphor-icons/react/PencilSimple";
 import { Tag } from "@phosphor-icons/react/Tag";
+import { Trash } from "@phosphor-icons/react/Trash";
 import { UsersThree } from "@phosphor-icons/react/UsersThree";
 
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Container } from "@/components/ui/container";
+import { Modal } from "@/components/ui/modal";
 import { DeckCard } from "@/components/app/deck-card";
+import { DeckForm } from "@/components/app/deck-form";
 import { CardSkeleton, EmptyState, ErrorState } from "@/components/app/states";
 import { ApiError } from "@/lib/api/client";
-import { forkDeck, listMyDecks, listPublicDecks } from "@/lib/api/decks";
+import { deleteDeck, forkDeck, listMyDecks, listPublicDecks, updateDeck } from "@/lib/api/decks";
 import { listTags } from "@/lib/api/tags";
 import type { DeckResponse } from "@/lib/api/types";
 import { useSession } from "@/lib/auth/use-session";
@@ -40,6 +44,8 @@ export function DashboardView() {
   const session = useSession();
   const router = useRouter();
   const [forkingId, setForkingId] = useState<number | null>(null);
+  const [editingDeckId, setEditingDeckId] = useState<number | null>(null);
+  const [busyId, setBusyId] = useState<number | null>(null);
   const [forkError, setForkError] = useState<string | null>(null);
 
   // A page big enough to hold the whole library, so the tiles count everything
@@ -64,6 +70,21 @@ export function DashboardView() {
   const all = myDecks.status === "success" ? myDecks.data.content : [];
   const recent = all.slice(0, 6);
 
+  const editingDeck = myDecks.status === "success"
+    ? myDecks.data.content.find((d) => d.id === editingDeckId)
+    : null;
+
+  async function onDelete(deck: DeckResponse) {
+    if (!window.confirm(`Delete "${deck.title}" and every card in it?`)) return;
+    setBusyId(deck.id);
+    try {
+      await deleteDeck(deck.id);
+      myDecks.reload();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function onFork(deck: DeckResponse) {
     setForkingId(deck.id);
     setForkError(null);
@@ -82,6 +103,27 @@ export function DashboardView() {
 
   return (
     <Container size="wide">
+      {/* Edit Deck Modal */}
+      <Modal
+        isOpen={Boolean(editingDeckId && editingDeck)}
+        onClose={() => setEditingDeckId(null)}
+        title="Chỉnh sửa bộ thẻ"
+      >
+        {editingDeck ? (
+          <DeckForm
+            deck={editingDeck}
+            tags={tags.data ?? []}
+            submitLabel="Save deck"
+            onCancel={() => setEditingDeckId(null)}
+            onSubmit={async (request, coverImage) => {
+              await updateDeck(editingDeck.id, request, coverImage);
+              setEditingDeckId(null);
+              myDecks.reload();
+            }}
+          />
+        ) : null}
+      </Modal>
+
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
@@ -145,7 +187,41 @@ export function DashboardView() {
             <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {recent.map((deck) => (
                 <li key={deck.id}>
-                  <DeckCard deck={deck} />
+                  <DeckCard
+                    deck={deck}
+                    actions={
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setEditingDeckId(deck.id);
+                          }}
+                          disabled={busyId === deck.id}
+                          aria-label={`Edit ${deck.title}`}
+                          className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-50"
+                          title="Chỉnh sửa bộ thẻ"
+                        >
+                          <PencilSimple aria-hidden size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onDelete(deck);
+                          }}
+                          disabled={busyId === deck.id}
+                          aria-label={`Delete ${deck.title}`}
+                          className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-danger disabled:opacity-50"
+                          title="Xóa bộ thẻ"
+                        >
+                          <Trash aria-hidden size={16} />
+                        </button>
+                      </div>
+                    }
+                  />
                 </li>
               ))}
             </ul>

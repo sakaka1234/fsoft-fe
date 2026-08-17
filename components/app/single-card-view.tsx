@@ -8,6 +8,7 @@ import { Image as ImageIcon } from "@phosphor-icons/react/Image";
 
 import type { CardResponse } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
+import { CardContextBlock } from "@/components/app/card-context-block";
 
 type SingleCardViewProps = {
   cards: CardResponse[];
@@ -228,9 +229,9 @@ export function SingleCardView({
             </div>
           </div>
 
-          {/* BACK SIDE (Mặt sau - Chỉ hiển thị Nghĩa tiếng Việt) */}
+          {/* BACK SIDE (Mặt sau - Nghĩa tiếng Việt & Ngữ cảnh) */}
           <div
-            className="absolute inset-0 flex h-full w-full flex-col items-center justify-center rounded-2xl border border-line bg-surface p-8 text-center shadow-sm"
+            className="absolute inset-0 flex h-full w-full flex-col items-center justify-center rounded-2xl border border-line bg-surface p-6 md:p-8 text-center shadow-sm overflow-y-auto"
             style={{
               backfaceVisibility: "hidden",
               transform: "rotateY(180deg)",
@@ -239,9 +240,19 @@ export function SingleCardView({
             <span className="text-xs font-semibold uppercase tracking-wider text-muted">
               Nghĩa tiếng Việt
             </span>
-            <h2 className="mt-3 text-4xl font-extrabold tracking-tight text-ink md:text-5xl">
+            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-ink md:text-4xl">
               {card.meaning}
             </h2>
+
+            {/* Khối Ngữ Cảnh (Context Block) */}
+            {card.exampleSentence || card.exampleMeaning ? (
+              <div className="mt-5 w-full max-w-md">
+                <CardContextBlock
+                  exampleSentence={card.exampleSentence}
+                  exampleMeaning={card.exampleMeaning}
+                />
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

@@ -157,22 +157,24 @@ export function CardForm({
       </Field>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field id="card-example" label="Example sentence" hint="Optional.">
+        <Field id="card-example" label="Ngữ cảnh / Câu ví dụ (EN)" hint="Không bắt buộc.">
           <TextArea
             id="card-example"
             rows={2}
             value={exampleSentence}
             onChange={(event) => setExampleSentence(event.target.value)}
+            placeholder="Ví dụ: The office will be closed temporarily due to renovation."
             disabled={pending}
           />
         </Field>
 
-        <Field id="card-example-meaning" label="Example meaning" hint="Optional.">
+        <Field id="card-example-meaning" label="Nghĩa tiếng Việt của ngữ cảnh (VI)" hint="Không bắt buộc.">
           <TextArea
             id="card-example-meaning"
             rows={2}
             value={exampleMeaning}
             onChange={(event) => setExampleMeaning(event.target.value)}
+            placeholder="Ví dụ: Văn phòng sẽ đóng cửa tạm thời do việc sửa chữa."
             disabled={pending}
           />
         </Field>

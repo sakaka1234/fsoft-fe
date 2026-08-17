@@ -1,21 +1,24 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { PencilSimple } from "@phosphor-icons/react/PencilSimple";
 import { Plus } from "@phosphor-icons/react/Plus";
 import { Trash } from "@phosphor-icons/react/Trash";
 
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
+import { Modal } from "@/components/ui/modal";
 import { DeckCard } from "@/components/app/deck-card";
 import { DeckForm } from "@/components/app/deck-form";
 import { CardSkeleton, EmptyState, ErrorState } from "@/components/app/states";
-import { createDeck, deleteDeck, listMyDecks } from "@/lib/api/decks";
+import { createDeck, deleteDeck, listMyDecks, updateDeck } from "@/lib/api/decks";
 import { listTags } from "@/lib/api/tags";
 import type { DeckResponse } from "@/lib/api/types";
 import { useAsync } from "@/lib/use-async";
 
 export function DecksView() {
   const [creating, setCreating] = useState(false);
+  const [editingDeckId, setEditingDeckId] = useState<number | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
 
   const decks = useAsync(
@@ -26,6 +29,10 @@ export function DecksView() {
     useCallback((signal: AbortSignal) => listTags(signal), []),
     "tags",
   );
+
+  const editingDeck = decks.status === "success"
+    ? decks.data.content.find((d) => d.id === editingDeckId)
+    : null;
 
   async function onDelete(deck: DeckResponse) {
     if (!window.confirm(`Delete "${deck.title}" and every card in it?`)) return;
@@ -72,6 +79,27 @@ export function DecksView() {
         </div>
       ) : null}
 
+      {/* Edit Deck Modal */}
+      <Modal
+        isOpen={Boolean(editingDeckId && editingDeck)}
+        onClose={() => setEditingDeckId(null)}
+        title="Chỉnh sửa bộ thẻ"
+      >
+        {editingDeck ? (
+          <DeckForm
+            deck={editingDeck}
+            tags={tags.data ?? []}
+            submitLabel="Save deck"
+            onCancel={() => setEditingDeckId(null)}
+            onSubmit={async (request, coverImage) => {
+              await updateDeck(editingDeck.id, request, coverImage);
+              setEditingDeckId(null);
+              decks.reload();
+            }}
+          />
+        ) : null}
+      </Modal>
+
       <div className="mt-10">
         {decks.status === "loading" ? <CardSkeleton count={6} /> : null}
 
@@ -98,15 +126,28 @@ export function DecksView() {
                 <DeckCard
                   deck={deck}
                   actions={
-                    <button
-                      type="button"
-                      onClick={() => onDelete(deck)}
-                      disabled={busyId === deck.id}
-                      aria-label={`Delete ${deck.title}`}
-                      className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-danger disabled:opacity-50"
-                    >
-                      <Trash aria-hidden size={16} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setEditingDeckId(deck.id)}
+                        disabled={busyId === deck.id}
+                        aria-label={`Edit ${deck.title}`}
+                        className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-50"
+                        title="Chỉnh sửa bộ thẻ"
+                      >
+                        <PencilSimple aria-hidden size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDelete(deck)}
+                        disabled={busyId === deck.id}
+                        aria-label={`Delete ${deck.title}`}
+                        className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-danger disabled:opacity-50"
+                        title="Xóa bộ thẻ"
+                      >
+                        <Trash aria-hidden size={16} />
+                      </button>
+                    </div>
                   }
                 />
               </li>

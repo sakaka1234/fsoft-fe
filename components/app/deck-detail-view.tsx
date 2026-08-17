@@ -23,6 +23,7 @@ import { Container } from "@/components/ui/container";
 import { CardForm } from "@/components/app/card-form";
 import { DeckForm } from "@/components/app/deck-form";
 import { SingleCardView } from "@/components/app/single-card-view";
+import { CardContextBlock } from "@/components/app/card-context-block";
 import { EmptyState, ErrorState, RowSkeleton } from "@/components/app/states";
 import {
   createCard,
@@ -200,10 +201,23 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
             <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center gap-1 rounded-full border border-line bg-surface-2 p-1 text-xs font-medium shadow-sm">
               <button
                 type="button"
-                onClick={() => { setViewMode("single"); setGameSubMode(null); }}
+                onClick={() => { setAddingCard(false); setViewMode("list"); setGameSubMode(null); }}
                 className={cn(
                   "flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors",
-                  viewMode === "single"
+                  !addingCard && viewMode === "list"
+                    ? "bg-surface text-ink shadow-sm"
+                    : "text-muted hover:text-ink",
+                )}
+              >
+                <List size={14} />
+                Quản lý card
+              </button>
+              <button
+                type="button"
+                onClick={() => { setAddingCard(false); setViewMode("single"); setGameSubMode(null); }}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors",
+                  !addingCard && viewMode === "single"
                     ? "bg-surface text-ink shadow-sm"
                     : "text-muted hover:text-ink",
                 )}
@@ -213,23 +227,10 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
               </button>
               <button
                 type="button"
-                onClick={() => { setViewMode("list"); setGameSubMode(null); }}
+                onClick={() => { setAddingCard(false); setViewMode("game"); setGameSubMode(null); }}
                 className={cn(
                   "flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors",
-                  viewMode === "list"
-                    ? "bg-surface text-ink shadow-sm"
-                    : "text-muted hover:text-ink",
-                )}
-              >
-                <List size={14} />
-                Học
-              </button>
-              <button
-                type="button"
-                onClick={() => { setViewMode("game"); setGameSubMode(null); }}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors",
-                  viewMode === "game"
+                  !addingCard && viewMode === "game"
                     ? "bg-accent text-accent-fg shadow-sm"
                     : "text-muted hover:text-ink",
                 )}
@@ -240,32 +241,8 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
             </div>
           ) : null}
 
-          {/* Action buttons (Edit/Remove/Add) — phải */}
+          {/* Action buttons (Add card) — phải */}
           <div className="flex items-center gap-2">
-            {isOwner && !editingDeck ? (
-              <>
-                <Button
-                  variant="secondary"
-                  onClick={() => setEditingDeck(true)}
-                  disabled={busy}
-                  title="Chỉnh sửa bộ thẻ"
-                >
-                  <PencilSimple aria-hidden size={14} />
-                  <span className="hidden sm:inline">Edit</span>
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={onDeleteDeck}
-                  disabled={busy}
-                  className="text-danger hover:bg-danger/10 hover:text-danger"
-                  title="Xóa bộ thẻ"
-                >
-                  <Trash aria-hidden size={14} />
-                  <span className="hidden sm:inline">Remove</span>
-                </Button>
-              </>
-            ) : null}
-
             {!addingCard ? (
               <Button onClick={() => setAddingCard(true)} disabled={busy}>
                 <Plus aria-hidden size={15} weight="bold" />
@@ -280,10 +257,23 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
           <div className="mt-3 flex md:hidden items-center justify-center gap-1 rounded-full border border-line bg-surface-2 p-1 text-xs font-medium shadow-sm">
             <button
               type="button"
-              onClick={() => { setViewMode("single"); setGameSubMode(null); }}
+              onClick={() => { setAddingCard(false); setViewMode("list"); setGameSubMode(null); }}
               className={cn(
                 "flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 transition-colors",
-                viewMode === "single"
+                !addingCard && viewMode === "list"
+                  ? "bg-surface text-ink shadow-sm"
+                  : "text-muted hover:text-ink",
+              )}
+            >
+              <List size={14} />
+              Quản lý card
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAddingCard(false); setViewMode("single"); setGameSubMode(null); }}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 transition-colors",
+                !addingCard && viewMode === "single"
                   ? "bg-surface text-ink shadow-sm"
                   : "text-muted hover:text-ink",
               )}
@@ -293,23 +283,10 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
             </button>
             <button
               type="button"
-              onClick={() => { setViewMode("list"); setGameSubMode(null); }}
+              onClick={() => { setAddingCard(false); setViewMode("game"); setGameSubMode(null); }}
               className={cn(
                 "flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 transition-colors",
-                viewMode === "list"
-                  ? "bg-surface text-ink shadow-sm"
-                  : "text-muted hover:text-ink",
-              )}
-            >
-              <List size={14} />
-              Học
-            </button>
-            <button
-              type="button"
-              onClick={() => { setViewMode("game"); setGameSubMode(null); }}
-              className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 transition-colors",
-                viewMode === "game"
+                !addingCard && viewMode === "game"
                   ? "bg-accent text-accent-fg shadow-sm"
                   : "text-muted hover:text-ink",
               )}
@@ -319,7 +296,6 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
             </button>
           </div>
         ) : null}
-
 
         {rowError ? (
           <div className="mt-4">
@@ -349,9 +325,8 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
               }}
             />
           </div>
-        ) : null}
-
-        <div className="mt-3">
+        ) : (
+          <div className="mt-3">
           {cards.status === "loading" ? <RowSkeleton /> : null}
 
           {cards.status === "error" ? (
@@ -463,10 +438,14 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                           ) : null}
                         </div>
                         <p className="mt-1 text-base">{card.meaning}</p>
-                        {card.exampleSentence ? (
-                          <p className="mt-2 text-sm text-muted">
-                            {card.exampleSentence}
-                          </p>
+                        {card.exampleSentence || card.exampleMeaning ? (
+                          <div className="mt-3">
+                            <CardContextBlock
+                              exampleSentence={card.exampleSentence}
+                              exampleMeaning={card.exampleMeaning}
+                              compact
+                            />
+                          </div>
                         ) : null}
                       </div>
 
@@ -517,7 +496,8 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
             )
           ) : null}
         </div>
-      </section>
-    </Container>
-  );
+      )}
+    </section>
+  </Container>
+);
 }
