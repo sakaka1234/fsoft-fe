@@ -1,21 +1,34 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Outfit } from "next/font/google";
+import { Cormorant_Garamond, EB_Garamond, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CommunityChatWidget } from "@/components/chat/community-chat-widget";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+/*
+  The hero is Fragonard's L'Escarpolette, 1767, French Rococo. Both faces here
+  are revivals of Claude Garamond, the 16th century French punchcutter whose
+  types French printing still rested on in Fragonard's century, so the page is
+  set in the same tradition as the painting rather than in something merely
+  old-looking.
+
+  Both are variable fonts, so no weight array: next/font requests the full axis
+  in one file, which is smaller than the three static cuts the headings need.
+*/
+
+/** Display face. High contrast and fine hairlines, the Rococo register. */
+const cormorant = Cormorant_Garamond({
+  variable: "--font-cormorant",
   subsets: ["latin"],
 });
 
+/** Body face. Same lineage, sturdier stems, drawn to be read at length. */
+const ebGaramond = EB_Garamond({
+  variable: "--font-eb-garamond",
+  subsets: ["latin"],
+});
+
+/** Kept for the wordmark badge and figures, where a mono is doing real work. */
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-/** Display face for headings. Rounder and friendlier next to the artwork. */
-const outfit = Outfit({
-  variable: "--font-outfit",
   subsets: ["latin"],
 });
 
@@ -47,7 +60,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} h-full antialiased`}
+      className={`${ebGaramond.variable} ${cormorant.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

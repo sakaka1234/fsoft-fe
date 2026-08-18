@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -16,16 +16,62 @@ import { logout } from "@/lib/api/auth";
 import { endSession } from "@/lib/auth/session-store";
 import { useSession } from "@/lib/auth/use-session";
 import { EASE_OUT } from "@/lib/motion";
+import { cn } from "@/lib/cn";
+
+/** Matches the bar's own height, h-16 mobile / h-17 desktop. */
+const HEADER_HEIGHT = 68;
+
+/**
+ * Whether the bar is currently laid over the hero, read as an external store
+ * rather than effect-driven state: the same shape the session store and the
+ * reduced-motion query already use here, and the one that keeps the first
+ * paint correct instead of flashing a solid bar before an effect can run.
+ *
+ * The hero owns #top. A page without one gets the solid bar.
+ */
+function subscribeToHeroPosition(onChange: () => void) {
+  const hero = document.getElementById("top");
+  if (!hero) return () => {};
+
+  /* Shrinking the root's top edge by the bar's height makes this fire at
+     exactly the moment the hero's bottom clears the bar, rather than when the
+     hero has left the viewport altogether. */
+  const observer = new IntersectionObserver(onChange, {
+    rootMargin: `-${HEADER_HEIGHT}px 0px 0px 0px`,
+  });
+
+  observer.observe(hero);
+  return () => observer.disconnect();
+}
+
+function readHeroPosition() {
+  const hero = document.getElementById("top");
+  return hero ? hero.getBoundingClientRect().bottom > HEADER_HEIGHT : false;
+}
+
+/** No layout on the server, but the hero is always the first thing on it. */
+const readServerHeroPosition = () => true;
 
 /**
  * Single line at desktop, 64px mobile / 68px desktop. The only z-index on the
  * page besides the mobile panel it owns.
+ *
+ * Over the hero it goes transparent and borrows the hero's dark palette, then
+ * turns into the normal solid bar once that section has passed. Without this it
+ * renders in the page theme, which on a light theme means a white slab laid
+ * across an eighteenth century painting.
  */
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const reduce = useReducedMotion();
   const session = useSession();
   const router = useRouter();
+
+  const overHero = useSyncExternalStore(
+    subscribeToHeroPosition,
+    readHeroPosition,
+    readServerHeroPosition,
+  );
 
   async function onLogout() {
     const accessToken = session?.token.accessToken;
@@ -45,7 +91,19 @@ export function SiteHeader() {
   const displayName = session?.user.fullName?.trim() || session?.user.email;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-line bg-paper/85 backdrop-blur-md">
+    <header
+      className={cn(
+        /* border-b stays on in both states so only its colour changes and the
+           bar never gains or loses a pixel of height mid-scroll. bg-transparent
+           is a utility and hero-dark a component class, so the utility layer
+           wins and the palette arrives without the dark fill that comes with
+           it. */
+        "sticky top-0 z-50 border-b transition-colors duration-300",
+        overHero
+          ? "hero-dark border-transparent bg-transparent"
+          : "border-line bg-paper/85 backdrop-blur-md",
+      )}
+    >
       <Container size="wide">
         <div className="flex h-16 items-center justify-between gap-6 md:h-17">
           <Link
@@ -56,20 +114,37 @@ export function SiteHeader() {
             <span className="flex size-7 items-center justify-center rounded-lg bg-accent font-mono text-[0.7rem] font-semibold tracking-tight text-accent-fg">
               AE
             </span>
-            <span className="text-[0.95rem] font-semibold tracking-tight">
+            {/* Down a step from what this bar used to carry, because the whole
+                scale in globals.css moved up an eighth and these were already
+                compensating for the same thing by hand. Net effect on screen is
+                that the bar stays where it is while the page around it grows.
+                The class is on the name rather than the whole link so the AE
+                badge, whose glyphs sit on a solid accent fill, keeps its clean
+                edges. */}
+            <span
+              className={cn(
+                "text-lg font-semibold tracking-tight",
+                overHero && "header-over-art",
+              )}
+            >
               {site.name}
             </span>
           </Link>
 
           <nav
             aria-label="Primary"
-            className="hidden items-center gap-7 lg:flex"
+            className={cn(
+              /* Tighter at lg and roomier from xl: five items at this size
+                 would otherwise crowd the CTA on a 1024px viewport. */
+              "hidden items-center gap-5 lg:flex xl:gap-7",
+              overHero && "header-over-art",
+            )}
           >
             {navItems.map((item) => (
               <a
                 key={item.href}
                 href={item.href}
-                className="text-sm text-muted transition-colors hover:text-ink"
+                className="text-base text-muted transition-colors hover:text-ink"
               >
                 {item.label}
               </a>
@@ -81,7 +156,12 @@ export function SiteHeader() {
 
             {session ? (
               <div className="hidden items-center gap-2 sm:flex">
-                <span className="max-w-32 truncate px-2 text-sm text-muted">
+                <span
+                  className={cn(
+                    "max-w-32 truncate px-2 text-base text-muted",
+                    overHero && "header-over-art",
+                  )}
+                >
                   {displayName}
                 </span>
                 <ButtonLink href="/dashboard">Dashboard</ButtonLink>
@@ -93,7 +173,10 @@ export function SiteHeader() {
               <div className="hidden items-center gap-2 sm:flex">
                 <Link
                   href={signInCta.href}
-                  className="px-3 text-sm text-muted transition-colors hover:text-ink"
+                  className={cn(
+                    "px-3 text-base text-muted transition-colors hover:text-ink",
+                    overHero && "header-over-art",
+                  )}
                 >
                   {signInCta.label}
                 </Link>

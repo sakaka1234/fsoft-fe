@@ -18,6 +18,7 @@ const APP_NAV = [
   { label: "Decks", href: "/decks" },
   { label: "Explore", href: "/explore" },
   { label: "Tags", href: "/tags" },
+  { label: "Profile", href: "/profile" },
 ] as const;
 
 /**

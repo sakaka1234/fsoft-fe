@@ -88,8 +88,24 @@
   }
 }
 
-/* Dark, block 2 of 2: reader picked dark, so it wins over a light OS. */
-:root[data-theme="dark"] {
+/* Dark, block 2 of 2: reader picked dark, so it wins over a light OS.
+
+   .hero-dark rides along on this rule rather than repeating the palette a
+   third time. It is not a root selector, so it lands on one section and
+   redefines these tokens for that subtree only, in both themes. The hero sits
+   on a near-black Spline painting: a light-theme hero would put --ink #1c1917
+   and a #b23c0a accent over it, which no amount of scrim tuning saves. Pinning
+   the whole set is cheaper and safer than special-casing each piece of copy,
+   and every child keeps using text-ink / bg-accent / border-line untouched,
+   because @theme inline compiles utilities to var(--ink) rather than to a
+   baked colour, so they resolve against the nearest definition.
+
+   Same principle as --art-bg, which stays light in both themes for the mirror
+   image reason: the artwork decides, not the theme. The audit in
+   button-styles.ts covers this pairing already, since it is the dark one:
+   primary 8.20:1 on its own label, 9.10:1 against --paper. */
+:root[data-theme="dark"],
+.hero-dark {
   color-scheme: dark;
   --paper: #100e0d;
   --surface: #1a1716;
@@ -122,9 +138,42 @@
   --color-danger: var(--danger);
   --color-art: var(--art-bg);
 
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-eb-garamond);
   --font-mono: var(--font-geist-mono);
-  --font-display: var(--font-outfit);
+  --font-display: var(--font-cormorant);
+
+  /* Redefined, not removed from the 46 call sites that ask for it.
+     -0.025em is drawn for a geometric sans, where tight fit reads as crisp.
+     A Garamond is already fitted by hand and closes up into mush at that
+     value, especially at the small sizes where most of these live. Near zero
+     keeps the utility meaningful for display sizes without wrecking the rest.
+     .tracking-tight resolves var(--tracking-tight) at the use site, so this one
+     line reaches every one of them. */
+  --tracking-tight: -0.005em;
+
+  /* The whole scale moves up about an eighth, for the same reason the hero
+     headline and the header did: Garamond carries a much smaller x-height than
+     the sans this replaced, so every size inherited from the old design reads
+     smaller than the number suggests. This is a correction back to the intended
+     optical size, not an enlargement.
+
+     Only font-size is listed. Tailwind pairs each step with a unitless ratio
+     (--text-base--line-height is calc(1.5 / 1)), so leading follows on its own
+     and the vertical rhythm holds.
+
+     Same mechanism as --tracking-tight above: .text-sm resolves var(--text-sm)
+     at the use site, so this reaches every size class in the project without
+     touching a component. */
+  --text-xs: 0.8125rem;
+  --text-sm: 1rem;
+  --text-base: 1.125rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.625rem;
+  --text-3xl: 2.125rem;
+  --text-4xl: 2.5rem;
+  --text-5xl: 3.25rem;
+  --text-6xl: 4rem;
 
   --radius-card: 1.5rem;
   --radius-field: 0.875rem;
@@ -150,12 +199,17 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Rounded geometric display face for every heading, body stays on Geist. */
+  /* Cormorant for every heading, EB Garamond for everything else.
+
+     Georgia leads the fallbacks rather than a generic serif: it is on every
+     platform and its proportions are close enough that the swap is not a
+     lurch. next/font also generates a metric-adjusted local fallback on top of
+     this, which is what actually holds the layout still during the swap. */
   h1,
   h2,
   h3 {
-    font-family: var(--font-outfit), var(--font-geist-sans), sans-serif;
-    letter-spacing: -0.02em;
+    font-family: var(--font-cormorant), Georgia, "Times New Roman", serif;
+    letter-spacing: -0.005em;
   }
 
   ::selection {
@@ -242,6 +296,49 @@
 
   :root[data-theme="light"] .theme-icon-moon {
     display: block;
+  }
+
+  /* The rule that pairs .hero-dark with the dark theme only redefines custom
+     properties. These two are real inherited properties and need declaring
+     here as well.
+
+     `color`, because <body> already resolved var(--ink) against the root and
+     descendants inherit that computed colour rather than looking the variable
+     up again. The headline carries no text-* class of its own, so on a light
+     theme it would keep #1c1917 and vanish into the painting, while the
+     subtext beside it, which does carry text-muted, would resolve correctly.
+     Re-declaring color re-evaluates var(--ink) inside the dark scope.
+
+     `background-color`, because there is no scrim behind the copy any more.
+     This is what the copy sits on for the second or so before the scene
+     arrives, and what it keeps if the scene never arrives at all. Without it a
+     light theme would paint white under white text during the load. */
+  .hero-dark {
+    color: var(--ink);
+    background-color: var(--paper);
+  }
+
+  /* Header text while the bar is laid over the painting.
+
+     --muted is a reading grey, picked for body copy on a flat surface. Over an
+     oil painting it has no stable ground underneath it: where the canvas turns
+     pale, which is exactly where the first nav item sits, mid grey vanishes.
+
+     Raising it to the ink value alone would not fix it either, because near
+     white on pale sage is no better than grey on it. The shadow is what does
+     the real work, giving every glyph a dark edge of its own whatever happens
+     to be behind it, and it does that without putting a single pixel of dimming
+     over the artwork. Two layers: a tight one for the edge, a wide soft one to
+     lift the glyph off busy foliage.
+
+     Deliberately not applied to the buttons. Their labels sit on a solid accent
+     fill and never touch the painting, so a shadow there would only smear dark
+     text on orange. */
+  .header-over-art {
+    --muted: var(--ink);
+    text-shadow:
+      0 1px 2px rgb(0 0 0 / 0.75),
+      0 0 12px rgb(0 0 0 / 0.55);
   }
 
   /* Cards lift on hover to signal they are a single readable object.

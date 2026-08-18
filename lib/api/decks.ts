@@ -1,10 +1,17 @@
-import { apiFetch, apiUpload, deckPageQuery } from "@/lib/api/client";
+import {
+  apiFetch,
+  apiUpload,
+  cardPageQuery,
+  deckPageQuery,
+} from "@/lib/api/client";
 import type {
   DeckResponse,
+  DeckShareResponse,
   DeckVisibility,
   DeckWriteRequest,
   PageResponse,
   PublicDeckQuery,
+  SharePermission,
 } from "@/lib/api/types";
 
 /** Decks owned by the signed-in user. Page numbers start at 1. */
@@ -88,4 +95,97 @@ export function setDeckVisibility(id: number, visibility: DeckVisibility) {
     `/decks/${id}/visibility?visibility=${encodeURIComponent(visibility)}`,
     { method: "PUT", auth: true },
   );
+}
+
+/*
+  Sharing.
+
+  A third pagination convention does not appear here, but the second one does,
+  and not the one the rest of this file uses: /decks/{id}/shares binds Spring's
+  Pageable and is ZERO based, like the card endpoints, while every other deck
+  route on this page is ONE based. Verified live on a deck with a single share:
+  page=0 answers pageNo=0 holding the row, page=1 answers pageNo=1 holding
+  nothing. Reaching for deckPageQuery here would silently skip the first page.
+*/
+
+/** Grants someone access by email. They must already have an account. */
+export function shareDeck(
+  id: number,
+  email: string,
+  permission: SharePermission,
+) {
+  return apiFetch<void>(`/decks/${id}/share`, {
+    method: "POST",
+    body: { email, permission },
+    auth: true,
+  });
+}
+
+/** Who a deck is shared with. Zero based, see the note above. */
+export function listDeckShares(
+  id: number,
+  page = 0,
+  size = 20,
+  signal?: AbortSignal,
+) {
+  return apiFetch<PageResponse<DeckShareResponse>>(
+    `/decks/${id}/shares${cardPageQuery(page, size)}`,
+    { auth: true, signal },
+  );
+}
+
+/**
+ * Promotes or demotes one recipient.
+ *
+ * permission travels in the query string, exactly like setDeckVisibility and
+ * for the same reason. Verified live: a JSON body answers 400 "Miss argument
+ * require: permission", the query form answers 200 and the change sticks on a
+ * re-read.
+ */
+export function setSharePermission(
+  id: number,
+  profileId: string,
+  permission: SharePermission,
+) {
+  return apiFetch<void>(
+    `/decks/${id}/shares/${profileId}?permission=${encodeURIComponent(permission)}`,
+    { method: "PUT", auth: true },
+  );
+}
+
+/** Revokes one recipient's access. */
+export function removeDeckShare(id: number, profileId: string) {
+  return apiFetch<void>(`/decks/${id}/shares/${profileId}`, {
+    method: "DELETE",
+    auth: true,
+  });
+}
+
+/**
+ * Public share link, and it does not work yet on the server.
+ *
+ * Wired so the client is ready, but deliberately not surfaced in the UI. The
+ * endpoint answers 200 and hands back a shareToken, yet shareLinkEnabled comes
+ * back false every time. Verified by re-reading the deck itself rather than
+ * trusting the toggle's own response: still false after three calls. With the
+ * flag never set, getSharedDeck below can only ever 404, so a button for this
+ * would be a control that visibly does nothing.
+ */
+export function toggleShareLink(id: number) {
+  return apiFetch<DeckResponse>(`/decks/${id}/share-link/toggle`, {
+    method: "POST",
+    auth: true,
+  });
+}
+
+/**
+ * Opens a deck from a share token. Blocked by the bug above, and note it needs
+ * a signed-in caller regardless: unauthenticated requests answer 401, so this
+ * is a link for members, not a public one.
+ */
+export function getSharedDeck(shareToken: string, signal?: AbortSignal) {
+  return apiFetch<DeckResponse>(`/decks/shared/${shareToken}`, {
+    auth: true,
+    signal,
+  });
 }

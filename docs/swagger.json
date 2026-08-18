@@ -14,6 +14,10 @@
   ],
   "security": [{ "bearerAuth": [] }],
   "tags": [
+    {
+      "name": "Profile Controller",
+      "description": "Quản lý thông tin cá nhân người dùng"
+    },
     { "name": "Deck Controller", "description": "Quản lý bộ thẻ (Decks)" },
     {
       "name": "Tag Controller",
@@ -22,6 +26,10 @@
     {
       "name": "Card Controller",
       "description": "Quản lý Thẻ ghi nhớ (Flashcards)"
+    },
+    {
+      "name": "Progress Controller",
+      "description": "Quản lý tiến độ và thống kê học tập (Streak, Contribution)"
     }
   ],
   "paths": {
@@ -77,6 +85,82 @@
             "content": {
               "*/*": {
                 "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/profiles/me": {
+      "get": {
+        "tags": ["Profile Controller"],
+        "summary": "Lấy thông tin profile của người dùng đang đăng nhập",
+        "operationId": "getMyProfile",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseProfileUpdateResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Profile Controller"],
+        "summary": "Cập nhật thông tin cá nhân (tên, giới thiệu, mạng xã hội)",
+        "operationId": "updateProfile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ProfileUpdateRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseProfileUpdateResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/profiles/me/avatar": {
+      "put": {
+        "tags": ["Profile Controller"],
+        "summary": "Cập nhật avatar người dùng",
+        "operationId": "updateAvatar",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "avatarFile": { "type": "string", "format": "binary" }
+                },
+                "required": ["avatarFile"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseProfileUpdateResponse"
+                }
               }
             }
           }
@@ -195,8 +279,77 @@
             "application/json": {
               "schema": { "$ref": "#/components/schemas/DeckVisibilityRequest" }
             }
-          }
+          },
+          "required": true
         },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/decks/{id}/shares/{profileId}": {
+      "put": {
+        "tags": ["Deck Controller"],
+        "summary": "Cập nhật quyền truy cập",
+        "description": "Đổi quyền (VIEWER/EDITOR) cho một user cụ thể",
+        "operationId": "updateSharePermission",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "profileId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "permission",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "enum": ["VIEW", "EDIT"] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Deck Controller"],
+        "summary": "Thu hồi quyền truy cập",
+        "description": "Xóa user khỏi danh sách chia sẻ",
+        "operationId": "revokeShare",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "profileId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -382,30 +535,6 @@
       }
     },
     "/oauth2/callback": {
-      "get": {
-        "tags": ["oauth-2-controller"],
-        "operationId": "authenticatedUserGoogleGet",
-        "parameters": [
-          {
-            "name": "code",
-            "in": "query",
-            "required": true,
-            "schema": { "type": "string" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseAuthenticatedResponse"
-                }
-              }
-            }
-          }
-        }
-      },
       "post": {
         "tags": ["oauth-2-controller"],
         "operationId": "authenticatedUserGooglePost",
@@ -485,7 +614,8 @@
             "application/json": {
               "schema": { "$ref": "#/components/schemas/ShareDeckRequest" }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -493,6 +623,34 @@
             "content": {
               "*/*": {
                 "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/decks/{id}/share-link/toggle": {
+      "post": {
+        "tags": ["Deck Controller"],
+        "summary": "Bật/Tắt chia sẻ qua link",
+        "description": "Chỉ chủ sở hữu Deck mới có quyền",
+        "operationId": "toggleShareLink",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseDeckResponse"
+                }
               }
             }
           }
@@ -778,6 +936,164 @@
         }
       }
     },
+    "/progress/streak": {
+      "get": {
+        "tags": ["Progress Controller"],
+        "summary": "Lấy thông tin chuỗi ngày học hiện tại của tôi",
+        "operationId": "getMyStreak",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseUserStreakResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/progress/activities": {
+      "get": {
+        "tags": ["Progress Controller"],
+        "summary": "Lấy dữ liệu nhật ký đóng góp học tập (Heatmap)",
+        "operationId": "getMyActivities",
+        "parameters": [
+          {
+            "name": "startDate",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date" }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListUserActivityResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/cards/ids": {
+      "get": {
+        "tags": ["internal-card-controller"],
+        "operationId": "getCardIds",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 1 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 5000 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseLong"
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "internalToken": [] }]
+      }
+    },
+    "/internal/cards/changed-since": {
+      "get": {
+        "tags": ["internal-card-controller"],
+        "operationId": "getChangedCards",
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 1 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 200 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseCardAiResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "internalToken": [] }]
+      }
+    },
+    "/decks/{id}/shares": {
+      "get": {
+        "tags": ["Deck Controller"],
+        "summary": "Lấy danh sách người được share",
+        "description": "Chỉ chủ sở hữu Deck mới có quyền xem",
+        "operationId": "getSharedUsers",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": { "$ref": "#/components/schemas/Pageable" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseDeckShareResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/decks/status": {
       "get": {
         "tags": ["Deck Controller"],
@@ -790,7 +1106,7 @@
             "schema": {
               "type": "string",
               "default": "PUBLIC",
-              "enum": ["PUBLIC", "PRIVATE", "SHARED"]
+              "enum": ["PUBLIC", "PRIVATE"]
             }
           },
           {
@@ -813,6 +1129,34 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponsePageResponseDeckResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/decks/shared/{shareToken}": {
+      "get": {
+        "tags": ["Deck Controller"],
+        "summary": "Truy cập Deck qua Link Share",
+        "description": "Dành cho người lạ truy cập qua link bí mật",
+        "operationId": "getDeckByShareToken",
+        "parameters": [
+          {
+            "name": "shareToken",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseDeckResponse"
                 }
               }
             }
@@ -933,6 +1277,40 @@
           "name": { "type": "string" }
         }
       },
+      "ProfileUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "fullName": { "type": "string" },
+          "about": { "type": "string" },
+          "personalWebsite": { "type": "string" },
+          "github": { "type": "string" },
+          "linkedin": { "type": "string" },
+          "facebook": { "type": "string" },
+          "youtube": { "type": "string" }
+        }
+      },
+      "ApiResponseProfileUpdateResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/ProfileUpdateResponse" }
+        }
+      },
+      "ProfileUpdateResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "fullName": { "type": "string" },
+          "about": { "type": "string" },
+          "avatar": { "type": "string" },
+          "personalWebsite": { "type": "string" },
+          "github": { "type": "string" },
+          "linkedin": { "type": "string" },
+          "facebook": { "type": "string" },
+          "youtube": { "type": "string" }
+        }
+      },
       "DeckUpdateRequest": {
         "type": "object",
         "properties": {
@@ -941,10 +1319,7 @@
           "parentDeckId": { "type": "integer", "format": "int64" },
           "sourceLanguage": { "type": "string" },
           "targetLanguage": { "type": "string" },
-          "visibility": {
-            "type": "string",
-            "enum": ["PUBLIC", "PRIVATE", "SHARED"]
-          },
+          "visibility": { "type": "string", "enum": ["PUBLIC", "PRIVATE"] },
           "tagIds": {
             "type": "array",
             "items": { "type": "integer", "format": "int64" },
@@ -973,10 +1348,7 @@
           "coverImageUrl": { "type": "string" },
           "sourceLanguage": { "type": "string" },
           "targetLanguage": { "type": "string" },
-          "visibility": {
-            "type": "string",
-            "enum": ["PUBLIC", "PRIVATE", "SHARED"]
-          },
+          "visibility": { "type": "string", "enum": ["PUBLIC", "PRIVATE"] },
           "totalCards": { "type": "integer", "format": "int32" },
           "forkCount": { "type": "integer", "format": "int32" },
           "createdAt": { "type": "string", "format": "date-time" },
@@ -986,16 +1358,15 @@
             "items": { "$ref": "#/components/schemas/TagResponse" },
             "uniqueItems": true
           },
-          "official": { "type": "boolean" }
+          "shareToken": { "type": "string" },
+          "official": { "type": "boolean" },
+          "shareLinkEnabled": { "type": "boolean" }
         }
       },
       "DeckVisibilityRequest": {
         "type": "object",
         "properties": {
-          "visibility": {
-            "type": "string",
-            "enum": ["PUBLIC", "PRIVATE", "SHARED"]
-          }
+          "visibility": { "type": "string", "enum": ["PUBLIC", "PRIVATE"] }
         }
       },
       "ApiResponseVoid": {
@@ -1113,10 +1484,7 @@
           "parentDeckId": { "type": "integer", "format": "int64" },
           "sourceLanguage": { "type": "string" },
           "targetLanguage": { "type": "string" },
-          "visibility": {
-            "type": "string",
-            "enum": ["PUBLIC", "PRIVATE", "SHARED"]
-          },
+          "visibility": { "type": "string", "enum": ["PUBLIC", "PRIVATE"] },
           "coverImageUrl": { "type": "string" },
           "tagIds": {
             "type": "array",
@@ -1130,9 +1498,10 @@
       "ShareDeckRequest": {
         "type": "object",
         "properties": {
-          "profileId": { "type": "string", "format": "uuid" },
+          "email": { "type": "string" },
           "permission": { "type": "string", "enum": ["VIEW", "EDIT"] }
-        }
+        },
+        "required": ["email", "permission"]
       },
       "CardCreationRequest": {
         "type": "object",
@@ -1252,6 +1621,148 @@
           }
         }
       },
+      "ApiResponseUserStreakResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/UserStreakResponse" }
+        }
+      },
+      "UserStreakResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "currentStreak": { "type": "integer", "format": "int32" },
+          "longestStreak": { "type": "integer", "format": "int32" },
+          "lastActiveDate": { "type": "string", "format": "date" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiResponseListUserActivityResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/UserActivityResponse" }
+          }
+        }
+      },
+      "UserActivityResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "activityDate": { "type": "string", "format": "date" },
+          "cardsReviewedCount": { "type": "integer", "format": "int32" },
+          "quizzesCompletedCount": { "type": "integer", "format": "int32" }
+        }
+      },
+      "ApiResponsePageResponseLong": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/PageResponseLong" }
+        }
+      },
+      "PageResponseLong": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": { "type": "integer", "format": "int64" }
+          },
+          "pageNo": { "type": "integer", "format": "int32" },
+          "pageSize": { "type": "integer", "format": "int32" },
+          "totalElements": { "type": "integer", "format": "int64" },
+          "totalPages": { "type": "integer", "format": "int32" },
+          "last": { "type": "boolean" }
+        }
+      },
+      "ApiResponsePageResponseCardAiResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/PageResponseCardAiResponse" }
+        }
+      },
+      "CardAiResponse": {
+        "type": "object",
+        "properties": {
+          "cardId": { "type": "integer", "format": "int64" },
+          "deckId": { "type": "integer", "format": "int64" },
+          "deckTitle": { "type": "string" },
+          "word": { "type": "string" },
+          "phonetic": { "type": "string" },
+          "partOfSpeech": { "type": "string" },
+          "meaning": { "type": "string" },
+          "definitionEn": { "type": "string" },
+          "exampleSentence": { "type": "string" },
+          "exampleMeaning": { "type": "string" },
+          "audioUrl": { "type": "string" },
+          "note": { "type": "string" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PageResponseCardAiResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CardAiResponse" }
+          },
+          "pageNo": { "type": "integer", "format": "int32" },
+          "pageSize": { "type": "integer", "format": "int32" },
+          "totalElements": { "type": "integer", "format": "int64" },
+          "totalPages": { "type": "integer", "format": "int32" },
+          "last": { "type": "boolean" }
+        }
+      },
+      "Pageable": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "integer", "format": "int32", "minimum": 0 },
+          "size": { "type": "integer", "format": "int32", "minimum": 1 },
+          "sort": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "ApiResponsePageResponseDeckShareResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": {
+            "$ref": "#/components/schemas/PageResponseDeckShareResponse"
+          }
+        }
+      },
+      "DeckShareResponse": {
+        "type": "object",
+        "properties": {
+          "profileId": { "type": "string", "format": "uuid" },
+          "email": { "type": "string" },
+          "fullName": { "type": "string" },
+          "avatar": { "type": "string" },
+          "permission": { "type": "string", "enum": ["VIEW", "EDIT"] }
+        }
+      },
+      "PageResponseDeckShareResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/DeckShareResponse" }
+          },
+          "pageNo": { "type": "integer", "format": "int32" },
+          "pageSize": { "type": "integer", "format": "int32" },
+          "totalElements": { "type": "integer", "format": "int64" },
+          "totalPages": { "type": "integer", "format": "int32" },
+          "last": { "type": "boolean" }
+        }
+      },
       "ApiResponsePageResponseDeckResponse": {
         "type": "object",
         "properties": {
@@ -1272,14 +1783,6 @@
           "totalElements": { "type": "integer", "format": "int64" },
           "totalPages": { "type": "integer", "format": "int32" },
           "last": { "type": "boolean" }
-        }
-      },
-      "Pageable": {
-        "type": "object",
-        "properties": {
-          "page": { "type": "integer", "format": "int32", "minimum": 0 },
-          "size": { "type": "integer", "format": "int32", "minimum": 1 },
-          "sort": { "type": "array", "items": { "type": "string" } }
         }
       },
       "ApiResponsePageResponseCardResponse": {
@@ -1313,6 +1816,12 @@
         "in": "header",
         "scheme": "bearer",
         "bearerFormat": "JWT"
+      },
+      "internalToken": {
+        "type": "apiKey",
+        "description": "Nhập mã bí mật X-Internal-Token dành riêng cho các API của fsoft-ai",
+        "name": "X-Internal-Token",
+        "in": "header"
       }
     }
   }

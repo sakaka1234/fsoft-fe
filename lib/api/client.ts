@@ -46,8 +46,12 @@ type UploadOptions = BaseOptions & {
   /**
    * The JSON half of a multipart write. Sent as a part literally named
    * "request", which is what the deck and card controllers bind to.
+   *
+   * Optional because not every multipart endpoint has one: /profiles/me/avatar
+   * declares a single binary part and nothing else, and sending an unexpected
+   * "request" part to it is asking for a 400.
    */
-  request: unknown;
+  request?: unknown;
   /** Binary parts by name, e.g. { coverImage: file }. Empty values are skipped. */
   files?: Record<string, File | null | undefined>;
 };
@@ -132,10 +136,13 @@ export function apiUpload<T>(
   { method = "POST", request, files, auth = true, signal }: UploadOptions,
 ): Promise<T> {
   const form = new FormData();
-  form.append(
-    "request",
-    new Blob([JSON.stringify(request)], { type: "application/json" }),
-  );
+
+  if (request !== undefined) {
+    form.append(
+      "request",
+      new Blob([JSON.stringify(request)], { type: "application/json" }),
+    );
+  }
 
   for (const [name, file] of Object.entries(files ?? {})) {
     if (file) form.append(name, file);

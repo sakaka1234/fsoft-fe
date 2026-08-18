@@ -18,10 +18,17 @@ export const hero = {
   subtext:
     "An AI English platform that reads your level, adapts to your goals, and builds real speaking skills faster.",
   secondaryCta: { label: "See the platform", href: "#platform" },
-  image: {
-    src: art("communication"),
-    alt: "Illustration of two people holding a conversation",
-  },
+  /**
+   * Published Spline scene, rendered full-bleed behind the copy above.
+   * 703,584 bytes of MessagePack on top of a 2MB runtime chunk, which is why
+   * hero-scene.tsx loads the runtime through next/dynamic rather than a static
+   * import. Republishing in Spline replaces this URL's contents in place; the
+   * URL only changes if the scene is recreated.
+   *
+   * The scene paints its own background, so nothing here can guarantee the
+   * copy stays readable over it. That job belongs to .hero-scrim in globals.css.
+   */
+  scene: "https://prod.spline.design/tHlVN5EP7o2AgWiD/scene.splinecode",
 } as const;
 
 export const problem = {

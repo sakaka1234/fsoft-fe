@@ -24,6 +24,7 @@ import { CardForm } from "@/components/app/card-form";
 import { DeckForm } from "@/components/app/deck-form";
 import { SingleCardView } from "@/components/app/single-card-view";
 import { CardContextBlock } from "@/components/app/card-context-block";
+import { DeckSharePanel } from "@/components/app/deck-share-panel";
 import { EmptyState, ErrorState, RowSkeleton, SingleCardSkeleton } from "@/components/app/states";
 import {
   createCard,
@@ -476,6 +477,10 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
         </div>
       )}
     </section>
+
+    {/* Owners only: the endpoints behind this all reject non-owners anyway,
+        so showing it to a recipient would only offer them failures. */}
+    {isOwner ? <DeckSharePanel deckId={deckId} /> : null}
   </Container>
 );
 }

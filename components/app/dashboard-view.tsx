@@ -18,6 +18,7 @@ import { Modal } from "@/components/ui/modal";
 import { DeckCard } from "@/components/app/deck-card";
 import { DeckForm } from "@/components/app/deck-form";
 import { CardSkeleton, EmptyState, ErrorState } from "@/components/app/states";
+import { StreakPanel } from "@/components/app/streak-panel";
 import { ApiError } from "@/lib/api/client";
 import { deleteDeck, forkDeck, listMyDecks, listPublicDecks, updateDeck } from "@/lib/api/decks";
 import { listTags } from "@/lib/api/tags";
@@ -157,6 +158,8 @@ export function DashboardView() {
           <p className="text-sm text-muted">Tags</p>
         </li>
       </ul>
+
+      <StreakPanel />
 
       <section className="mt-14" aria-labelledby="recent-title">
         <div className="flex flex-wrap items-end justify-between gap-4">

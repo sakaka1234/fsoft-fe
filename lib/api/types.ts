@@ -205,12 +205,67 @@ export type DeckVisibilityRequest = {
   visibility: DeckVisibility;
 };
 
+export type SharePermission = "VIEW" | "EDIT";
+
 /**
- * Share is defined by the API but has no UI yet: it identifies the recipient
- * by profile UUID and there is no endpoint to look a user up by email, so the
- * only possible form would ask people to paste a UUID.
+ * Recipients are named by email now. The earlier revision of this API took a
+ * profile UUID with no way to resolve one, which is why sharing had no UI; that
+ * blocker is gone.
  */
 export type ShareDeckRequest = {
+  email: string;
+  permission: SharePermission;
+};
+
+export type DeckShareResponse = {
   profileId: string;
-  permission: "VIEW" | "EDIT";
+  email: string;
+  fullName: string | null;
+  avatar: string | null;
+  permission: SharePermission;
+};
+
+/**
+ * What /profiles/me returns. Note there is no email on it: the account's email
+ * lives on the session user, not the profile, so screens that show both read
+ * from two places.
+ */
+export type ProfileResponse = {
+  id: string;
+  fullName: string | null;
+  about: string | null;
+  avatar: string | null;
+  personalWebsite: string | null;
+  github: string | null;
+  linkedin: string | null;
+  facebook: string | null;
+  youtube: string | null;
+};
+
+/** Every field is optional, and omitted ones are left alone. Verified live. */
+export type ProfileUpdateRequest = {
+  fullName?: string;
+  about?: string;
+  personalWebsite?: string;
+  github?: string;
+  linkedin?: string;
+  facebook?: string;
+  youtube?: string;
+};
+
+export type UserStreakResponse = {
+  id: number;
+  currentStreak: number;
+  longestStreak: number;
+  /** ISO date, null until the account has its first active day. */
+  lastActiveDate: string | null;
+  updatedAt: string;
+};
+
+export type UserActivityResponse = {
+  id: number;
+  /** ISO date, one row per active day. */
+  activityDate: string;
+  cardsReviewedCount: number;
+  quizzesCompletedCount: number;
 };
