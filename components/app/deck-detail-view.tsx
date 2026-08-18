@@ -14,17 +14,20 @@ import { Cards as CardsIcon } from "@phosphor-icons/react/Cards";
 import { List } from "@phosphor-icons/react/List";
 import { GameController } from "@phosphor-icons/react/GameController";
 import { Users } from "@phosphor-icons/react/Users";
+import { UserPlus } from "@phosphor-icons/react/UserPlus";
 
 
 import { AudioReflexGame } from "@/components/app/audio-reflex-game";
 
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
+import { Modal } from "@/components/ui/modal";
 import { CardForm } from "@/components/app/card-form";
 import { DeckForm } from "@/components/app/deck-form";
 import { SingleCardView } from "@/components/app/single-card-view";
 import { CardContextBlock } from "@/components/app/card-context-block";
 import { DeckSharePanel } from "@/components/app/deck-share-panel";
+import { VISIBILITY_LABEL } from "@/components/app/deck-card";
 import { EmptyState, ErrorState, RowSkeleton, SingleCardSkeleton } from "@/components/app/states";
 import {
   createCard,
@@ -45,12 +48,39 @@ import type { CardResponse, DeckVisibility } from "@/lib/api/types";
 import { useAsync } from "@/lib/use-async";
 import { cn } from "@/lib/cn";
 
+function DeckDetailCover({ src, alt }: { src: string; alt: string }) {
+  const [hasError, setHasError] = useState(false);
+  const cleanSrc = src?.trim();
+  if (
+    hasError ||
+    !cleanSrc ||
+    cleanSrc === "" ||
+    cleanSrc === "null" ||
+    cleanSrc === "undefined"
+  ) {
+    return null;
+  }
+
+  return (
+    <div className="h-28 w-28 sm:h-36 sm:w-36 shrink-0 overflow-hidden rounded-2xl border border-line bg-surface-2 shadow-sm">
+      <img
+        src={cleanSrc}
+        alt={alt}
+        onError={() => setHasError(true)}
+        className="h-full w-full object-cover"
+      />
+    </div>
+  );
+}
+
 export function DeckDetailView({ deckId }: { deckId: number }) {
   const router = useRouter();
   const session = useSession();
   const [editingDeck, setEditingDeck] = useState(false);
   const [addingCard, setAddingCard] = useState(false);
   const [editingCardId, setEditingCardId] = useState<number | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"single" | "list" | "game">("single");
   const [gameSubMode, setGameSubMode] = useState<null | "solo">(null);
   const [singleCardIndex, setSingleCardIndex] = useState(0);
@@ -170,7 +200,80 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
         </div>
       ) : null}
 
-      <section className="-mt-4 md:-mt-6" aria-labelledby="cards-title">
+      {deck.status === "success" && !editingDeck ? (
+        <div className="relative mb-8 md:mb-10 overflow-hidden rounded-3xl border border-line bg-surface p-5 sm:p-6 md:p-7 shadow-sm">
+          {/* Top-right action icons for Owner */}
+          {isOwner ? (
+            <div className="absolute top-4 right-4 flex items-center gap-1 z-10">
+              <button
+                type="button"
+                onClick={() => setEditingDeck(true)}
+                className="rounded-full p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+                title="Chỉnh sửa thông tin bộ thẻ"
+                aria-label="Chỉnh sửa thông tin bộ thẻ"
+              >
+                <PencilSimple size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="rounded-full p-2 text-muted transition-colors hover:bg-danger/10 hover:text-danger"
+                title="Xóa bộ thẻ này"
+                aria-label="Xóa bộ thẻ này"
+              >
+                <Trash size={18} />
+              </button>
+            </div>
+          ) : null}
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 pr-16 sm:pr-20">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+              {deck.data.coverImageUrl ? (
+                <DeckDetailCover
+                  src={deck.data.coverImageUrl}
+                  alt={deck.data.title}
+                />
+              ) : null}
+
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-line bg-surface-2 px-2.5 py-0.5 text-xs font-mono font-semibold uppercase text-muted">
+                    {deck.data.sourceLanguage} to {deck.data.targetLanguage}
+                  </span>
+                  <span className="rounded-full border border-line bg-surface-2 px-2.5 py-0.5 text-xs font-medium text-muted">
+                    {VISIBILITY_LABEL[deck.data.visibility] ?? deck.data.visibility}
+                  </span>
+                </div>
+
+                <h1 className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl md:text-4xl">
+                  {deck.data.title}
+                </h1>
+
+                {deck.data.description ? (
+                  <p className="max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
+                    {deck.data.description}
+                  </p>
+                ) : null}
+
+                {deck.data.tags.length > 0 ? (
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {deck.data.tags.map((tag) => (
+                      <span
+                        key={tag.id}
+                        className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent-text"
+                      >
+                        {tag.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <section className="mt-2 md:mt-4" aria-labelledby="cards-title">
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           {/* Tiêu đề & All Decks navigation - trái */}
           <div className="flex items-center gap-3">
@@ -195,52 +298,61 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
 
           {/* View Mode Switcher — căn giữa */}
           {cards.status === "success" && cards.data.content.length > 0 ? (
-            <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center gap-1 rounded-full border border-line bg-surface-2 p-1 text-xs font-medium shadow-sm">
+            <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex h-10 items-center gap-1 rounded-full border border-line bg-surface-2 p-1 text-sm font-medium shadow-sm">
               <button
                 type="button"
                 onClick={() => { setAddingCard(false); setViewMode("list"); setGameSubMode(null); }}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors",
+                  "flex h-8 items-center gap-1.5 rounded-full px-3.5 transition-colors",
                   !addingCard && viewMode === "list"
                     ? "bg-surface text-ink shadow-sm"
                     : "text-muted hover:text-ink",
                 )}
               >
-                <List size={14} />
+                <List size={16} />
                 Quản lý card
               </button>
               <button
                 type="button"
                 onClick={() => { setAddingCard(false); setViewMode("single"); setGameSubMode(null); }}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors",
+                  "flex h-8 items-center gap-1.5 rounded-full px-3.5 transition-colors",
                   !addingCard && viewMode === "single"
                     ? "bg-surface text-ink shadow-sm"
                     : "text-muted hover:text-ink",
                 )}
               >
-                <CardsIcon size={14} />
+                <CardsIcon size={16} />
                 Xem card
               </button>
               <button
                 type="button"
                 onClick={() => { setAddingCard(false); setViewMode("game"); setGameSubMode(null); }}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors",
+                  "flex h-8 items-center gap-1.5 rounded-full px-3.5 transition-colors",
                   !addingCard && viewMode === "game"
                     ? "bg-accent text-accent-fg shadow-sm"
                     : "text-muted hover:text-ink",
                 )}
               >
-                <GameController size={14} />
+                <GameController size={16} />
                 Chơi game
               </button>
             </div>
           ) : null}
 
-          {/* Action buttons (Add card) — phải */}
+          {/* Action buttons (Share card luôn có; Add card nằm cạnh khi ở Quản lý card) — phải */}
           <div className="flex items-center gap-2">
-            {!addingCard ? (
+            <Button
+              variant="secondary"
+              onClick={() => setIsShareModalOpen(true)}
+              disabled={busy}
+            >
+              <UserPlus aria-hidden size={15} weight="bold" />
+              Share card
+            </Button>
+
+            {viewMode === "list" && !addingCard ? (
               <Button onClick={() => setAddingCard(true)} disabled={busy}>
                 <Plus aria-hidden size={15} weight="bold" />
                 Add card
@@ -251,44 +363,44 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
 
         {/* View Mode Switcher cho màn hình nhỏ (Mobile) */}
         {cards.status === "success" && cards.data.content.length > 0 ? (
-          <div className="mt-3 flex md:hidden items-center justify-center gap-1 rounded-full border border-line bg-surface-2 p-1 text-xs font-medium shadow-sm">
+          <div className="mt-3 flex md:hidden items-center justify-center gap-1 rounded-full border border-line bg-surface-2 p-1 text-sm font-medium shadow-sm">
             <button
               type="button"
               onClick={() => { setAddingCard(false); setViewMode("list"); setGameSubMode(null); }}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 transition-colors",
+                "flex-1 flex h-8 items-center justify-center gap-1.5 rounded-full px-3 transition-colors",
                 !addingCard && viewMode === "list"
                   ? "bg-surface text-ink shadow-sm"
                   : "text-muted hover:text-ink",
               )}
             >
-              <List size={14} />
+              <List size={16} />
               Quản lý card
             </button>
             <button
               type="button"
               onClick={() => { setAddingCard(false); setViewMode("single"); setGameSubMode(null); }}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 transition-colors",
+                "flex-1 flex h-8 items-center justify-center gap-1.5 rounded-full px-3 transition-colors",
                 !addingCard && viewMode === "single"
                   ? "bg-surface text-ink shadow-sm"
                   : "text-muted hover:text-ink",
               )}
             >
-              <CardsIcon size={14} />
+              <CardsIcon size={16} />
               Xem card
             </button>
             <button
               type="button"
               onClick={() => { setAddingCard(false); setViewMode("game"); setGameSubMode(null); }}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 transition-colors",
+                "flex-1 flex h-8 items-center justify-center gap-1.5 rounded-full px-3 transition-colors",
                 !addingCard && viewMode === "game"
                   ? "bg-accent text-accent-fg shadow-sm"
                   : "text-muted hover:text-ink",
               )}
             >
-              <GameController size={14} />
+              <GameController size={16} />
               Chơi game
             </button>
           </div>
@@ -478,9 +590,65 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
       )}
     </section>
 
-    {/* Owners only: the endpoints behind this all reject non-owners anyway,
-        so showing it to a recipient would only offer them failures. */}
-    {isOwner ? <DeckSharePanel deckId={deckId} /> : null}
+    {/* Share Card Modal */}
+    <Modal
+      isOpen={isShareModalOpen}
+      onClose={() => setIsShareModalOpen(false)}
+      title="Chia sẻ bộ card"
+    >
+      {isOwner ? (
+        <DeckSharePanel deckId={deckId} compact />
+      ) : (
+        <p className="py-6 text-center text-sm text-muted">
+          Chỉ chủ sở hữu bộ card mới có thể phân quyền chia sẻ.
+        </p>
+      )}
+    </Modal>
+
+    {/* Delete Deck Modal */}
+    <Modal
+      isOpen={isDeleteModalOpen}
+      onClose={() => setIsDeleteModalOpen(false)}
+      title="Xác nhận xóa bộ thẻ"
+    >
+      <div className="flex flex-col gap-4 py-2">
+        <p className="text-sm leading-relaxed text-muted">
+          Bạn có chắc chắn muốn xóa bộ thẻ{" "}
+          <strong className="text-ink font-semibold">
+            &quot;{deck.status === "success" ? deck.data.title : ""}&quot;
+          </strong>{" "}
+          cùng toàn bộ các thẻ từ vựng bên trong không? Hành động này{" "}
+          <strong className="text-danger font-semibold">không thể hoàn tác</strong>.
+        </p>
+
+        <div className="mt-4 flex justify-end gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setIsDeleteModalOpen(false)}
+            disabled={busy}
+          >
+            Hủy
+          </Button>
+          <button
+            type="button"
+            onClick={async () => {
+              if (deck.status !== "success") return;
+              await run(async () => {
+                await deleteDeck(deckId);
+                setIsDeleteModalOpen(false);
+                router.replace("/decks");
+              });
+            }}
+            disabled={busy}
+            className="inline-flex items-center gap-2 rounded-full bg-danger px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-danger/90 disabled:opacity-50"
+          >
+            <Trash size={16} />
+            {busy ? "Đang xóa..." : "Xóa bộ thẻ"}
+          </button>
+        </div>
+      </div>
+    </Modal>
   </Container>
 );
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Trash } from "@phosphor-icons/react/Trash";
 
 import { Button } from "@/components/ui/button";
 import { Field, SelectInput, TextArea, TextInput } from "@/components/ui/field";
@@ -63,6 +64,19 @@ export function DeckForm({
     deck?.tags.map((tag) => tag.id) ?? [],
   );
   const [coverImage, setCoverImage] = useState<File | null>(null);
+
+  const coverPreviewUrl = useMemo(() => {
+    if (!coverImage) return null;
+    return URL.createObjectURL(coverImage);
+  }, [coverImage]);
+
+  useEffect(() => {
+    return () => {
+      if (coverPreviewUrl) {
+        URL.revokeObjectURL(coverPreviewUrl);
+      }
+    };
+  }, [coverPreviewUrl]);
 
   const [pending, setPending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -247,14 +261,54 @@ export function DeckForm({
         label="Cover image"
         hint="Optional. Leave empty to keep the current one."
       >
-        <input
-          id="deck-cover"
-          type="file"
-          accept="image/*"
-          onChange={(event) => setCoverImage(event.target.files?.[0] ?? null)}
-          disabled={pending}
-          className="w-full text-sm text-muted file:mr-4 file:rounded-full file:border file:border-line file:bg-surface file:px-4 file:py-2 file:text-sm file:font-medium file:text-ink"
-        />
+        <div className="flex flex-col gap-3">
+          <input
+            id="deck-cover"
+            type="file"
+            accept="image/*"
+            onChange={(event) => setCoverImage(event.target.files?.[0] ?? null)}
+            disabled={pending}
+            className="w-full text-sm text-muted file:mr-4 file:rounded-full file:border file:border-line file:bg-surface file:px-4 file:py-2 file:text-sm file:font-medium file:text-ink cursor-pointer"
+          />
+
+          {coverPreviewUrl ? (
+            <div className="relative flex items-center gap-3 rounded-2xl border border-accent bg-accent-soft/40 p-3 shadow-sm">
+              <img
+                src={coverPreviewUrl}
+                alt="Xem trước ảnh bìa vừa chọn"
+                className="h-24 w-32 rounded-xl object-cover border border-line shadow-xs shrink-0"
+              />
+              <div className="flex flex-1 flex-col text-xs gap-1 min-w-0">
+                <span className="font-bold text-accent-text text-sm">Ảnh bìa vừa chọn</span>
+                <span className="text-muted truncate font-mono">{coverImage?.name}</span>
+                <span className="text-muted">
+                  Dung lượng: {coverImage?.size ? (coverImage.size / 1024).toFixed(1) + " KB" : ""}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCoverImage(null)}
+                className="rounded-full p-2 text-muted hover:bg-surface hover:text-danger transition-colors shrink-0"
+                title="Hủy chọn ảnh bìa"
+                aria-label="Xóa chọn ảnh"
+              >
+                <Trash size={18} />
+              </button>
+            </div>
+          ) : deck?.coverImageUrl ? (
+            <div className="flex items-center gap-3 rounded-2xl border border-line bg-surface-2 p-3 shadow-sm">
+              <img
+                src={deck.coverImageUrl}
+                alt="Ảnh bìa hiện tại"
+                className="h-24 w-32 rounded-xl object-cover border border-line shadow-xs shrink-0"
+              />
+              <div className="flex flex-col text-xs gap-1">
+                <span className="font-bold text-ink text-sm">Ảnh bìa hiện tại</span>
+                <span className="text-muted">Chọn file phía trên nếu bạn muốn thay đổi sang ảnh bìa mới</span>
+              </div>
+            </div>
+          ) : null}
+        </div>
       </Field>
 
       <div className="flex flex-wrap gap-3">

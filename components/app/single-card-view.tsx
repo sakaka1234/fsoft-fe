@@ -108,16 +108,16 @@ export function SingleCardView({
   }
 
   return (
-    <div className="flex flex-col items-center gap-6">
+    <div className="flex flex-col items-center gap-8 py-4">
       {/* 3D Flip Card Container */}
       <div
-        className="w-full max-w-xl mx-auto cursor-pointer select-none"
+        className="w-full max-w-3xl lg:max-w-4xl mx-auto cursor-pointer select-none"
         style={{ perspective: "1000px" }}
         onClick={() => setIsFlipped((prev) => !prev)}
         title="Nhấn để lật thẻ"
       >
         <div
-          className="relative min-h-[360px] w-full transition-transform duration-700 ease-in-out"
+          className="relative min-h-[440px] md:min-h-[500px] w-full transition-transform duration-700 ease-in-out"
           style={{
             transformStyle: "preserve-3d",
             transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
@@ -125,41 +125,41 @@ export function SingleCardView({
         >
           {/* FRONT SIDE (Mặt trước) */}
           <div
-            className="absolute inset-0 flex h-full w-full flex-col justify-center rounded-2xl border border-line bg-surface p-6 shadow-sm md:p-8"
+            className="absolute inset-0 flex h-full w-full flex-col justify-center rounded-3xl border border-line bg-surface p-8 shadow-md md:p-12"
             style={{ backfaceVisibility: "hidden" }}
           >
-            <div className="grid grid-cols-1 items-center gap-6 md:grid-cols-2">
+            <div className="grid grid-cols-1 items-center gap-8 md:grid-cols-2">
               {/* Left Column: English Word & Audio */}
-              <div className="flex flex-col items-center justify-center gap-4 text-center md:items-start md:text-left">
-                <div className="flex flex-wrap items-baseline justify-center gap-2 md:justify-start">
-                  <h2 className="text-4xl font-extrabold tracking-tight text-ink md:text-5xl">
+              <div className="flex flex-col items-center justify-center gap-6 text-center md:items-start md:text-left">
+                <div className="flex flex-wrap items-baseline justify-center gap-3 md:justify-start">
+                  <h2 className="text-5xl font-extrabold tracking-tight text-ink md:text-6xl lg:text-7xl">
                     {card.word}
                   </h2>
                   {card.partOfSpeech ? (
-                    <span className="text-lg font-normal text-muted">
+                    <span className="text-xl font-medium text-muted md:text-2xl">
                       ({card.partOfSpeech})
                     </span>
                   ) : null}
                 </div>
 
                 {/* Audio buttons (Blue UK & Red US) */}
-                <div className="flex flex-col gap-2 pt-2">
+                <div className="flex flex-col gap-3 pt-2">
                   <button
                     type="button"
                     onClick={(e) => playAudio("uk", e)}
-                    className="group flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition-colors hover:bg-blue-500/10"
+                    className="group flex items-center gap-3 rounded-xl px-3.5 py-2 transition-colors hover:bg-blue-500/10"
                     title="Nghe phát âm (UK)"
                   >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full text-blue-600 transition-transform group-hover:scale-110">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full text-blue-600 transition-transform group-hover:scale-110">
                       <SpeakerHigh
-                        size={22}
+                        size={26}
                         weight="bold"
                         className={cn(
                           isPlayingAudio === "uk" ? "animate-bounce" : "",
                         )}
                       />
                     </span>
-                    <span className="font-mono text-base font-medium text-ink">
+                    <span className="font-mono text-lg font-semibold text-ink md:text-xl">
                       {card.phonetic ? card.phonetic : `/${card.word}/`}
                     </span>
                   </button>
@@ -167,19 +167,19 @@ export function SingleCardView({
                   <button
                     type="button"
                     onClick={(e) => playAudio("us", e)}
-                    className="group flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition-colors hover:bg-red-500/10"
+                    className="group flex items-center gap-3 rounded-xl px-3.5 py-2 transition-colors hover:bg-red-500/10"
                     title="Nghe phát âm (US)"
                   >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full text-red-600 transition-transform group-hover:scale-110">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full text-red-600 transition-transform group-hover:scale-110">
                       <SpeakerHigh
-                        size={22}
+                        size={26}
                         weight="bold"
                         className={cn(
                           isPlayingAudio === "us" ? "animate-bounce" : "",
                         )}
                       />
                     </span>
-                    <span className="font-mono text-base font-medium text-ink">
+                    <span className="font-mono text-lg font-semibold text-ink md:text-xl">
                       {card.phonetic ? card.phonetic : `/${card.word}/`}
                     </span>
                   </button>
@@ -189,9 +189,9 @@ export function SingleCardView({
               {/* Right Column: Card Image */}
               <div className="flex h-full w-full items-center justify-center">
                 {card.imageUrl ? (
-                  <div className="relative flex h-[260px] w-full items-center justify-center overflow-hidden rounded-xl">
+                  <div className="relative flex h-[300px] md:h-[360px] w-full items-center justify-center overflow-hidden rounded-2xl">
                     {isImageLoading ? (
-                      <div className="absolute inset-0 animate-pulse rounded-xl bg-surface-2" />
+                      <div className="absolute inset-0 animate-pulse rounded-2xl bg-surface-2" />
                     ) : null}
                     <img
                       src={card.imageUrl}
@@ -200,15 +200,15 @@ export function SingleCardView({
                       onLoad={() => setLoadedImageUrl(card.imageUrl)}
                       onError={() => setLoadedImageUrl(card.imageUrl)}
                       className={cn(
-                        "max-h-full max-w-full rounded-lg object-contain transition-opacity duration-300",
+                        "max-h-full max-w-full rounded-xl object-contain transition-opacity duration-300",
                         isImageLoading ? "opacity-0" : "opacity-100",
                       )}
                     />
                   </div>
                 ) : (
-                  <div className="flex h-[260px] w-full flex-col items-center justify-center rounded-xl border border-dashed border-line bg-surface-2 p-6 text-center">
-                    <ImageIcon size={32} className="text-muted mb-2" />
-                    <p className="text-sm font-medium text-muted">
+                  <div className="flex h-[300px] md:h-[360px] w-full flex-col items-center justify-center rounded-2xl border border-dashed border-line bg-surface-2 p-8 text-center">
+                    <ImageIcon size={44} className="text-muted mb-3" />
+                    <p className="text-base font-medium text-muted">
                       Chưa có hình ảnh
                     </p>
                     {onEditCard ? (
@@ -218,7 +218,7 @@ export function SingleCardView({
                           e.stopPropagation();
                           onEditCard(card);
                         }}
-                        className="mt-2 text-xs font-semibold text-accent hover:underline"
+                        className="mt-3 text-sm font-semibold text-accent hover:underline"
                       >
                         + Thêm ảnh
                       </button>
@@ -231,22 +231,22 @@ export function SingleCardView({
 
           {/* BACK SIDE (Mặt sau - Nghĩa tiếng Việt & Ngữ cảnh) */}
           <div
-            className="absolute inset-0 flex h-full w-full flex-col items-center justify-center rounded-2xl border border-line bg-surface p-6 md:p-8 text-center shadow-sm overflow-y-auto"
+            className="absolute inset-0 flex h-full w-full flex-col items-center justify-center rounded-3xl border border-line bg-surface p-8 md:p-12 text-center shadow-md overflow-y-auto"
             style={{
               backfaceVisibility: "hidden",
               transform: "rotateY(180deg)",
             }}
           >
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+            <span className="text-xs font-bold uppercase tracking-widest text-muted">
               Nghĩa tiếng Việt
             </span>
-            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-ink md:text-4xl">
+            <h2 className="mt-3 text-4xl font-extrabold tracking-tight text-ink md:text-5xl lg:text-6xl">
               {card.meaning}
             </h2>
 
             {/* Khối Ngữ Cảnh (Context Block) */}
             {card.exampleSentence || card.exampleMeaning ? (
-              <div className="mt-5 w-full max-w-md">
+              <div className="mt-6 w-full max-w-xl">
                 <CardContextBlock
                   exampleSentence={card.exampleSentence}
                   exampleMeaning={card.exampleMeaning}
@@ -258,19 +258,19 @@ export function SingleCardView({
       </div>
 
       {/* Bottom Navigation Control Bar */}
-      <div className="flex flex-col items-center gap-2">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex items-center gap-4">
           <button
             type="button"
             onClick={() => onIndexChange(currentIndex - 1)}
             disabled={currentIndex === 0 || busy}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-surface text-ink transition-colors hover:bg-surface-2 disabled:opacity-40"
+            className="flex h-12 w-12 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:bg-surface-2 disabled:opacity-40 shadow-sm"
             aria-label="Card trước"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={22} />
           </button>
 
-          <span className="font-mono text-sm font-medium text-muted min-w-[60px] text-center">
+          <span className="font-mono text-base font-semibold text-muted min-w-[75px] text-center">
             {currentIndex + 1} / {cards.length}
           </span>
 
@@ -278,14 +278,14 @@ export function SingleCardView({
             type="button"
             onClick={() => onIndexChange(currentIndex + 1)}
             disabled={currentIndex === cards.length - 1 || busy}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-surface text-ink transition-colors hover:bg-surface-2 disabled:opacity-40"
+            className="flex h-12 w-12 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:bg-surface-2 disabled:opacity-40 shadow-sm"
             aria-label="Card sau"
           >
-            <ArrowRight size={18} />
+            <ArrowRight size={22} />
           </button>
         </div>
 
-        <span className="text-xs text-muted">
+        <span className="text-xs font-medium text-muted">
           ← → chuyển từ · Space lật thẻ
         </span>
       </div>

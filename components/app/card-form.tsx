@@ -44,13 +44,21 @@ export function CardForm({
     return URL.createObjectURL(imageFile);
   }, [imageFile]);
 
+  const audioPreviewUrl = useMemo(() => {
+    if (!audioFile) return null;
+    return URL.createObjectURL(audioFile);
+  }, [audioFile]);
+
   useEffect(() => {
     return () => {
       if (imagePreviewUrl) {
         URL.revokeObjectURL(imagePreviewUrl);
       }
+      if (audioPreviewUrl) {
+        URL.revokeObjectURL(audioPreviewUrl);
+      }
     };
-  }, [imagePreviewUrl]);
+  }, [imagePreviewUrl, audioPreviewUrl]);
 
   const [pending, setPending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -238,14 +246,34 @@ export function CardForm({
         </Field>
 
         <Field id="card-audio" label="Audio" hint="Optional.">
-          <input
-            id="card-audio"
-            type="file"
-            accept="audio/*"
-            onChange={(event) => setAudioFile(event.target.files?.[0] ?? null)}
-            disabled={pending}
-            className="w-full text-sm text-muted file:mr-4 file:rounded-full file:border file:border-line file:bg-surface file:px-4 file:py-2 file:text-sm file:font-medium file:text-ink"
-          />
+          <div className="flex flex-col gap-3">
+            <input
+              id="card-audio"
+              type="file"
+              accept="audio/*"
+              onChange={(event) => setAudioFile(event.target.files?.[0] ?? null)}
+              disabled={pending}
+              className="w-full text-sm text-muted file:mr-4 file:rounded-full file:border file:border-line file:bg-surface file:px-4 file:py-2 file:text-sm file:font-medium file:text-ink cursor-pointer"
+            />
+            {audioPreviewUrl ? (
+              <div className="flex items-center gap-3 rounded-xl border border-accent bg-accent-soft/30 p-2.5">
+                <audio controls src={audioPreviewUrl} className="h-8 w-full max-w-[220px]" />
+                <button
+                  type="button"
+                  onClick={() => setAudioFile(null)}
+                  className="rounded-full p-2 text-muted hover:bg-surface hover:text-danger transition-colors shrink-0"
+                  title="Xóa file âm thanh"
+                >
+                  <Trash size={16} />
+                </button>
+              </div>
+            ) : card?.audioUrl ? (
+              <div className="flex items-center gap-3 rounded-xl border border-line bg-surface-2 p-2.5">
+                <audio controls src={card.audioUrl} className="h-8 w-full max-w-[220px]" />
+                <span className="text-xs text-muted">File âm thanh hiện tại</span>
+              </div>
+            ) : null}
+          </div>
         </Field>
       </div>
 

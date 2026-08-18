@@ -135,117 +135,121 @@ export function ProfileView() {
 
   return (
     <Container size="wide">
-      <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-        Your profile
-      </h1>
-      <p className="mt-2 text-base text-muted">
-        How you appear to other learners on shared decks.
-      </p>
-
-      <div className="mt-10 flex flex-wrap items-center gap-5">
-        {avatar ? (
-          /* Remote host is not known ahead of time, so this stays a plain img
-             rather than next/image with a wildcard remotePattern. */
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={avatar}
-            alt=""
-            className="size-20 rounded-full border border-line object-cover"
-          />
-        ) : (
-          <div
-            aria-hidden
-            className="flex size-20 items-center justify-center rounded-full border border-line bg-surface-2 font-mono text-xl text-muted"
-          >
-            {(form.fullName || session?.user.email || "?")
-              .trim()
-              .charAt(0)
-              .toUpperCase()}
-          </div>
-        )}
-
-        <div>
-          <input
-            ref={fileInput}
-            type="file"
-            accept="image/*"
-            onChange={onAvatarPicked}
-            className="hidden"
-          />
-          <Button
-            variant="secondary"
-            type="button"
-            onClick={() => fileInput.current?.click()}
-          >
-            <UploadSimple aria-hidden size={16} />
-            Change photo
-          </Button>
-          <p className="mt-2 text-sm text-muted">{session?.user.email}</p>
+      <div className="mx-auto max-w-2xl">
+        <div className="text-center">
+          <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
+            Your profile
+          </h1>
+          <p className="mt-2 text-base text-muted">
+            How you appear to other learners on shared decks.
+          </p>
         </div>
-      </div>
 
-      <form onSubmit={onSubmit} className="mt-10 max-w-2xl">
-        <Field id="profile-name" label="Display name">
-          <TextInput
-            id="profile-name"
-            value={form.fullName}
-            onChange={(event) => set("fullName", event.target.value)}
-          />
-        </Field>
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 text-center">
+          {avatar ? (
+            /* Remote host is not known ahead of time, so this stays a plain img
+               rather than next/image with a wildcard remotePattern. */
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={avatar}
+              alt=""
+              className="size-24 rounded-full border-2 border-line object-cover shadow-sm"
+            />
+          ) : (
+            <div
+              aria-hidden
+              className="flex size-24 items-center justify-center rounded-full border-2 border-line bg-surface-2 font-mono text-2xl font-semibold text-muted shadow-sm"
+            >
+              {(form.fullName || session?.user.email || "?")
+                .trim()
+                .charAt(0)
+                .toUpperCase()}
+            </div>
+          )}
 
-        <div className="mt-5">
-          <Field id="profile-about" label="About">
-            <TextArea
-              id="profile-about"
-              rows={4}
-              value={form.about}
-              onChange={(event) => set("about", event.target.value)}
+          <div className="flex flex-col items-center gap-1.5">
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/*"
+              onChange={onAvatarPicked}
+              className="hidden"
+            />
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() => fileInput.current?.click()}
+            >
+              <UploadSimple aria-hidden size={16} />
+              Change photo
+            </Button>
+            <p className="text-sm font-medium text-muted">{session?.user.email}</p>
+          </div>
+        </div>
+
+        <form onSubmit={onSubmit} className="mt-8 w-full">
+          <Field id="profile-name" label="Display name">
+            <TextInput
+              id="profile-name"
+              value={form.fullName}
+              onChange={(event) => set("fullName", event.target.value)}
             />
           </Field>
-        </div>
 
-        <div className="mt-5 grid gap-5 sm:grid-cols-2">
-          {LINKS.map(({ key, label }) => (
-            <Field key={key} id={`profile-${key}`} label={label}>
-              <TextInput
-                id={`profile-${key}`}
-                type="url"
-                inputMode="url"
-                placeholder="https://"
-                value={form[key as LinkKey]}
-                onChange={(event) => set(key, event.target.value)}
+          <div className="mt-5">
+            <Field id="profile-about" label="About">
+              <TextArea
+                id="profile-about"
+                rows={4}
+                value={form.about}
+                onChange={(event) => set("about", event.target.value)}
               />
             </Field>
-          ))}
-        </div>
-
-        {error ? (
-          <div className="mt-6">
-            <ErrorState message={error} />
           </div>
-        ) : null}
 
-        <div className="mt-8 flex items-center gap-3">
-          <Button type="submit" disabled={saving}>
-            {saving ? "Saving..." : "Save profile"}
-          </Button>
-          {draft ? (
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                setDraft(null);
-                setSaved(false);
-              }}
-            >
-              Discard changes
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            {LINKS.map(({ key, label }) => (
+              <Field key={key} id={`profile-${key}`} label={label}>
+                <TextInput
+                  id={`profile-${key}`}
+                  type="url"
+                  inputMode="url"
+                  placeholder="https://"
+                  value={form[key as LinkKey]}
+                  onChange={(event) => set(key, event.target.value)}
+                />
+              </Field>
+            ))}
+          </div>
+
+          {error ? (
+            <div className="mt-6">
+              <ErrorState message={error} />
+            </div>
+          ) : null}
+
+          <div className="mt-8 flex items-center justify-center gap-3">
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving..." : "Save profile"}
             </Button>
-          ) : null}
-          {saved && !draft ? (
-            <p className="text-sm text-muted">Saved.</p>
-          ) : null}
-        </div>
-      </form>
+            {draft ? (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setDraft(null);
+                  setSaved(false);
+                }}
+              >
+                Discard changes
+              </Button>
+            ) : null}
+            {saved && !draft ? (
+              <p className="text-sm text-muted">Saved.</p>
+            ) : null}
+          </div>
+        </form>
+      </div>
     </Container>
   );
 }

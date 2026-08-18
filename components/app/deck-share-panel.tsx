@@ -19,6 +19,7 @@ import { useAsync } from "@/lib/use-async";
 
 type DeckSharePanelProps = {
   deckId: number;
+  compact?: boolean;
 };
 
 /**
@@ -33,7 +34,7 @@ type DeckSharePanelProps = {
  * sets the flag it is meant to set, so the link it mints can never be redeemed;
  * see toggleShareLink in lib/api/decks.ts.
  */
-export function DeckSharePanel({ deckId }: DeckSharePanelProps) {
+export function DeckSharePanel({ deckId, compact = false }: DeckSharePanelProps) {
   const [email, setEmail] = useState("");
   const [permission, setPermission] = useState<SharePermission>("VIEW");
   const [busy, setBusy] = useState(false);
@@ -94,10 +95,12 @@ export function DeckSharePanel({ deckId }: DeckSharePanelProps) {
   const rows = shares.data?.content ?? [];
 
   return (
-    <section className="mt-14" aria-labelledby="share-title">
-      <h2 id="share-title" className="text-xl font-semibold tracking-tight">
-        Shared with
-      </h2>
+    <section className={compact ? "mt-0" : "mt-14"} aria-labelledby="share-title">
+      {!compact ? (
+        <h2 id="share-title" className="text-xl font-semibold tracking-tight">
+          Shared with
+        </h2>
+      ) : null}
       <p className="mt-2 text-sm text-muted">
         People you add here can open this deck from their own account. They need
         one already; there is no invite by email yet.

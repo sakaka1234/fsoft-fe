@@ -126,8 +126,8 @@ export function StreakPanel() {
                 /* Opacity carries the intensity so the scale needs only one
                    colour token and stays legible in both themes. */
                 className={cn(
-                  "size-4 rounded-[4px]",
-                  day.cards > 0 ? "bg-accent" : "bg-surface-2",
+                  "h-4 w-4 shrink-0 rounded-sm transition-colors",
+                  day.cards > 0 ? "border border-accent bg-accent" : "streak-dot-empty",
                 )}
                 style={
                   day.cards > 0

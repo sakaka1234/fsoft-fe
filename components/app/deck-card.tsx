@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Link from "next/link";
 // CSR entry: every caller of this card is a client component.
 import { Cards } from "@phosphor-icons/react/Cards";
@@ -18,27 +19,67 @@ type DeckCardProps = {
   footer?: React.ReactNode;
 };
 
+function DeckCardCover({ src, alt }: { src: string; alt: string }) {
+  const [hasError, setHasError] = useState(false);
+  const cleanSrc = src?.trim();
+  if (
+    hasError ||
+    !cleanSrc ||
+    cleanSrc === "" ||
+    cleanSrc === "null" ||
+    cleanSrc === "undefined"
+  ) {
+    return null;
+  }
+
+  return (
+    <div className="-mx-6 -mt-6 h-44 w-[calc(100%+3rem)] overflow-hidden border-b border-line bg-surface-2">
+      <img
+        src={cleanSrc}
+        alt={alt}
+        onError={() => setHasError(true)}
+        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+      />
+    </div>
+  );
+}
+
 /** Shared by the dashboard, the deck list and the public catalogue. */
 export function DeckCard({ deck, actions, footer }: DeckCardProps) {
   return (
-    <article className="card-lift flex h-full flex-col gap-4 rounded-card border border-line bg-surface p-6">
-      <div className="flex items-start justify-between gap-3">
-        <Link
-          href={`/decks/${deck.id}`}
-          className="text-lg font-semibold tracking-tight hover:text-accent-text"
-        >
+    <article className="card-lift group relative flex h-full flex-col gap-4 overflow-hidden rounded-card border border-line bg-surface p-6 cursor-pointer">
+      {/* Full card clickable overlay link */}
+      <Link
+        href={`/decks/${deck.id}`}
+        className="absolute inset-0 z-0"
+        aria-label={`Mở bộ thẻ ${deck.title}`}
+      />
+
+      {deck.coverImageUrl ? (
+        <DeckCardCover src={deck.coverImageUrl} alt={deck.title} />
+      ) : null}
+
+      <div className="relative z-10 flex items-start justify-between gap-3 pointer-events-none">
+        <h3 className="text-lg font-semibold tracking-tight group-hover:text-accent-text transition-colors">
           {deck.title}
-        </Link>
-        {actions}
+        </h3>
+        {actions ? (
+          <div
+            className="pointer-events-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {actions}
+          </div>
+        ) : null}
       </div>
 
       {deck.description ? (
-        <p className="line-clamp-2 text-sm leading-relaxed text-muted">
+        <p className="line-clamp-2 text-sm leading-relaxed text-muted relative z-10 pointer-events-none">
           {deck.description}
         </p>
       ) : null}
 
-      <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted">
+      <div className="mt-auto relative z-10 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted pointer-events-none">
         <span className="font-mono uppercase">
           {deck.sourceLanguage} to {deck.targetLanguage}
         </span>
@@ -52,7 +93,7 @@ export function DeckCard({ deck, actions, footer }: DeckCardProps) {
       </div>
 
       {deck.tags.length > 0 ? (
-        <ul className="flex flex-wrap gap-1.5">
+        <ul className="relative z-10 flex flex-wrap gap-1.5 pointer-events-none">
           {deck.tags.map((tag) => (
             <li
               key={tag.id}
@@ -64,7 +105,14 @@ export function DeckCard({ deck, actions, footer }: DeckCardProps) {
         </ul>
       ) : null}
 
-      {footer}
+      {footer ? (
+        <div
+          className="relative z-10 pointer-events-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {footer}
+        </div>
+      ) : null}
     </article>
   );
 }

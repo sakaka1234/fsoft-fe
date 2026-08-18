@@ -225,6 +225,29 @@
 }
 
 @layer components {
+  /* Streak activity day boxes for Light & Dark mode */
+  .streak-dot-empty {
+    background-color: rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(0, 0, 0, 0.22);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .streak-dot-empty {
+      background-color: rgba(255, 255, 255, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.45);
+    }
+  }
+
+  :root[data-theme="dark"] .streak-dot-empty {
+    background-color: rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.45);
+  }
+
+  :root[data-theme="light"] .streak-dot-empty {
+    background-color: rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(0, 0, 0, 0.22);
+  }
+
   /* Vocabulary marquee. Track holds the word list twice, so a -50% shift loops
      seamlessly. Transform only, no layout properties animated. */
   .marquee-track {
@@ -344,13 +367,10 @@
   /* Cards lift on hover to signal they are a single readable object.
      Transform and shadow only. */
   .card-lift {
-    transition:
-      transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-      box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .card-lift:hover {
-    transform: translateY(-4px);
     box-shadow: var(--shadow-card);
   }
 
