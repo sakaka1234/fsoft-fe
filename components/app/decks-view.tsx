@@ -4,6 +4,8 @@ import { useCallback, useState } from "react";
 import { PencilSimple } from "@phosphor-icons/react/PencilSimple";
 import { Plus } from "@phosphor-icons/react/Plus";
 import { Trash } from "@phosphor-icons/react/Trash";
+import { UsersThree } from "@phosphor-icons/react/UsersThree";
+import { User } from "@phosphor-icons/react/User";
 
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -11,27 +13,36 @@ import { Modal } from "@/components/ui/modal";
 import { DeckCard } from "@/components/app/deck-card";
 import { DeckForm } from "@/components/app/deck-form";
 import { CardSkeleton, EmptyState, ErrorState } from "@/components/app/states";
-import { createDeck, deleteDeck, listMyDecks, updateDeck } from "@/lib/api/decks";
+import { createDeck, deleteDeck, listMyDecks, listSharedWithMeDecks, updateDeck } from "@/lib/api/decks";
 import { listTags } from "@/lib/api/tags";
 import type { DeckResponse } from "@/lib/api/types";
 import { useAsync } from "@/lib/use-async";
 
 export function DecksView() {
+  const [tab, setTab] = useState<"my" | "shared">("my");
   const [creating, setCreating] = useState(false);
   const [editingDeckId, setEditingDeckId] = useState<number | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
 
-  const decks = useAsync(
+  const myDecks = useAsync(
     useCallback((signal: AbortSignal) => listMyDecks(1, 24, signal), []),
     "my-decks",
   );
+
+  const sharedDecks = useAsync(
+    useCallback((signal: AbortSignal) => listSharedWithMeDecks(1, 24, signal), []),
+    "shared-with-me-decks",
+  );
+
   const tags = useAsync(
     useCallback((signal: AbortSignal) => listTags(signal), []),
     "tags",
   );
 
-  const editingDeck = decks.status === "success"
-    ? decks.data.content.find((d) => d.id === editingDeckId)
+  const currentDecksState = tab === "my" ? myDecks : sharedDecks;
+
+  const editingDeck = myDecks.status === "success"
+    ? myDecks.data.content.find((d) => d.id === editingDeckId)
     : null;
 
   async function onDelete(deck: DeckResponse) {
@@ -39,7 +50,7 @@ export function DecksView() {
     setBusyId(deck.id);
     try {
       await deleteDeck(deck.id);
-      decks.reload();
+      myDecks.reload();
     } finally {
       setBusyId(null);
     }
@@ -50,18 +61,49 @@ export function DecksView() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-            Your decks
+            {tab === "my" ? "Your decks" : "Shared with me"}
           </h1>
           <p className="mt-2 text-base text-muted">
-            Each deck holds the words you are working on right now.
+            {tab === "my"
+              ? "Each deck holds the words you are working on right now."
+              : "Decks that other members have granted you access to."}
           </p>
         </div>
-        {!creating ? (
+        {tab === "my" && !creating ? (
           <Button onClick={() => setCreating(true)}>
             <Plus aria-hidden size={16} weight="bold" />
             New deck
           </Button>
         ) : null}
+      </div>
+
+      {/* Tab Switcher */}
+      <div className="mt-6 flex border-b border-line">
+        <button
+          type="button"
+          onClick={() => setTab("my")}
+          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+            tab === "my"
+              ? "border-accent-text text-accent-text"
+              : "border-transparent text-muted hover:text-ink"
+          }`}
+        >
+          <User aria-hidden size={18} />
+          Bộ thẻ của tôi ({myDecks.status === "success" ? myDecks.data.totalElements : 0})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setTab("shared")}
+          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+            tab === "shared"
+              ? "border-accent-text text-accent-text"
+              : "border-transparent text-muted hover:text-ink"
+          }`}
+        >
+          <UsersThree aria-hidden size={18} />
+          Được chia sẻ với tôi ({sharedDecks.status === "success" ? sharedDecks.data.totalElements : 0})
+        </button>
       </div>
 
       {creating ? (
@@ -73,7 +115,7 @@ export function DecksView() {
             onSubmit={async (request, coverImage) => {
               await createDeck(request, coverImage);
               setCreating(false);
-              decks.reload();
+              myDecks.reload();
             }}
           />
         </div>
@@ -94,60 +136,66 @@ export function DecksView() {
             onSubmit={async (request, coverImage) => {
               await updateDeck(editingDeck.id, request, coverImage);
               setEditingDeckId(null);
-              decks.reload();
+              myDecks.reload();
             }}
           />
         ) : null}
       </Modal>
 
-      <div className="mt-10">
-        {decks.status === "loading" ? <CardSkeleton count={6} /> : null}
+      <div className="mt-8">
+        {currentDecksState.status === "loading" ? <CardSkeleton count={6} /> : null}
 
-        {decks.status === "error" ? (
-          <ErrorState message={decks.error} onRetry={decks.reload} />
+        {currentDecksState.status === "error" ? (
+          <ErrorState message={currentDecksState.error} onRetry={currentDecksState.reload} />
         ) : null}
 
-        {decks.status === "success" && decks.data.content.length === 0 ? (
+        {currentDecksState.status === "success" && currentDecksState.data.content.length === 0 ? (
           <EmptyState
-            title="No decks yet"
-            body="A deck is a set of cards you study together, for example the words you keep meeting at work. Create one and add your first card."
+            title={tab === "my" ? "No decks yet" : "Chưa có bộ thẻ nào được chia sẻ"}
+            body={
+              tab === "my"
+                ? "A deck is a set of cards you study together, for example the words you keep meeting at work. Create one and add your first card."
+                : "Khi ai đó chia sẻ bộ thẻ với bạn qua email, các bộ thẻ đó sẽ hiển thị ở đây."
+            }
             action={
-              !creating ? (
+              tab === "my" && !creating ? (
                 <Button onClick={() => setCreating(true)}>Create a deck</Button>
               ) : null
             }
           />
         ) : null}
 
-        {decks.status === "success" && decks.data.content.length > 0 ? (
+        {currentDecksState.status === "success" && currentDecksState.data.content.length > 0 ? (
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {decks.data.content.map((deck) => (
+            {currentDecksState.data.content.map((deck) => (
               <li key={deck.id}>
                 <DeckCard
                   deck={deck}
                   actions={
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setEditingDeckId(deck.id)}
-                        disabled={busyId === deck.id}
-                        aria-label={`Edit ${deck.title}`}
-                        className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-50"
-                        title="Chỉnh sửa bộ thẻ"
-                      >
-                        <PencilSimple aria-hidden size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onDelete(deck)}
-                        disabled={busyId === deck.id}
-                        aria-label={`Delete ${deck.title}`}
-                        className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-danger disabled:opacity-50"
-                        title="Xóa bộ thẻ"
-                      >
-                        <Trash aria-hidden size={16} />
-                      </button>
-                    </div>
+                    tab === "my" ? (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setEditingDeckId(deck.id)}
+                          disabled={busyId === deck.id}
+                          aria-label={`Edit ${deck.title}`}
+                          className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-50"
+                          title="Chỉnh sửa bộ thẻ"
+                        >
+                          <PencilSimple aria-hidden size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDelete(deck)}
+                          disabled={busyId === deck.id}
+                          aria-label={`Delete ${deck.title}`}
+                          className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-danger disabled:opacity-50"
+                          title="Xóa bộ thẻ"
+                        >
+                          <Trash aria-hidden size={16} />
+                        </button>
+                      </div>
+                    ) : undefined
                   }
                 />
               </li>

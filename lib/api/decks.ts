@@ -22,6 +22,14 @@ export function listMyDecks(page = 1, size = 12, signal?: AbortSignal) {
   );
 }
 
+/** Decks shared with the signed-in user by others. Page numbers start at 1. */
+export function listSharedWithMeDecks(page = 1, size = 12, signal?: AbortSignal) {
+  return apiFetch<PageResponse<DeckResponse>>(
+    `/decks/shared-with-me${deckPageQuery(page, size)}`,
+    { auth: true, signal },
+  );
+}
+
 /** Public catalogue, open to browsing and forking. Page numbers start at 1. */
 export function listPublicDecks(
   { page = 1, size = 12, keyword, tagId, sourceLang, targetLang }: PublicDeckQuery,

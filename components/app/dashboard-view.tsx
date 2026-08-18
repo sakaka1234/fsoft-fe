@@ -20,21 +20,15 @@ import { DeckForm } from "@/components/app/deck-form";
 import { CardSkeleton, EmptyState, ErrorState } from "@/components/app/states";
 import { StreakPanel } from "@/components/app/streak-panel";
 import { ApiError } from "@/lib/api/client";
-import { deleteDeck, forkDeck, listMyDecks, listPublicDecks, updateDeck } from "@/lib/api/decks";
+import { deleteDeck, forkDeck, listMyDecks, listPublicDecks, listSharedWithMeDecks, updateDeck } from "@/lib/api/decks";
 import { listTags } from "@/lib/api/tags";
 import type { DeckResponse } from "@/lib/api/types";
 import { useSession } from "@/lib/auth/use-session";
 import { useAsync } from "@/lib/use-async";
 
-/**
- * Counting my decks by visibility has to happen here rather than through
- * /decks/status: that endpoint answers across all users, so it would report
- * the whole catalogue as if it were mine. Verified live.
- */
 const STAT_TILES = [
   { key: "PRIVATE", label: "Private decks", Icon: Lock },
   { key: "PUBLIC", label: "Public decks", Icon: Globe },
-  { key: "SHARED", label: "Shared decks", Icon: UsersThree },
 ] as const;
 
 function countByVisibility(decks: DeckResponse[], visibility: string) {
@@ -54,6 +48,10 @@ export function DashboardView() {
   const myDecks = useAsync(
     useCallback((signal: AbortSignal) => listMyDecks(1, 200, signal), []),
     "dashboard-my-decks",
+  );
+  const sharedWithMeDecks = useAsync(
+    useCallback((signal: AbortSignal) => listSharedWithMeDecks(1, 200, signal), []),
+    "dashboard-shared-with-me-decks",
   );
   const tags = useAsync(
     useCallback((signal: AbortSignal) => listTags(signal), []),
@@ -150,6 +148,13 @@ export function DashboardView() {
             <p className="text-sm text-muted">{label}</p>
           </li>
         ))}
+        <li className="flex flex-col gap-3 rounded-card border border-line bg-surface p-6">
+          <UsersThree aria-hidden size={20} weight="duotone" className="text-accent-text" />
+          <p className="font-mono text-3xl tracking-tight tabular-nums">
+            {sharedWithMeDecks.status === "success" ? sharedWithMeDecks.data.totalElements : "-"}
+          </p>
+          <p className="text-sm text-muted">Shared with me</p>
+        </li>
         <li className="flex flex-col gap-3 rounded-card border border-line bg-surface p-6">
           <Tag aria-hidden size={20} weight="duotone" className="text-accent-text" />
           <p className="font-mono text-3xl tracking-tight tabular-nums">
