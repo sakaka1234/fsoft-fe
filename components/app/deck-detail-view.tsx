@@ -475,20 +475,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                 />
               </div>
             ) : viewMode === "game" ? (
-              <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-line bg-surface p-10 text-center shadow-sm max-w-md mx-auto my-6">
-                <div className="flex size-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500">
-                  <GameController size={36} weight="fill" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold tracking-tight text-ink">Chơi Game</h3>
-                  <p className="mt-1.5 text-sm text-muted">
-                    Tính năng chơi game đang được phát triển và sẽ sớm ra mắt!
-                  </p>
-                </div>
-                <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-4 py-1 text-xs font-bold text-amber-600 dark:text-amber-400">
-                  🚧 Đang phát triển
-                </span>
-              </div>
+              <AudioReflexGame deckId={deckId} deckTitle={deck.data?.title ?? ""} />
             ) : viewMode === "single" ? (
 
               <SingleCardView
