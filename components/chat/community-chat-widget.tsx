@@ -313,11 +313,10 @@ export function CommunityChatWidget() {
                         </span>
                       </div>
                       <div
-                        className={`max-w-[82%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed break-words shadow-2xs ${
-                          isMe
+                        className={`max-w-[82%] rounded-2xl px-3.5 py-2 text-xs leading-relaxed break-words shadow-2xs ${isMe
                             ? "bg-accent text-accent-fg rounded-tr-xs"
                             : "bg-surface border border-line text-ink rounded-tl-xs"
-                        }`}
+                          }`}
                       >
                         {msg.replyTo && (
                           <div className="mb-1.5 rounded-lg border-l-2 border-accent-hover bg-black/10 dark:bg-white/10 p-1.5 text-[0.65rem] opacity-85">
