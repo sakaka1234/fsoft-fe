@@ -18,6 +18,7 @@ import { UserPlus } from "@phosphor-icons/react/UserPlus";
 
 
 import { AudioReflexGame } from "@/components/app/audio-reflex-game";
+import { AudioReflexMultiplayer } from "@/components/app/audio-reflex-multiplayer";
 
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -82,7 +83,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"single" | "list" | "game">("single");
-  const [gameSubMode, setGameSubMode] = useState<null | "solo">(null);
+  const [gameSubMode, setGameSubMode] = useState<null | "solo" | "multiplayer">(null);
   const [singleCardIndex, setSingleCardIndex] = useState(0);
   const [rowError, setRowError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -475,7 +476,77 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                 />
               </div>
             ) : viewMode === "game" ? (
-              <AudioReflexGame deckId={deckId} deckTitle={deck.data?.title ?? ""} />
+              gameSubMode === "solo" ? (
+                <div>
+                  <div className="mb-4 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setGameSubMode(null)}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink transition-colors cursor-pointer"
+                    >
+                      <ArrowLeft size={14} /> Chuyển chế độ game
+                    </button>
+                  </div>
+                  <AudioReflexGame deckId={deckId} deckTitle={deck.data?.title ?? ""} />
+                </div>
+              ) : gameSubMode === "multiplayer" ? (
+                <div>
+                  <div className="mb-4 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setGameSubMode(null)}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink transition-colors cursor-pointer"
+                    >
+                      <ArrowLeft size={14} /> Chuyển chế độ game
+                    </button>
+                  </div>
+                  <AudioReflexMultiplayer deckId={deckId} deckTitle={deck.data?.title ?? ""} onBackToSolo={() => setGameSubMode(null)} />
+                </div>
+              ) : (
+                <div className="max-w-xl mx-auto flex flex-col gap-6 py-6 text-center">
+                  <div className="flex flex-col items-center gap-2">
+                    <GameController size={42} className="text-accent" weight="fill" />
+                    <h3 className="text-2xl font-extrabold text-ink">Chọn Chế Độ Chơi Game</h3>
+                    <p className="text-sm text-muted">Lựa chọn luyện tập phản xạ nghe 1 người hoặc thi đấu cùng bạn bè</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setGameSubMode("solo")}
+                      className="group flex flex-col items-center justify-between p-6 rounded-3xl border border-line bg-surface hover:border-accent hover:shadow-lg transition-all cursor-pointer text-center"
+                    >
+                      <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 group-hover:scale-110 transition-transform">
+                        <GameController size={32} weight="fill" />
+                      </div>
+                      <div className="mt-4">
+                        <h4 className="font-bold text-ink text-base">Chơi Đơn (Solo)</h4>
+                        <p className="text-xs text-muted mt-1">Luyện phản xạ 1 người, tích lũy điểm combo & leo bảng xếp hạng</p>
+                      </div>
+                      <span className="mt-4 w-full py-2.5 rounded-full bg-surface-2 text-xs font-semibold text-ink group-hover:bg-accent group-hover:text-accent-fg transition-colors">
+                        Vào Chơi Đơn
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setGameSubMode("multiplayer")}
+                      className="group flex flex-col items-center justify-between p-6 rounded-3xl border border-line bg-surface hover:border-indigo-500 hover:shadow-lg transition-all cursor-pointer text-center"
+                    >
+                      <div className="flex size-14 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-500 group-hover:scale-110 transition-transform">
+                        <Users size={32} weight="fill" />
+                      </div>
+                      <div className="mt-4">
+                        <h4 className="font-bold text-ink text-base">Chơi Với Bạn Bè</h4>
+                        <p className="text-xs text-muted mt-1">Tạo phòng riêng tư 6 ký tự hoặc nhập mã để thi đấu real-time</p>
+                      </div>
+                      <span className="mt-4 w-full py-2.5 rounded-full bg-surface-2 text-xs font-semibold text-ink group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                        Vào Thi Đấu
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )
             ) : viewMode === "single" ? (
 
               <SingleCardView

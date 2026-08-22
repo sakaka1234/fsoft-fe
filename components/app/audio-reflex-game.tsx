@@ -451,24 +451,14 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
         animate={{ opacity: 1 }}
         className="max-w-xl mx-auto w-full flex flex-col gap-4"
       >
-        {/* Progress & HUD */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-2.5 rounded-full bg-surface-2 overflow-hidden p-0.5 border border-line">
-            <motion.div
-              className="h-full rounded-full bg-accent"
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.4 }}
-            />
-          </div>
-          <span className="text-xs font-mono font-bold text-muted tabular-nums shrink-0 bg-surface border border-line px-2 py-0.5 rounded-full">
-            {gs.currentIndex + 1} / {gs.questions.length}
-          </span>
-        </div>
-
+        {/* HUD Header: Điểm + Số câu hỏi + Combo + Timer */}
         <div className="flex items-center justify-between gap-3 text-sm px-1">
-          <div className="flex items-center gap-1.5 font-bold text-ink">
-            <Trophy size={16} className="text-amber-500" weight="fill" />
-            <span className="font-mono text-base">{gs.score.toLocaleString()}</span>
+          <div className="flex items-center gap-2.5 font-black text-ink">
+            <Trophy size={20} className="text-amber-500 drop-shadow-sm shrink-0" weight="fill" />
+            <span className="font-mono text-xl font-black">{gs.score.toLocaleString()} đ</span>
+            <span className="text-xs font-mono font-bold text-muted tabular-nums shrink-0 bg-surface border border-line px-2.5 py-0.5 rounded-full shadow-2xs">
+              {gs.currentIndex + 1} / {gs.questions.length}
+            </span>
           </div>
 
           {gs.combo >= 2 && (
@@ -483,8 +473,8 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
             </motion.div>
           )}
 
-          <div className="flex items-center gap-1.5">
-            <Timer size={16} className={gs.timeLeft <= 3 ? "text-danger animate-bounce" : "text-muted"} />
+          <div className="flex items-center gap-1.5 bg-surface border border-line px-3 py-1 rounded-full shadow-2xs">
+            <Timer size={18} className={gs.timeLeft <= 3 ? "text-danger animate-bounce" : "text-muted"} />
             <span
               className={cn(
                 "font-mono font-bold tabular-nums text-sm",
@@ -497,7 +487,7 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
         </div>
 
         {/* Thanh đếm ngược */}
-        <div className="h-1.5 w-full rounded-full bg-surface-2 overflow-hidden">
+        <div className="h-2 w-full rounded-full bg-surface-2 overflow-hidden shadow-inner">
           <motion.div
             className={cn(
               "h-full rounded-full transition-colors",
@@ -508,7 +498,7 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
           />
         </div>
 
-        {/* Question Card */}
+        {/* Question Card (KHUNG LOA THU GỌN CHUẨN MỚI) */}
         <AnimatePresence mode="wait">
           <motion.div
             key={gs.currentIndex}
@@ -516,50 +506,51 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="relative rounded-3xl border border-line bg-surface/90 backdrop-blur-md p-6 text-center shadow-xl"
+            className="relative rounded-3xl border border-line bg-surface/90 backdrop-blur-md p-4 text-center shadow-xl overflow-hidden"
           >
             {/* Warning Banner khi hết giờ */}
             {isTimeout && (
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="inline-flex items-center gap-1.5 rounded-full bg-danger/15 border border-danger/30 px-3.5 py-1 text-xs font-extrabold text-danger mb-3 shadow-2xs"
+                className="inline-flex items-center gap-1.5 rounded-full bg-danger/15 border border-danger/30 px-3.5 py-1 text-xs font-extrabold text-danger mb-2 shadow-2xs"
               >
                 <WarningCircle size={15} weight="fill" />
                 HẾT THỜI GIAN!
               </motion.div>
             )}
 
-            <div className="flex flex-col items-center gap-3">
-              {/* Nút phát âm thanh lớn */}
+            <div className="flex flex-col items-center gap-2">
+              {/* Nút phát âm thanh thu nhỏ chuẩn mới */}
               <motion.button
                 type="button"
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.96 }}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
                 onClick={() => speak(currentQ.word)}
-                className="group relative flex flex-col items-center justify-center gap-2.5 w-full py-7 px-6 rounded-2xl bg-accent/10 border border-accent/20 hover:bg-accent/15 transition-all cursor-pointer shadow-inner"
+                className="group relative flex items-center justify-center gap-3 w-full py-4 px-4 rounded-2xl bg-accent/10 border border-accent/20 hover:bg-accent/15 transition-all cursor-pointer shadow-inner overflow-hidden"
               >
-                <div className="flex size-14 items-center justify-center rounded-full bg-accent text-accent-fg shadow-md group-hover:scale-110 transition-transform">
-                  <SpeakerHigh size={28} weight="fill" />
+                <div className="relative flex size-12 items-center justify-center rounded-full bg-accent text-accent-fg shadow-md group-hover:scale-105 transition-transform shrink-0">
+                  <SpeakerHigh size={24} weight="fill" />
                 </div>
-                <div className="flex items-center gap-1.5 text-xs font-bold text-accent tracking-wider uppercase">
-                  <Waveform size={15} />
+
+                <div className="flex items-center gap-1.5 text-xs font-extrabold text-accent tracking-wider uppercase">
+                  <Waveform size={16} />
                   <span>Nhấn để nghe âm thanh</span>
                 </div>
               </motion.button>
 
-              {/* Ẩn từ gốc cho đến khi chọn xong đáp án */}
-              {gs.answered ? (
+              {/* Từ tiếng Anh sau khi trả lời */}
+              {gs.answered && (
                 <motion.div
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-1 flex flex-col items-center gap-1"
+                  className="mt-2 flex flex-col items-center gap-0.5"
                 >
-                  <h3 className="text-3xl font-extrabold tracking-tight text-ink">
+                  <h3 className="text-2xl font-black text-ink tracking-tight bg-gradient-to-r from-ink via-accent to-ink bg-clip-text text-transparent">
                     {currentQ.word}
                   </h3>
                   {currentQ.phonetic && (
-                    <p className="font-mono text-sm text-muted">{currentQ.phonetic}</p>
+                    <p className="font-mono text-xs text-muted font-bold">{currentQ.phonetic}</p>
                   )}
                   {currentQ.exampleSentence && (
                     <p className="text-xs text-muted italic max-w-sm mt-0.5">
@@ -567,39 +558,6 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
                     </p>
                   )}
                 </motion.div>
-              ) : (
-                <div className="flex flex-col items-center gap-2 mt-1">
-                  {/* Nút Gợi ý (Hint) */}
-                  <button
-                    type="button"
-                    onClick={() => setShowHint((prev) => !prev)}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3.5 py-1.5 text-xs font-semibold text-muted hover:text-ink hover:border-accent/40 transition-all"
-                  >
-                    <Lightbulb size={15} className={showHint ? "text-amber-500" : ""} weight="fill" />
-                    {showHint ? "Ẩn gợi ý" : "Gợi ý ký tự / ảnh"}
-                  </button>
-
-                  {/* Hiển thị Hint khi mở */}
-                  {showHint && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      className="flex flex-col items-center gap-2.5 mt-1"
-                    >
-                      {currentQ.imageUrl && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={currentQ.imageUrl}
-                          alt="Gợi ý"
-                          className="h-28 w-auto rounded-xl object-cover border border-line shadow-sm"
-                        />
-                      )}
-                      <p className="font-mono text-xl font-bold tracking-[0.25em] text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-4 py-1.5 rounded-xl">
-                        {generateMaskedWord(currentQ.word)}
-                      </p>
-                    </motion.div>
-                  )}
-                </div>
               )}
             </div>
           </motion.div>
