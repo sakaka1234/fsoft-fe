@@ -437,276 +437,276 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
           </div>
         ) : (
           <div className="mt-3">
-          {cards.status === "loading" ? (
-            viewMode === "single" ? (
-              <SingleCardSkeleton />
-            ) : (
-              <RowSkeleton count={4} />
-            )
-          ) : null}
-
-          {cards.status === "error" ? (
-            <ErrorState message={cards.error} onRetry={cards.reload} />
-          ) : null}
-
-          {cards.status === "success" && cards.data.content.length === 0 ? (
-            <EmptyState
-              title="No cards in this deck"
-              body="Add the first word you want to remember. A card needs a word and what it means; everything else is optional."
-              action={
-                !addingCard ? (
-                  <Button onClick={() => setAddingCard(true)}>Add a card</Button>
-                ) : null
-              }
-            />
-          ) : null}
-
-          {cards.status === "success" && cards.data.content.length > 0 ? (
-            editingCardId ? (
-              <div className="mb-6">
-                <CardForm
-                  card={cards.data.content.find((c) => c.id === editingCardId)}
-                  submitLabel="Save card"
-                  onCancel={() => setEditingCardId(null)}
-                  onSubmit={async (request, files) => {
-                    await updateCard(editingCardId, request, files);
-                    setEditingCardId(null);
-                    cards.reload();
-                  }}
-                />
-              </div>
-            ) : viewMode === "game" ? (
-              gameSubMode === "solo" ? (
-                <div>
-                  <div className="mb-4 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setGameSubMode(null)}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink transition-colors cursor-pointer"
-                    >
-                      <ArrowLeft size={14} /> Chuyển chế độ game
-                    </button>
-                  </div>
-                  <AudioReflexGame deckId={deckId} deckTitle={deck.data?.title ?? ""} />
-                </div>
-              ) : gameSubMode === "multiplayer" ? (
-                <div>
-                  <div className="mb-4 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setGameSubMode(null)}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink transition-colors cursor-pointer"
-                    >
-                      <ArrowLeft size={14} /> Chuyển chế độ game
-                    </button>
-                  </div>
-                  <AudioReflexMultiplayer deckId={deckId} deckTitle={deck.data?.title ?? ""} onBackToSolo={() => setGameSubMode(null)} />
-                </div>
+            {cards.status === "loading" ? (
+              viewMode === "single" ? (
+                <SingleCardSkeleton />
               ) : (
-                <div className="max-w-xl mx-auto flex flex-col gap-6 py-6 text-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <GameController size={42} className="text-accent" weight="fill" />
-                    <h3 className="text-2xl font-extrabold text-ink">Chọn Chế Độ Chơi Game</h3>
-                    <p className="text-sm text-muted">Lựa chọn luyện tập phản xạ nghe 1 người hoặc thi đấu cùng bạn bè</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                    <button
-                      type="button"
-                      onClick={() => setGameSubMode("solo")}
-                      className="group flex flex-col items-center justify-between p-6 rounded-3xl border border-line bg-surface hover:border-accent hover:shadow-lg transition-all cursor-pointer text-center"
-                    >
-                      <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 group-hover:scale-110 transition-transform">
-                        <GameController size={32} weight="fill" />
-                      </div>
-                      <div className="mt-4">
-                        <h4 className="font-bold text-ink text-base">Chơi Đơn (Solo)</h4>
-                        <p className="text-xs text-muted mt-1">Luyện phản xạ 1 người, tích lũy điểm combo & leo bảng xếp hạng</p>
-                      </div>
-                      <span className="mt-4 w-full py-2.5 rounded-full bg-surface-2 text-xs font-semibold text-ink group-hover:bg-accent group-hover:text-accent-fg transition-colors">
-                        Vào Chơi Đơn
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setGameSubMode("multiplayer")}
-                      className="group flex flex-col items-center justify-between p-6 rounded-3xl border border-line bg-surface hover:border-indigo-500 hover:shadow-lg transition-all cursor-pointer text-center"
-                    >
-                      <div className="flex size-14 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-500 group-hover:scale-110 transition-transform">
-                        <Users size={32} weight="fill" />
-                      </div>
-                      <div className="mt-4">
-                        <h4 className="font-bold text-ink text-base">Chơi Với Bạn Bè</h4>
-                        <p className="text-xs text-muted mt-1">Tạo phòng riêng tư 6 ký tự hoặc nhập mã để thi đấu real-time</p>
-                      </div>
-                      <span className="mt-4 w-full py-2.5 rounded-full bg-surface-2 text-xs font-semibold text-ink group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-                        Vào Thi Đấu
-                      </span>
-                    </button>
-                  </div>
-                </div>
+                <RowSkeleton count={4} />
               )
-            ) : viewMode === "single" ? (
+            ) : null}
 
-              <SingleCardView
-                key={singleCardIndex}
-                cards={cards.data.content}
-                currentIndex={
-                  singleCardIndex >= cards.data.content.length
-                    ? 0
-                    : singleCardIndex
+            {cards.status === "error" ? (
+              <ErrorState message={cards.error} onRetry={cards.reload} />
+            ) : null}
+
+            {cards.status === "success" && cards.data.content.length === 0 ? (
+              <EmptyState
+                title="No cards in this deck"
+                body="Add the first word you want to remember. A card needs a word and what it means; everything else is optional."
+                action={
+                  !addingCard ? (
+                    <Button onClick={() => setAddingCard(true)}>Add a card</Button>
+                  ) : null
                 }
-                onIndexChange={setSingleCardIndex}
-                onEditCard={(card) => setEditingCardId(card.id)}
-                busy={busy}
               />
-            ) : (
-              <ul className="flex flex-col gap-3">
-                {cards.data.content.map((card, index) => (
-                  <li key={card.id}>
-                    <article className="flex items-start gap-4 rounded-card border border-line bg-surface p-5">
-                      <span className="mt-0.5 font-mono text-sm text-muted tabular-nums">
-                        {card.position}
-                      </span>
+            ) : null}
 
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                          <h3 className="text-lg font-semibold tracking-tight">
-                            {card.word}
-                          </h3>
-                          {card.phonetic ? (
-                            <span className="font-mono text-sm text-muted">
-                              {card.phonetic}
-                            </span>
-                          ) : null}
-                          {card.partOfSpeech ? (
-                            <span className="rounded-full border border-line px-2 py-0.5 text-xs text-muted">
-                              {card.partOfSpeech}
-                            </span>
+            {cards.status === "success" && cards.data.content.length > 0 ? (
+              editingCardId ? (
+                <div className="mb-6">
+                  <CardForm
+                    card={cards.data.content.find((c) => c.id === editingCardId)}
+                    submitLabel="Save card"
+                    onCancel={() => setEditingCardId(null)}
+                    onSubmit={async (request, files) => {
+                      await updateCard(editingCardId, request, files);
+                      setEditingCardId(null);
+                      cards.reload();
+                    }}
+                  />
+                </div>
+              ) : viewMode === "game" ? (
+                gameSubMode === "solo" ? (
+                  <div>
+                    <div className="mb-4 flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setGameSubMode(null)}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink transition-colors cursor-pointer"
+                      >
+                        <ArrowLeft size={14} /> Chuyển chế độ game
+                      </button>
+                    </div>
+                    <AudioReflexGame deckId={deckId} deckTitle={deck.data?.title ?? ""} />
+                  </div>
+                ) : gameSubMode === "multiplayer" ? (
+                  <div>
+                    <div className="mb-4 flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setGameSubMode(null)}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink transition-colors cursor-pointer"
+                      >
+                        <ArrowLeft size={14} /> Chuyển chế độ game
+                      </button>
+                    </div>
+                    <AudioReflexMultiplayer deckId={deckId} deckTitle={deck.data?.title ?? ""} onBackToSolo={() => setGameSubMode(null)} />
+                  </div>
+                ) : (
+                  <div className="max-w-xl mx-auto flex flex-col gap-6 py-6 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <GameController size={42} className="text-accent" weight="fill" />
+                      <h3 className="text-2xl font-extrabold text-ink">Chọn Chế Độ Chơi Game</h3>
+                      <p className="text-sm text-muted">Lựa chọn luyện tập phản xạ nghe 1 người hoặc thi đấu cùng bạn bè</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setGameSubMode("solo")}
+                        className="group flex flex-col items-center justify-between p-6 rounded-3xl border border-line bg-surface hover:border-accent hover:shadow-lg transition-all cursor-pointer text-center"
+                      >
+                        <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 group-hover:scale-110 transition-transform">
+                          <GameController size={32} weight="fill" />
+                        </div>
+                        <div className="mt-4">
+                          <h4 className="font-bold text-ink text-base">Chơi Đơn (Solo)</h4>
+                          <p className="text-xs text-muted mt-1">Luyện phản xạ 1 người, tích lũy điểm combo & leo bảng xếp hạng</p>
+                        </div>
+                        <span className="mt-4 w-full py-2.5 rounded-full bg-surface-2 text-xs font-semibold text-ink group-hover:bg-accent group-hover:text-accent-fg transition-colors">
+                          Vào Chơi Đơn
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setGameSubMode("multiplayer")}
+                        className="group flex flex-col items-center justify-between p-6 rounded-3xl border border-line bg-surface hover:border-indigo-500 hover:shadow-lg transition-all cursor-pointer text-center"
+                      >
+                        <div className="flex size-14 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-500 group-hover:scale-110 transition-transform">
+                          <Users size={32} weight="fill" />
+                        </div>
+                        <div className="mt-4">
+                          <h4 className="font-bold text-ink text-base">Chơi Với Bạn Bè</h4>
+                          <p className="text-xs text-muted mt-1">Tạo phòng riêng tư 6 ký tự hoặc nhập mã để thi đấu real-time</p>
+                        </div>
+                        <span className="mt-4 w-full py-2.5 rounded-full bg-surface-2 text-xs font-semibold text-ink group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                          Vào Thi Đấu
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                )
+              ) : viewMode === "single" ? (
+
+                <SingleCardView
+                  key={singleCardIndex}
+                  cards={cards.data.content}
+                  currentIndex={
+                    singleCardIndex >= cards.data.content.length
+                      ? 0
+                      : singleCardIndex
+                  }
+                  onIndexChange={setSingleCardIndex}
+                  onEditCard={(card) => setEditingCardId(card.id)}
+                  busy={busy}
+                />
+              ) : (
+                <ul className="flex flex-col gap-3">
+                  {cards.data.content.map((card, index) => (
+                    <li key={card.id}>
+                      <article className="flex items-start gap-4 rounded-card border border-line bg-surface p-5">
+                        <span className="mt-0.5 font-mono text-sm text-muted tabular-nums">
+                          {card.position}
+                        </span>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                            <h3 className="text-lg font-semibold tracking-tight">
+                              {card.word}
+                            </h3>
+                            {card.phonetic ? (
+                              <span className="font-mono text-sm text-muted">
+                                {card.phonetic}
+                              </span>
+                            ) : null}
+                            {card.partOfSpeech ? (
+                              <span className="rounded-full border border-line px-2 py-0.5 text-xs text-muted">
+                                {card.partOfSpeech}
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="mt-1 text-base">{card.meaning}</p>
+                          {card.exampleSentence || card.exampleMeaning ? (
+                            <div className="mt-3">
+                              <CardContextBlock
+                                exampleSentence={card.exampleSentence}
+                                exampleMeaning={card.exampleMeaning}
+                                compact
+                              />
+                            </div>
                           ) : null}
                         </div>
-                        <p className="mt-1 text-base">{card.meaning}</p>
-                        {card.exampleSentence || card.exampleMeaning ? (
-                          <div className="mt-3">
-                            <CardContextBlock
-                              exampleSentence={card.exampleSentence}
-                              exampleMeaning={card.exampleMeaning}
-                              compact
-                            />
-                          </div>
-                        ) : null}
-                      </div>
 
-                      <div className="flex shrink-0 items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => move(index, -1)}
-                          disabled={busy || index === 0}
-                          aria-label={`Move ${card.word} up`}
-                          className="rounded-full p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-40"
-                        >
-                          <ArrowUp aria-hidden size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => move(index, 1)}
-                          disabled={
-                            busy || index === cards.data.content.length - 1
-                          }
-                          aria-label={`Move ${card.word} down`}
-                          className="rounded-full p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-40"
-                        >
-                          <ArrowDown aria-hidden size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditingCardId(card.id)}
-                          disabled={busy}
-                          aria-label={`Edit ${card.word}`}
-                          className="rounded-full p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-40"
-                        >
-                          <PencilSimple aria-hidden size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onDeleteCard(card)}
-                          disabled={busy}
-                          aria-label={`Delete ${card.word}`}
-                          className="rounded-full p-2 text-muted transition-colors hover:bg-surface-2 hover:text-danger disabled:opacity-40"
-                        >
-                          <Trash aria-hidden size={15} />
-                        </button>
-                      </div>
-                    </article>
-                  </li>
-                ))}
-              </ul>
-            )
-          ) : null}
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => move(index, -1)}
+                            disabled={busy || index === 0}
+                            aria-label={`Move ${card.word} up`}
+                            className="rounded-full p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-40"
+                          >
+                            <ArrowUp aria-hidden size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => move(index, 1)}
+                            disabled={
+                              busy || index === cards.data.content.length - 1
+                            }
+                            aria-label={`Move ${card.word} down`}
+                            className="rounded-full p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-40"
+                          >
+                            <ArrowDown aria-hidden size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingCardId(card.id)}
+                            disabled={busy}
+                            aria-label={`Edit ${card.word}`}
+                            className="rounded-full p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-40"
+                          >
+                            <PencilSimple aria-hidden size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDeleteCard(card)}
+                            disabled={busy}
+                            aria-label={`Delete ${card.word}`}
+                            className="rounded-full p-2 text-muted transition-colors hover:bg-surface-2 hover:text-danger disabled:opacity-40"
+                          >
+                            <Trash aria-hidden size={15} />
+                          </button>
+                        </div>
+                      </article>
+                    </li>
+                  ))}
+                </ul>
+              )
+            ) : null}
+          </div>
+        )}
+      </section>
+
+      {/* Share Card Modal */}
+      <Modal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        title="Chia sẻ bộ card"
+      >
+        {isOwner ? (
+          <DeckSharePanel deckId={deckId} compact />
+        ) : (
+          <p className="py-6 text-center text-sm text-muted">
+            Chỉ chủ sở hữu bộ card mới có thể phân quyền chia sẻ.
+          </p>
+        )}
+      </Modal>
+
+      {/* Delete Deck Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Xác nhận xóa bộ thẻ"
+      >
+        <div className="flex flex-col gap-4 py-2">
+          <p className="text-sm leading-relaxed text-muted">
+            Bạn có chắc chắn muốn xóa bộ thẻ{" "}
+            <strong className="text-ink font-semibold">
+              &quot;{deck.status === "success" ? deck.data.title : ""}&quot;
+            </strong>{" "}
+            cùng toàn bộ các thẻ từ vựng bên trong không? Hành động này{" "}
+            <strong className="text-danger font-semibold">không thể hoàn tác</strong>.
+          </p>
+
+          <div className="mt-4 flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setIsDeleteModalOpen(false)}
+              disabled={busy}
+            >
+              Hủy
+            </Button>
+            <button
+              type="button"
+              onClick={async () => {
+                if (deck.status !== "success") return;
+                await run(async () => {
+                  await deleteDeck(deckId);
+                  setIsDeleteModalOpen(false);
+                  router.replace("/decks");
+                });
+              }}
+              disabled={busy}
+              className="inline-flex items-center gap-2 rounded-full bg-danger px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-danger/90 disabled:opacity-50"
+            >
+              <Trash size={16} />
+              {busy ? "Đang xóa..." : "Xóa bộ thẻ"}
+            </button>
+          </div>
         </div>
-      )}
-    </section>
-
-    {/* Share Card Modal */}
-    <Modal
-      isOpen={isShareModalOpen}
-      onClose={() => setIsShareModalOpen(false)}
-      title="Chia sẻ bộ card"
-    >
-      {isOwner ? (
-        <DeckSharePanel deckId={deckId} compact />
-      ) : (
-        <p className="py-6 text-center text-sm text-muted">
-          Chỉ chủ sở hữu bộ card mới có thể phân quyền chia sẻ.
-        </p>
-      )}
-    </Modal>
-
-    {/* Delete Deck Modal */}
-    <Modal
-      isOpen={isDeleteModalOpen}
-      onClose={() => setIsDeleteModalOpen(false)}
-      title="Xác nhận xóa bộ thẻ"
-    >
-      <div className="flex flex-col gap-4 py-2">
-        <p className="text-sm leading-relaxed text-muted">
-          Bạn có chắc chắn muốn xóa bộ thẻ{" "}
-          <strong className="text-ink font-semibold">
-            &quot;{deck.status === "success" ? deck.data.title : ""}&quot;
-          </strong>{" "}
-          cùng toàn bộ các thẻ từ vựng bên trong không? Hành động này{" "}
-          <strong className="text-danger font-semibold">không thể hoàn tác</strong>.
-        </p>
-
-        <div className="mt-4 flex justify-end gap-3">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setIsDeleteModalOpen(false)}
-            disabled={busy}
-          >
-            Hủy
-          </Button>
-          <button
-            type="button"
-            onClick={async () => {
-              if (deck.status !== "success") return;
-              await run(async () => {
-                await deleteDeck(deckId);
-                setIsDeleteModalOpen(false);
-                router.replace("/decks");
-              });
-            }}
-            disabled={busy}
-            className="inline-flex items-center gap-2 rounded-full bg-danger px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-danger/90 disabled:opacity-50"
-          >
-            <Trash size={16} />
-            {busy ? "Đang xóa..." : "Xóa bộ thẻ"}
-          </button>
-        </div>
-      </div>
-    </Modal>
-  </Container>
-);
+      </Modal>
+    </Container>
+  );
 }
