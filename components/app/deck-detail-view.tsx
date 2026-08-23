@@ -13,12 +13,14 @@ import { Trash } from "@phosphor-icons/react/Trash";
 import { Cards as CardsIcon } from "@phosphor-icons/react/Cards";
 import { List } from "@phosphor-icons/react/List";
 import { GameController } from "@phosphor-icons/react/GameController";
+import { Brain } from "@phosphor-icons/react/Brain";
 import { Users } from "@phosphor-icons/react/Users";
 import { UserPlus } from "@phosphor-icons/react/UserPlus";
 
 
 import { AudioReflexGame } from "@/components/app/audio-reflex-game";
 import { AudioReflexMultiplayer } from "@/components/app/audio-reflex-multiplayer";
+import { FsrsStudyMode } from "@/components/app/fsrs-study-mode";
 
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -82,7 +84,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
   const [editingCardId, setEditingCardId] = useState<number | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"single" | "list" | "game">("single");
+  const [viewMode, setViewMode] = useState<"single" | "list" | "game" | "study">("single");
   const [gameSubMode, setGameSubMode] = useState<null | "solo" | "multiplayer">(null);
   const [singleCardIndex, setSingleCardIndex] = useState(0);
   const [rowError, setRowError] = useState<string | null>(null);
@@ -328,6 +330,19 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
               </button>
               <button
                 type="button"
+                onClick={() => { setAddingCard(false); setViewMode("study"); setGameSubMode(null); }}
+                className={cn(
+                  "flex h-8 items-center gap-1.5 rounded-full px-3.5 transition-colors",
+                  !addingCard && viewMode === "study"
+                    ? "bg-emerald-600 text-white shadow-sm"
+                    : "text-muted hover:text-ink",
+                )}
+              >
+                <Brain size={16} />
+                Học card
+              </button>
+              <button
+                type="button"
                 onClick={() => { setAddingCard(false); setViewMode("game"); setGameSubMode(null); }}
                 className={cn(
                   "flex h-8 items-center gap-1.5 rounded-full px-3.5 transition-colors",
@@ -393,6 +408,19 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
             </button>
             <button
               type="button"
+              onClick={() => { setAddingCard(false); setViewMode("study"); setGameSubMode(null); }}
+              className={cn(
+                "flex-1 flex h-8 items-center justify-center gap-1.5 rounded-full px-3 transition-colors",
+                !addingCard && viewMode === "study"
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "text-muted hover:text-ink",
+              )}
+            >
+              <Brain size={16} />
+              Học
+            </button>
+            <button
+              type="button"
               onClick={() => { setAddingCard(false); setViewMode("game"); setGameSubMode(null); }}
               className={cn(
                 "flex-1 flex h-8 items-center justify-center gap-1.5 rounded-full px-3 transition-colors",
@@ -402,7 +430,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
               )}
             >
               <GameController size={16} />
-              Chơi game
+              Game
             </button>
           </div>
         ) : null}
@@ -547,6 +575,12 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                     </div>
                   </div>
                 )
+              ) : viewMode === "study" ? (
+                <FsrsStudyMode
+                  cards={cards.data.content}
+                  onFinished={() => setViewMode("single")}
+                  onCardReviewed={() => cards.reload()}
+                />
               ) : viewMode === "single" ? (
 
                 <SingleCardView

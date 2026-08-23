@@ -269,3 +269,26 @@ export type UserActivityResponse = {
   cardsReviewedCount: number;
   quizzesCompletedCount: number;
 };
+
+/* ---------------------------------------------------------------------------
+   SRS / FSRS Types
+   ------------------------------------------------------------------------- */
+
+export type SrsStatus = "NEW" | "LEARNING" | "REVIEW" | "RELEARNING";
+
+export type ReviewCardResponse = {
+  card: CardResponse;
+  status: SrsStatus;
+  easinessFactor: number;
+  stability: number | null;
+  difficulty: number | null;
+  repetitions: number;
+  interval: number;
+  nextReviewDate?: string;
+  lastReviewedAt?: string | null;
+};
+
+export type SrsReviewRequest = {
+  cardId: number;
+  rating: number; // 1: Again, 2: Hard, 3: Good, 4: Easy
+};

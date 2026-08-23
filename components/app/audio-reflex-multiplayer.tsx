@@ -271,7 +271,7 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
 
       if (stompClientRef.current?.connected) {
         const token = getSession()?.token.accessToken;
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
         stompClientRef.current.publish({
           destination: `/app/room/${room.roomCode}/select-deck`,
           headers,
@@ -324,7 +324,7 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
     // 1. Gửi qua WebSocket STOMP
     if (stompClientRef.current?.connected) {
       const token = getSession()?.token.accessToken;
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
       stompClientRef.current.publish({
         destination: `/app/room/${room.roomCode}/answer`,
         headers,

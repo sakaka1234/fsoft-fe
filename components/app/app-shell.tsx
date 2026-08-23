@@ -13,6 +13,10 @@ import { endSession, getSession } from "@/lib/auth/session-store";
 import { useSession } from "@/lib/auth/use-session";
 import { cn } from "@/lib/cn";
 
+import { useState, useCallback } from "react";
+import { getFsrsStudyQueue } from "@/lib/api/fsrs";
+import { FsrsNotificationToast } from "@/components/app/fsrs-notification-toast";
+
 const APP_NAV = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Decks", href: "/decks" },
@@ -43,9 +47,53 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const [dueCount, setDueCount] = useState(0);
+  const [isToastOpen, setIsToastOpen] = useState(false);
+  const [lastDismissedCount, setLastDismissedCount] = useState(0);
+
+  const fetchDueQueue = useCallback(async () => {
+    try {
+      const queue = await getFsrsStudyQueue(undefined, 120, 30);
+      const count = queue.length;
+      setDueCount(count);
+      if (count > 0 && count !== lastDismissedCount) {
+        setIsToastOpen(true);
+      }
+    } catch {
+      // Ignore background errors
+    }
+  }, [lastDismissedCount]);
+
+  // Initial check on mount/F5 & 5-minute periodic interval
   useEffect(() => {
-    if (!getSession()) router.replace("/login");
-  }, [router, session]);
+    if (!getSession()) {
+      router.replace("/login");
+      return;
+    }
+
+    fetchDueQueue();
+
+    // 5-minute background reminder polling (5 * 60 * 1000 ms)
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        fetchDueQueue();
+      }
+    }, 5 * 60 * 1000);
+
+    // Re-check when browser tab becomes active
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        fetchDueQueue();
+      }
+    }
+
+    window.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [router, session, fetchDueQueue]);
 
   async function onLogout() {
     const accessToken = getSession()?.token.accessToken;
@@ -88,17 +136,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <nav aria-label="Workspace" className="flex items-center gap-6">
                 {APP_NAV.map((item) => {
                   const active = isActive(pathname, item.href);
+                  const isDecksLink = item.href === "/decks";
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "text-sm transition-colors",
-                        active ? "text-ink" : "text-muted hover:text-ink",
+                        "relative flex items-center gap-1.5 text-sm transition-colors",
+                        active ? "text-ink font-medium" : "text-muted hover:text-ink",
                       )}
                     >
                       {item.label}
+                      {isDecksLink && dueCount > 0 ? (
+                        <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1.5 font-mono text-[0.7rem] font-bold text-white shadow-sm animate-pulse">
+                          {dueCount}
+                        </span>
+                      ) : null}
                     </Link>
                   );
                 })}
@@ -119,6 +173,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       <main className="flex-1 py-10 md:py-14">{children}</main>
+
+      <FsrsNotificationToast
+        count={dueCount}
+        isOpen={isToastOpen}
+        onClose={() => {
+          setIsToastOpen(false);
+          setLastDismissedCount(dueCount);
+        }}
+        onStartReview={() => {
+          setIsToastOpen(false);
+          router.push("/decks?tab=srs");
+        }}
+      />
     </div>
   );
 }

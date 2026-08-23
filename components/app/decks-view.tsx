@@ -1,25 +1,38 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { PencilSimple } from "@phosphor-icons/react/PencilSimple";
 import { Plus } from "@phosphor-icons/react/Plus";
 import { Trash } from "@phosphor-icons/react/Trash";
 import { UsersThree } from "@phosphor-icons/react/UsersThree";
 import { User } from "@phosphor-icons/react/User";
+import { Brain } from "@phosphor-icons/react/Brain";
 
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Modal } from "@/components/ui/modal";
 import { DeckCard } from "@/components/app/deck-card";
 import { DeckForm } from "@/components/app/deck-form";
+import { FsrsVocabularyReviewView } from "@/components/app/fsrs-vocabulary-review-view";
 import { CardSkeleton, EmptyState, ErrorState } from "@/components/app/states";
 import { createDeck, deleteDeck, listMyDecks, listSharedWithMeDecks, updateDeck } from "@/lib/api/decks";
 import { listTags } from "@/lib/api/tags";
 import type { DeckResponse } from "@/lib/api/types";
 import { useAsync } from "@/lib/use-async";
 
-export function DecksView() {
-  const [tab, setTab] = useState<"my" | "shared">("my");
+export function DecksView({ defaultTab }: { defaultTab?: "my" | "shared" | "srs" }) {
+  const searchParams = useSearchParams();
+  const urlTab = searchParams?.get("tab") as "my" | "shared" | "srs" | null;
+
+  const [tab, setTab] = useState<"my" | "shared" | "srs">(defaultTab || urlTab || "my");
+
+  useEffect(() => {
+    if (urlTab && (urlTab === "my" || urlTab === "shared" || urlTab === "srs")) {
+      setTab(urlTab);
+    }
+  }, [urlTab]);
+
   const [creating, setCreating] = useState(false);
   const [editingDeckId, setEditingDeckId] = useState<number | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -61,12 +74,14 @@ export function DecksView() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-            {tab === "my" ? "Your decks" : "Shared with me"}
+            {tab === "my" ? "Your decks" : tab === "shared" ? "Shared with me" : "Ôn tập từ vựng"}
           </h1>
           <p className="mt-2 text-base text-muted">
             {tab === "my"
               ? "Each deck holds the words you are working on right now."
-              : "Decks that other members have granted you access to."}
+              : tab === "shared"
+              ? "Decks that other members have granted you access to."
+              : "Ôn tập các bài học đến hạn theo thuật toán lặp lại ngắt quãng FSRS."}
           </p>
         </div>
         {tab === "my" && !creating ? (
@@ -78,11 +93,11 @@ export function DecksView() {
       </div>
 
       {/* Tab Switcher */}
-      <div className="mt-6 flex border-b border-line">
+      <div className="mt-6 flex border-b border-line overflow-x-auto">
         <button
           type="button"
           onClick={() => setTab("my")}
-          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap ${
             tab === "my"
               ? "border-accent-text text-accent-text"
               : "border-transparent text-muted hover:text-ink"
@@ -95,7 +110,7 @@ export function DecksView() {
         <button
           type="button"
           onClick={() => setTab("shared")}
-          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap ${
             tab === "shared"
               ? "border-accent-text text-accent-text"
               : "border-transparent text-muted hover:text-ink"
@@ -104,16 +119,31 @@ export function DecksView() {
           <UsersThree aria-hidden size={18} />
           Được chia sẻ với tôi ({sharedDecks.status === "success" ? sharedDecks.data.totalElements : 0})
         </button>
+
+        <button
+          type="button"
+          onClick={() => setTab("srs")}
+          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap ${
+            tab === "srs"
+              ? "border-accent-text text-accent-text font-bold"
+              : "border-transparent text-muted hover:text-ink"
+          }`}
+        >
+          <Brain aria-hidden size={18} weight="fill" className="text-accent-text" />
+          Ôn tập từ vựng (FSRS)
+        </button>
       </div>
+
+      {tab === "srs" ? (
+        <FsrsVocabularyReviewView />
+      ) : null}
 
       {creating ? (
         <div className="mt-8">
           <DeckForm
-            tags={tags.data ?? []}
-            submitLabel="Create deck"
             onCancel={() => setCreating(false)}
-            onSubmit={async (request, coverImage) => {
-              await createDeck(request, coverImage);
+            onSubmit={async (payload) => {
+              await createDeck(payload);
               setCreating(false);
               myDecks.reload();
             }}
@@ -121,88 +151,64 @@ export function DecksView() {
         </div>
       ) : null}
 
-      {/* Edit Deck Modal */}
-      <Modal
-        isOpen={Boolean(editingDeckId && editingDeck)}
-        onClose={() => setEditingDeckId(null)}
-        title="Chỉnh sửa bộ thẻ"
-      >
-        {editingDeck ? (
+      {tab !== "srs" && currentDecksState.status === "loading" ? (
+        <div className="mt-8">
+          <CardSkeleton count={6} />
+        </div>
+      ) : null}
+
+      {tab !== "srs" && currentDecksState.status === "error" ? (
+        <div className="mt-8">
+          <ErrorState
+            message={currentDecksState.error}
+            onRetry={currentDecksState.reload}
+          />
+        </div>
+      ) : null}
+
+      {tab !== "srs" && currentDecksState.status === "success" && currentDecksState.data.content.length === 0 ? (
+        <div className="mt-8">
+          <EmptyState
+            title={tab === "my" ? "No decks yet" : "Nothing shared yet"}
+            body={
+              tab === "my"
+                ? "Create a deck to start adding words, or explore public decks."
+                : "When someone shares a deck with your email, it will appear here."
+            }
+          />
+        </div>
+      ) : null}
+
+      {tab !== "srs" && currentDecksState.status === "success" && currentDecksState.data.content.length > 0 ? (
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {currentDecksState.data.content.map((deck) => (
+            <DeckCard
+              key={deck.id}
+              deck={deck}
+              onEdit={() => setEditingDeckId(deck.id)}
+              onDelete={() => onDelete(deck)}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {editingDeck ? (
+        <Modal
+          open
+          onClose={() => setEditingDeckId(null)}
+          title={`Edit "${editingDeck.title}"`}
+        >
           <DeckForm
-            deck={editingDeck}
-            tags={tags.data ?? []}
-            submitLabel="Save deck"
+            initial={editingDeck}
             onCancel={() => setEditingDeckId(null)}
-            onSubmit={async (request, coverImage) => {
-              await updateDeck(editingDeck.id, request, coverImage);
+            onSubmit={async (payload) => {
+              await updateDeck(editingDeck.id, payload);
               setEditingDeckId(null);
               myDecks.reload();
             }}
           />
-        ) : null}
-      </Modal>
-
-      <div className="mt-8">
-        {currentDecksState.status === "loading" ? <CardSkeleton count={6} /> : null}
-
-        {currentDecksState.status === "error" ? (
-          <ErrorState message={currentDecksState.error} onRetry={currentDecksState.reload} />
-        ) : null}
-
-        {currentDecksState.status === "success" && currentDecksState.data.content.length === 0 ? (
-          <EmptyState
-            title={tab === "my" ? "No decks yet" : "Chưa có bộ thẻ nào được chia sẻ"}
-            body={
-              tab === "my"
-                ? "A deck is a set of cards you study together, for example the words you keep meeting at work. Create one and add your first card."
-                : "Khi ai đó chia sẻ bộ thẻ với bạn qua email, các bộ thẻ đó sẽ hiển thị ở đây."
-            }
-            action={
-              tab === "my" && !creating ? (
-                <Button onClick={() => setCreating(true)}>Create a deck</Button>
-              ) : null
-            }
-          />
-        ) : null}
-
-        {currentDecksState.status === "success" && currentDecksState.data.content.length > 0 ? (
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {currentDecksState.data.content.map((deck) => (
-              <li key={deck.id}>
-                <DeckCard
-                  deck={deck}
-                  actions={
-                    tab === "my" ? (
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setEditingDeckId(deck.id)}
-                          disabled={busyId === deck.id}
-                          aria-label={`Edit ${deck.title}`}
-                          className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-50"
-                          title="Chỉnh sửa bộ thẻ"
-                        >
-                          <PencilSimple aria-hidden size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onDelete(deck)}
-                          disabled={busyId === deck.id}
-                          aria-label={`Delete ${deck.title}`}
-                          className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-danger disabled:opacity-50"
-                          title="Xóa bộ thẻ"
-                        >
-                          <Trash aria-hidden size={16} />
-                        </button>
-                      </div>
-                    ) : undefined
-                  }
-                />
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
+        </Modal>
+      ) : null}
     </Container>
   );
 }
