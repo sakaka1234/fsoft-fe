@@ -203,82 +203,11 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
         </div>
       ) : null}
 
-      {deck.status === "success" && !editingDeck ? (
-        <div className="relative mb-8 md:mb-10 overflow-hidden rounded-3xl border border-line bg-surface p-5 sm:p-6 md:p-7 shadow-sm">
-          {/* Top-right action icons for Owner */}
-          {isOwner ? (
-            <div className="absolute top-4 right-4 flex items-center gap-1 z-10">
-              <button
-                type="button"
-                onClick={() => setEditingDeck(true)}
-                className="rounded-full p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-                title="Chỉnh sửa thông tin bộ thẻ"
-                aria-label="Chỉnh sửa thông tin bộ thẻ"
-              >
-                <PencilSimple size={18} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsDeleteModalOpen(true)}
-                className="rounded-full p-2 text-muted transition-colors hover:bg-danger/10 hover:text-danger"
-                title="Xóa bộ thẻ này"
-                aria-label="Xóa bộ thẻ này"
-              >
-                <Trash size={18} />
-              </button>
-            </div>
-          ) : null}
 
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 pr-16 sm:pr-20">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-              {deck.data.coverImageUrl ? (
-                <DeckDetailCover
-                  src={deck.data.coverImageUrl}
-                  alt={deck.data.title}
-                />
-              ) : null}
-
-              <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-line bg-surface-2 px-2.5 py-0.5 text-xs font-mono font-semibold uppercase text-muted">
-                    {deck.data.sourceLanguage} to {deck.data.targetLanguage}
-                  </span>
-                  <span className="rounded-full border border-line bg-surface-2 px-2.5 py-0.5 text-xs font-medium text-muted">
-                    {VISIBILITY_LABEL[deck.data.visibility] ?? deck.data.visibility}
-                  </span>
-                </div>
-
-                <h1 className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl md:text-4xl">
-                  {deck.data.title}
-                </h1>
-
-                {deck.data.description ? (
-                  <p className="max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
-                    {deck.data.description}
-                  </p>
-                ) : null}
-
-                {deck.data.tags.length > 0 ? (
-                  <div className="mt-1 flex flex-wrap gap-1.5">
-                    {deck.data.tags.map((tag) => (
-                      <span
-                        key={tag.id}
-                        className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent-text"
-                      >
-                        {tag.name}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       <section className="mt-2 md:mt-4" aria-labelledby="cards-title">
         <div className="relative flex flex-wrap items-center justify-between gap-4">
-          {/* Tiêu đề & All Decks navigation - trái */}
+          {/* Tiêu đề & Navigation - trái */}
           <div className="flex items-center gap-3">
             <Link
               href="/decks"
@@ -289,14 +218,18 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
               <span className="hidden sm:inline">Decks</span>
             </Link>
 
-            <h2 id="cards-title" className="text-xl font-semibold tracking-tight">
-              Cards
-              {cards.status === "success" ? (
-                <span className="ml-2 font-mono text-base text-muted">
-                  {cards.data.totalElements}
-                </span>
-              ) : null}
-            </h2>
+            {deck.status === "success" ? (
+              <div className="flex items-center gap-2">
+                <h2 id="cards-title" className="text-xl font-bold tracking-tight text-ink">
+                  {deck.data.title}
+                </h2>
+                {cards.status === "success" ? (
+                  <span className="font-mono text-sm text-muted">
+                    ({cards.data.totalElements})
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           {/* View Mode Switcher — căn giữa */}

@@ -71,67 +71,55 @@ export function DecksView({ defaultTab }: { defaultTab?: "my" | "shared" | "srs"
 
   return (
     <Container size="wide">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-            {tab === "my" ? "Your decks" : tab === "shared" ? "Shared with me" : "Ôn tập từ vựng"}
-          </h1>
-          <p className="mt-2 text-base text-muted">
-            {tab === "my"
-              ? "Each deck holds the words you are working on right now."
-              : tab === "shared"
-              ? "Decks that other members have granted you access to."
-              : "Ôn tập các bài học đến hạn theo thuật toán lặp lại ngắt quãng FSRS."}
-          </p>
+      {/* Tab Switcher & Action Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line">
+        <div className="flex overflow-x-auto">
+          <button
+            type="button"
+            onClick={() => setTab("my")}
+            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap ${
+              tab === "my"
+                ? "border-accent-text text-accent-text font-bold"
+                : "border-transparent text-muted hover:text-ink"
+            }`}
+          >
+            <User aria-hidden size={18} />
+            Bộ thẻ của tôi ({myDecks.status === "success" ? myDecks.data.totalElements : 0})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setTab("shared")}
+            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap ${
+              tab === "shared"
+                ? "border-accent-text text-accent-text font-bold"
+                : "border-transparent text-muted hover:text-ink"
+            }`}
+          >
+            <UsersThree aria-hidden size={18} />
+            Được chia sẻ với tôi ({sharedDecks.status === "success" ? sharedDecks.data.totalElements : 0})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setTab("srs")}
+            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap ${
+              tab === "srs"
+                ? "border-accent-text text-accent-text font-bold"
+                : "border-transparent text-muted hover:text-ink"
+            }`}
+          >
+            <Brain aria-hidden size={18} weight="fill" className="text-accent-text" />
+            Ôn tập từ vựng (FSRS)
+          </button>
         </div>
+
         {tab === "my" && !creating ? (
-          <Button onClick={() => setCreating(true)}>
+          <Button onClick={() => setCreating(true)} className="mb-1">
             <Plus aria-hidden size={16} weight="bold" />
             New deck
           </Button>
         ) : null}
-      </div>
-
-      {/* Tab Switcher */}
-      <div className="mt-6 flex border-b border-line overflow-x-auto">
-        <button
-          type="button"
-          onClick={() => setTab("my")}
-          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap ${
-            tab === "my"
-              ? "border-accent-text text-accent-text"
-              : "border-transparent text-muted hover:text-ink"
-          }`}
-        >
-          <User aria-hidden size={18} />
-          Bộ thẻ của tôi ({myDecks.status === "success" ? myDecks.data.totalElements : 0})
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setTab("shared")}
-          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap ${
-            tab === "shared"
-              ? "border-accent-text text-accent-text"
-              : "border-transparent text-muted hover:text-ink"
-          }`}
-        >
-          <UsersThree aria-hidden size={18} />
-          Được chia sẻ với tôi ({sharedDecks.status === "success" ? sharedDecks.data.totalElements : 0})
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setTab("srs")}
-          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap ${
-            tab === "srs"
-              ? "border-accent-text text-accent-text font-bold"
-              : "border-transparent text-muted hover:text-ink"
-          }`}
-        >
-          <Brain aria-hidden size={18} weight="fill" className="text-accent-text" />
-          Ôn tập từ vựng (FSRS)
-        </button>
       </div>
 
       {tab === "srs" ? (

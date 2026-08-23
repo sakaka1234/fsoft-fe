@@ -172,7 +172,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Container>
       </header>
 
-      <main className="flex-1 py-10 md:py-14">{children}</main>
+      <main className="flex-1 pt-4 pb-10 md:pt-6 md:pb-14">{children}</main>
 
       <FsrsNotificationToast
         count={dueCount}
