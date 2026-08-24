@@ -208,7 +208,7 @@ export function DashboardView() {
                           }}
                           disabled={busyId === deck.id}
                           aria-label={`Edit ${deck.title}`}
-                          className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-50"
+                          className="flex size-10 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-50"
                           title="Chỉnh sửa bộ thẻ"
                         >
                           <PencilSimple aria-hidden size={16} />
@@ -222,7 +222,7 @@ export function DashboardView() {
                           }}
                           disabled={busyId === deck.id}
                           aria-label={`Delete ${deck.title}`}
-                          className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-danger disabled:opacity-50"
+                          className="flex size-10 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-danger disabled:opacity-50"
                           title="Xóa bộ thẻ"
                         >
                           <Trash aria-hidden size={16} />

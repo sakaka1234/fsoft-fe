@@ -257,7 +257,7 @@ export function CardForm({
             />
             {audioPreviewUrl ? (
               <div className="flex items-center gap-3 rounded-xl border border-accent bg-accent-soft/30 p-2.5">
-                <audio controls src={audioPreviewUrl} className="h-8 w-full max-w-[220px]" />
+                <audio controls src={audioPreviewUrl} className="w-full max-w-[220px]" />
                 <button
                   type="button"
                   onClick={() => setAudioFile(null)}
@@ -269,7 +269,7 @@ export function CardForm({
               </div>
             ) : card?.audioUrl ? (
               <div className="flex items-center gap-3 rounded-xl border border-line bg-surface-2 p-2.5">
-                <audio controls src={card.audioUrl} className="h-8 w-full max-w-[220px]" />
+                <audio controls src={card.audioUrl} className="w-full max-w-[220px]" />
                 <span className="text-xs text-muted">File âm thanh hiện tại</span>
               </div>
             ) : null}

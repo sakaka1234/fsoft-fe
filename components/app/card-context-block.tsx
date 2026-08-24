@@ -65,7 +65,7 @@ export function CardContextBlock({
           onClick={playContextAudio}
           className={cn(
             "mt-0.5 flex shrink-0 items-center justify-center rounded-full text-accent transition-transform hover:scale-110 active:scale-95",
-            compact ? "h-6 w-6" : "h-8 w-8",
+            compact ? "h-10 w-10 -my-2" : "h-10 w-10 -my-1",
           )}
           title="Nghe câu ngữ cảnh (Audio)"
           aria-label="Nghe câu ngữ cảnh"

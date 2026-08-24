@@ -78,11 +78,11 @@ export function DecksView() {
       </div>
 
       {/* Tab Switcher */}
-      <div className="mt-6 flex border-b border-line">
+      <div className="mt-6 flex overflow-x-auto border-b border-line">
         <button
           type="button"
           onClick={() => setTab("my")}
-          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+          className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
             tab === "my"
               ? "border-accent-text text-accent-text"
               : "border-transparent text-muted hover:text-ink"
@@ -95,7 +95,7 @@ export function DecksView() {
         <button
           type="button"
           onClick={() => setTab("shared")}
-          className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+          className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
             tab === "shared"
               ? "border-accent-text text-accent-text"
               : "border-transparent text-muted hover:text-ink"
@@ -179,7 +179,7 @@ export function DecksView() {
                           onClick={() => setEditingDeckId(deck.id)}
                           disabled={busyId === deck.id}
                           aria-label={`Edit ${deck.title}`}
-                          className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-50"
+                          className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-50"
                           title="Chỉnh sửa bộ thẻ"
                         >
                           <PencilSimple aria-hidden size={16} />
@@ -189,7 +189,7 @@ export function DecksView() {
                           onClick={() => onDelete(deck)}
                           disabled={busyId === deck.id}
                           aria-label={`Delete ${deck.title}`}
-                          className="shrink-0 rounded-full p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-danger disabled:opacity-50"
+                          className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-danger disabled:opacity-50"
                           title="Xóa bộ thẻ"
                         >
                           <Trash aria-hidden size={16} />

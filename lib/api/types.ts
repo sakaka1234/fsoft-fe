@@ -269,3 +269,152 @@ export type UserActivityResponse = {
   cardsReviewedCount: number;
   quizzesCompletedCount: number;
 };
+
+/* ---------------------------------------------------------------------------
+   AI and SRS.
+
+   Everything below the AI line uses snake_case, unlike the rest of this file.
+   That is not a transcription slip: verified live against GET /api/ai/search,
+   which answers {"results":[{"card_id":..,"deck_id":..,"match_type":".."}],
+   "latency_ms":5,"candidate_count":1}. Renaming these to camelCase for
+   consistency will break every AI call silently.
+
+   The AI routes also carry an /api prefix that no other route in this API has
+   (/decks, /cards, /srs sit at the root). Verified: dropping it answers 500
+   "No static resource ai/search".
+   ------------------------------------------------------------------------- */
+
+export type ChatRole = "user" | "assistant" | "system";
+
+export type ChatMessage = {
+  role: ChatRole;
+  content: string;
+};
+
+export type ChatOptions = {
+  top_k?: number;
+  max_output_tokens?: number;
+};
+
+export type AiChatRequest = {
+  query: string;
+  /** Restricts retrieval to one deck. */
+  scope_deck_id?: number;
+  allowed_deck_ids?: number[];
+  /** The API keeps no conversation state, so the client resends the thread. */
+  history?: ChatMessage[];
+  options?: ChatOptions;
+};
+
+export type AiCitation = {
+  card_id: number;
+  word: string;
+  deck_id: number;
+  score: number;
+  rank: number;
+  used_in_answer: boolean;
+};
+
+export type AiUsage = {
+  provider: string;
+  model: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  latency_ms: number;
+};
+
+export type AiChatResponse = {
+  answer: string;
+  intent: string;
+  answer_source: string;
+  /** What the retriever actually searched for, useful when an answer is off. */
+  rewritten_query: string;
+  citations: AiCitation[];
+  usage: AiUsage;
+};
+
+export type AiMatchingPair = {
+  card_id: number;
+  word: string;
+  correct_option_index: number;
+};
+
+export type AiQuizQuestion = {
+  index: number;
+  /** No enum in the OpenAPI document, so callers must branch defensively. */
+  type: string;
+  card_id: number;
+  prompt: string;
+  options: string[];
+  correct_index: number;
+  explanation: string;
+  generated_by: string;
+  audio_url: string | null;
+  matching: AiMatchingPair[] | null;
+};
+
+export type AiQuizStats = {
+  deterministic_count: number;
+  llm_count: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  latency_ms: number;
+};
+
+export type AiQuizRequest = {
+  deck_id?: number;
+  allowed_deck_ids?: number[];
+  question_count?: number;
+  types?: string[];
+  card_ids?: number[];
+  use_ai_context?: boolean;
+};
+
+export type AiQuizResponse = {
+  questions: AiQuizQuestion[];
+  stats: AiQuizStats;
+};
+
+export type AiSearchResultItem = {
+  card_id: number;
+  word: string;
+  meaning: string;
+  deck_id: number;
+  deck_title: string;
+  score: number;
+  /** Seen live: "EXACT". Others undocumented. */
+  match_type: string;
+};
+
+export type AiSearchResponse = {
+  results: AiSearchResultItem[];
+  latency_ms: number;
+  candidate_count: number;
+};
+
+/** Back to camelCase from here: the SRS controller follows the house style. */
+export type SrsStatus = "NEW" | "LEARNING" | "REVIEW" | "LAPSED";
+
+/**
+ * 1 Again, 2 Hard, 3 Good, 4 Easy, the SM-2 ordering. Established by rating
+ * four identical NEW cards one level each and reading back the result:
+ * 1 reset repetitions to 0, dropped easiness 2.5 to 1.96 and scheduled the
+ * card for the same day; 2, 3 and 4 all advanced to tomorrow with easiness
+ * 2.18, 2.36 and 2.50. Out of range answers 400.
+ */
+export type SrsRating = 1 | 2 | 3 | 4;
+
+export type SrsReviewRequest = {
+  cardId: number;
+  rating: SrsRating;
+};
+
+export type SrsCardResponse = {
+  card: CardResponse;
+  status: SrsStatus;
+  repetitions: number;
+  interval: number;
+  easinessFactor: number;
+  /** Null while the card is still NEW. */
+  nextReviewDate: string | null;
+};

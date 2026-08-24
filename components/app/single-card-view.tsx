@@ -117,7 +117,7 @@ export function SingleCardView({
         title="Nhấn để lật thẻ"
       >
         <div
-          className="relative min-h-[440px] md:min-h-[500px] w-full transition-transform duration-700 ease-in-out"
+          className="relative min-h-[620px] md:min-h-[500px] w-full transition-transform duration-700 ease-in-out"
           style={{
             transformStyle: "preserve-3d",
             transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
@@ -132,7 +132,7 @@ export function SingleCardView({
               {/* Left Column: English Word & Audio */}
               <div className="flex flex-col items-center justify-center gap-6 text-center md:items-start md:text-left">
                 <div className="flex flex-wrap items-baseline justify-center gap-3 md:justify-start">
-                  <h2 className="text-5xl font-extrabold tracking-tight text-ink md:text-6xl lg:text-7xl">
+                  <h2 className="text-4xl font-extrabold tracking-tight break-words text-ink md:text-5xl lg:text-6xl">
                     {card.word}
                   </h2>
                   {card.partOfSpeech ? (
@@ -218,7 +218,7 @@ export function SingleCardView({
                           e.stopPropagation();
                           onEditCard(card);
                         }}
-                        className="mt-3 text-sm font-semibold text-accent hover:underline"
+                        className="mt-3 inline-flex min-h-10 items-center rounded-lg px-3 text-sm font-semibold text-accent hover:underline"
                       >
                         + Thêm ảnh
                       </button>
@@ -231,7 +231,7 @@ export function SingleCardView({
 
           {/* BACK SIDE (Mặt sau - Nghĩa tiếng Việt & Ngữ cảnh) */}
           <div
-            className="absolute inset-0 flex h-full w-full flex-col items-center justify-center rounded-3xl border border-line bg-surface p-8 md:p-12 text-center shadow-md overflow-y-auto"
+            className="absolute inset-0 flex h-full w-full flex-col items-center justify-center-safe rounded-3xl border border-line bg-surface p-8 md:p-12 text-center shadow-md overflow-y-auto"
             style={{
               backfaceVisibility: "hidden",
               transform: "rotateY(180deg)",

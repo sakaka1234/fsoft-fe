@@ -84,7 +84,7 @@ export function TagsView() {
       </p>
 
       <form onSubmit={onCreate} noValidate className="mt-8 flex items-end gap-3">
-        <Field id="tag-name" label="New tag" className="flex-1">
+        <Field id="tag-name" label="New tag" className="min-w-0 flex-1">
           <TextInput
             id="tag-name"
             value={newName}
@@ -139,7 +139,7 @@ export function TagsView() {
                       onClick={() => onRename(tag)}
                       disabled={busy}
                       aria-label="Save name"
-                      className="rounded-full p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-40"
+                      className="inline-flex size-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-40"
                     >
                       <Check aria-hidden size={16} weight="bold" />
                     </button>
@@ -148,7 +148,7 @@ export function TagsView() {
                       onClick={() => setEditingId(null)}
                       disabled={busy}
                       aria-label="Cancel rename"
-                      className="rounded-full p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-40"
+                      className="inline-flex size-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-40"
                     >
                       <X aria-hidden size={16} />
                     </button>
@@ -164,7 +164,7 @@ export function TagsView() {
                       }}
                       disabled={busy}
                       aria-label={`Rename ${tag.name}`}
-                      className="rounded-full p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-40"
+                      className="inline-flex size-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-40"
                     >
                       <PencilSimple aria-hidden size={15} />
                     </button>
@@ -173,7 +173,7 @@ export function TagsView() {
                       onClick={() => onDelete(tag)}
                       disabled={busy}
                       aria-label={`Delete ${tag.name}`}
-                      className="rounded-full p-2 text-muted transition-colors hover:bg-surface-2 hover:text-danger disabled:opacity-40"
+                      className="inline-flex size-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-danger disabled:opacity-40"
                     >
                       <Trash aria-hidden size={15} />
                     </button>

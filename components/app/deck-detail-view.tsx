@@ -14,6 +14,9 @@ import { Cards as CardsIcon } from "@phosphor-icons/react/Cards";
 import { List } from "@phosphor-icons/react/List";
 import { GameController } from "@phosphor-icons/react/GameController";
 import { Users } from "@phosphor-icons/react/Users";
+import { Brain } from "@phosphor-icons/react/Brain";
+import { Sparkle } from "@phosphor-icons/react/Sparkle";
+import { ChatCircleDots } from "@phosphor-icons/react/ChatCircleDots";
 import { UserPlus } from "@phosphor-icons/react/UserPlus";
 
 
@@ -27,6 +30,14 @@ import { DeckForm } from "@/components/app/deck-form";
 import { SingleCardView } from "@/components/app/single-card-view";
 import { CardContextBlock } from "@/components/app/card-context-block";
 import { DeckSharePanel } from "@/components/app/deck-share-panel";
+import { DeckAiChat } from "@/components/app/deck-ai-chat";
+import { AiQuizView } from "@/components/app/ai-quiz-view";
+import { SrsStudyView } from "@/components/app/srs-study-view";
+import {
+  DeckModeSwitcher,
+  type DeckMode,
+  type DeckViewMode,
+} from "@/components/app/deck-mode-switcher";
 import { VISIBILITY_LABEL } from "@/components/app/deck-card";
 import { EmptyState, ErrorState, RowSkeleton, SingleCardSkeleton } from "@/components/app/states";
 import {
@@ -46,7 +57,6 @@ import { listTags } from "@/lib/api/tags";
 import { ApiError } from "@/lib/api/client";
 import type { CardResponse, DeckVisibility } from "@/lib/api/types";
 import { useAsync } from "@/lib/use-async";
-import { cn } from "@/lib/cn";
 
 function DeckDetailCover({ src, alt }: { src: string; alt: string }) {
   const [hasError, setHasError] = useState(false);
@@ -73,6 +83,16 @@ function DeckDetailCover({ src, alt }: { src: string; alt: string }) {
   );
 }
 
+/** One row per mode. The switcher renders from this and nothing else. */
+const DECK_MODES: DeckMode[] = [
+  { key: "list", label: "Quản lý card", Icon: List },
+  { key: "single", label: "Xem card", Icon: CardsIcon },
+  { key: "srs", label: "Ôn tập", Icon: Brain },
+  { key: "quiz", label: "Quiz AI", Icon: Sparkle },
+  { key: "ask", label: "Hỏi AI", Icon: ChatCircleDots },
+  { key: "game", label: "Chơi game", Icon: GameController, accent: true },
+];
+
 export function DeckDetailView({ deckId }: { deckId: number }) {
   const router = useRouter();
   const session = useSession();
@@ -81,7 +101,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
   const [editingCardId, setEditingCardId] = useState<number | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"single" | "list" | "game">("single");
+  const [viewMode, setViewMode] = useState<DeckViewMode>("single");
   const [gameSubMode, setGameSubMode] = useState<null | "solo">(null);
   const [singleCardIndex, setSingleCardIndex] = useState(0);
   const [rowError, setRowError] = useState<string | null>(null);
@@ -208,7 +228,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
               <button
                 type="button"
                 onClick={() => setEditingDeck(true)}
-                className="rounded-full p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+                className="inline-flex size-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-ink"
                 title="Chỉnh sửa thông tin bộ thẻ"
                 aria-label="Chỉnh sửa thông tin bộ thẻ"
               >
@@ -217,7 +237,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
               <button
                 type="button"
                 onClick={() => setIsDeleteModalOpen(true)}
-                className="rounded-full p-2 text-muted transition-colors hover:bg-danger/10 hover:text-danger"
+                className="inline-flex size-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-danger/10 hover:text-danger"
                 title="Xóa bộ thẻ này"
                 aria-label="Xóa bộ thẻ này"
               >
@@ -226,7 +246,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
             </div>
           ) : null}
 
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 pr-16 sm:pr-20">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 pr-24 sm:pr-24">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
               {deck.data.coverImageUrl ? (
                 <DeckDetailCover
@@ -279,7 +299,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
           <div className="flex items-center gap-3">
             <Link
               href="/decks"
-              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+              className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink sm:min-h-0"
               title="Về danh sách deck"
             >
               <ArrowLeft aria-hidden size={14} />
@@ -296,50 +316,6 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
             </h2>
           </div>
 
-          {/* View Mode Switcher — căn giữa */}
-          {cards.status === "success" && cards.data.content.length > 0 ? (
-            <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex h-10 items-center gap-1 rounded-full border border-line bg-surface-2 p-1 text-sm font-medium shadow-sm">
-              <button
-                type="button"
-                onClick={() => { setAddingCard(false); setViewMode("list"); setGameSubMode(null); }}
-                className={cn(
-                  "flex h-8 items-center gap-1.5 rounded-full px-3.5 transition-colors",
-                  !addingCard && viewMode === "list"
-                    ? "bg-surface text-ink shadow-sm"
-                    : "text-muted hover:text-ink",
-                )}
-              >
-                <List size={16} />
-                Quản lý card
-              </button>
-              <button
-                type="button"
-                onClick={() => { setAddingCard(false); setViewMode("single"); setGameSubMode(null); }}
-                className={cn(
-                  "flex h-8 items-center gap-1.5 rounded-full px-3.5 transition-colors",
-                  !addingCard && viewMode === "single"
-                    ? "bg-surface text-ink shadow-sm"
-                    : "text-muted hover:text-ink",
-                )}
-              >
-                <CardsIcon size={16} />
-                Xem card
-              </button>
-              <button
-                type="button"
-                onClick={() => { setAddingCard(false); setViewMode("game"); setGameSubMode(null); }}
-                className={cn(
-                  "flex h-8 items-center gap-1.5 rounded-full px-3.5 transition-colors",
-                  !addingCard && viewMode === "game"
-                    ? "bg-accent text-accent-fg shadow-sm"
-                    : "text-muted hover:text-ink",
-                )}
-              >
-                <GameController size={16} />
-                Chơi game
-              </button>
-            </div>
-          ) : null}
 
           {/* Action buttons (Share card luôn có; Add card nằm cạnh khi ở Quản lý card) — phải */}
           <div className="flex items-center gap-2">
@@ -361,50 +337,15 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
           </div>
         </div>
 
-        {/* View Mode Switcher cho màn hình nhỏ (Mobile) */}
-        {cards.status === "success" && cards.data.content.length > 0 ? (
-          <div className="mt-3 flex md:hidden items-center justify-center gap-1 rounded-full border border-line bg-surface-2 p-1 text-sm font-medium shadow-sm">
-            <button
-              type="button"
-              onClick={() => { setAddingCard(false); setViewMode("list"); setGameSubMode(null); }}
-              className={cn(
-                "flex-1 flex h-8 items-center justify-center gap-1.5 rounded-full px-3 transition-colors",
-                !addingCard && viewMode === "list"
-                  ? "bg-surface text-ink shadow-sm"
-                  : "text-muted hover:text-ink",
-              )}
-            >
-              <List size={16} />
-              Quản lý card
-            </button>
-            <button
-              type="button"
-              onClick={() => { setAddingCard(false); setViewMode("single"); setGameSubMode(null); }}
-              className={cn(
-                "flex-1 flex h-8 items-center justify-center gap-1.5 rounded-full px-3 transition-colors",
-                !addingCard && viewMode === "single"
-                  ? "bg-surface text-ink shadow-sm"
-                  : "text-muted hover:text-ink",
-              )}
-            >
-              <CardsIcon size={16} />
-              Xem card
-            </button>
-            <button
-              type="button"
-              onClick={() => { setAddingCard(false); setViewMode("game"); setGameSubMode(null); }}
-              className={cn(
-                "flex-1 flex h-8 items-center justify-center gap-1.5 rounded-full px-3 transition-colors",
-                !addingCard && viewMode === "game"
-                  ? "bg-accent text-accent-fg shadow-sm"
-                  : "text-muted hover:text-ink",
-              )}
-            >
-              <GameController size={16} />
-              Chơi game
-            </button>
-          </div>
-        ) : null}
+        <DeckModeSwitcher
+          modes={DECK_MODES}
+          active={addingCard ? "list" : viewMode}
+          onChange={(mode) => {
+            setAddingCard(false);
+            setViewMode(mode);
+            setGameSubMode(null);
+          }}
+        />
 
         {rowError ? (
           <div className="mt-4">
@@ -474,6 +415,26 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                   }}
                 />
               </div>
+            ) : viewMode === "srs" ? (
+              <SrsStudyView deckId={deckId} />
+            ) : viewMode === "quiz" ? (
+              <AiQuizView deckId={deckId} />
+            ) : viewMode === "ask" ? (
+              <DeckAiChat
+                deckId={deckId}
+                onOpenCard={(cardId) => {
+                  /* Citations name a card, the single view wants its position,
+                     so resolve one to the other against the loaded page and
+                     ignore a card that is not on it. */
+                  const position = cards.data?.content.findIndex(
+                    (card) => card.id === cardId,
+                  );
+                  if (position !== undefined && position >= 0) {
+                    setSingleCardIndex(position);
+                    setViewMode("single");
+                  }
+                }}
+              />
             ) : viewMode === "game" ? (
               <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-line bg-surface p-10 text-center shadow-sm max-w-md mx-auto my-6">
                 <div className="flex size-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500">
@@ -507,18 +468,18 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
               <ul className="flex flex-col gap-3">
                 {cards.data.content.map((card, index) => (
                   <li key={card.id}>
-                    <article className="flex items-start gap-4 rounded-card border border-line bg-surface p-5">
-                      <span className="mt-0.5 font-mono text-sm text-muted tabular-nums">
+                    <article className="flex flex-col gap-3 rounded-card border border-line bg-surface p-5 sm:flex-row sm:items-start sm:gap-4">
+                      <span className="font-mono text-sm text-muted tabular-nums sm:mt-0.5">
                         {card.position}
                       </span>
 
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                          <h3 className="text-lg font-semibold tracking-tight">
+                          <h3 className="text-lg font-semibold tracking-tight break-words">
                             {card.word}
                           </h3>
                           {card.phonetic ? (
-                            <span className="font-mono text-sm text-muted">
+                            <span className="font-mono text-sm break-all text-muted">
                               {card.phonetic}
                             </span>
                           ) : null}
@@ -546,7 +507,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                           onClick={() => move(index, -1)}
                           disabled={busy || index === 0}
                           aria-label={`Move ${card.word} up`}
-                          className="rounded-full p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-40"
+                          className="inline-flex size-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-40"
                         >
                           <ArrowUp aria-hidden size={15} />
                         </button>
@@ -557,7 +518,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                             busy || index === cards.data.content.length - 1
                           }
                           aria-label={`Move ${card.word} down`}
-                          className="rounded-full p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-40"
+                          className="inline-flex size-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-40"
                         >
                           <ArrowDown aria-hidden size={15} />
                         </button>
@@ -566,7 +527,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                           onClick={() => setEditingCardId(card.id)}
                           disabled={busy}
                           aria-label={`Edit ${card.word}`}
-                          className="rounded-full p-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-40"
+                          className="inline-flex size-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:opacity-40"
                         >
                           <PencilSimple aria-hidden size={15} />
                         </button>
@@ -575,7 +536,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                           onClick={() => onDeleteCard(card)}
                           disabled={busy}
                           aria-label={`Delete ${card.word}`}
-                          className="rounded-full p-2 text-muted transition-colors hover:bg-surface-2 hover:text-danger disabled:opacity-40"
+                          className="inline-flex size-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-danger disabled:opacity-40"
                         >
                           <Trash aria-hidden size={15} />
                         </button>

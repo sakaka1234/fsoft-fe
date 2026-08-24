@@ -1,10 +1,13 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Community Response Platform API",
-    "description": "Tài liệu hướng dẫn tích hợp các API cho hệ thống Community Response Platform",
-    "license": { "name": "Apache 2.0", "url": "http://springdoc.org" },
-    "version": "1.0"
+    "title": "Fsoft Project API Documentation",
+    "description": "Tài liệu mô tả chi tiết các API của hệ thống Fsoft Project.",
+    "license": {
+      "name": "Apache 2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
+    },
+    "version": "1.0.0"
   },
   "servers": [
     {
@@ -15,33 +18,62 @@
   "security": [{ "bearerAuth": [] }],
   "tags": [
     {
-      "name": "Profile Controller",
-      "description": "Quản lý thông tin cá nhân người dùng"
-    },
-    { "name": "Deck Controller", "description": "Quản lý bộ thẻ (Decks)" },
-    {
-      "name": "Tag Controller",
-      "description": "Quản lý nhãn phân loại chủ đề (Tags)"
+      "name": "Chat AI Controller",
+      "description": "Công cụ nội bộ để test thử khả năng của mô hình AI Chat"
     },
     {
-      "name": "Card Controller",
-      "description": "Quản lý Thẻ ghi nhớ (Flashcards)"
+      "name": "Auth Controller",
+      "description": "Quản lý đăng ký, đăng nhập, bảo mật và xác thực người dùng (JWT)"
+    },
+    {
+      "name": "Deck Controller",
+      "description": "Quản lý tạo, sửa, xóa, tìm kiếm và chia sẻ Bộ thẻ (Decks)"
     },
     {
       "name": "Progress Controller",
-      "description": "Quản lý tiến độ và thống kê học tập (Streak, Contribution)"
+      "description": "Quản lý tiến độ học tập, chuỗi ngày liên tiếp (Streak) và đóng góp (Heatmap) của người dùng"
+    },
+    {
+      "name": "OAuth2 Controller",
+      "description": "Quản lý việc đăng nhập và liên kết tài khoản thông qua nền tảng thứ ba (Google)"
+    },
+    {
+      "name": "Card Controller",
+      "description": "Quản lý dữ liệu Thẻ ghi nhớ (Flashcards) trong các Bộ thẻ (Decks)"
+    },
+    {
+      "name": "Tag Controller",
+      "description": "Quản lý nhãn (Tags) dùng để phân loại chủ đề của các bộ thẻ (ví dụ: TOEIC, JLPT, IT...)"
+    },
+    {
+      "name": "AI Integration Controller",
+      "description": "Các API ứng dụng Trí tuệ nhân tạo (AI) giúp tối ưu hóa việc học tập của người dùng"
+    },
+    {
+      "name": "Internal Card Controller",
+      "description": "Các API dùng riêng cho hệ thống phân tán nội bộ để đồng bộ và phân tích dữ liệu"
+    },
+    {
+      "name": "Profile Controller",
+      "description": "Quản lý thông tin hồ sơ cá nhân của người dùng"
+    },
+    {
+      "name": "Card SRS Controller",
+      "description": "Quản lý hệ thống học lặp lại ngắt quãng (Spaced Repetition System) cho thẻ học"
     }
   ],
   "paths": {
     "/tags/{id}": {
       "put": {
         "tags": ["Tag Controller"],
-        "summary": "Cập nhật Nhãn chủ đề theo ID",
+        "summary": "Chỉnh sửa thông tin Tag",
+        "description": "Đổi tên hoặc đổi định dạng hiển thị của một Tag đã tồn tại theo ID tương ứng.",
         "operationId": "updateTag",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "ID của Nhãn chủ đề cần sửa",
             "required": true,
             "schema": { "type": "integer", "format": "int64" }
           }
@@ -69,12 +101,14 @@
       },
       "delete": {
         "tags": ["Tag Controller"],
-        "summary": "Xóa Nhãn chủ đề theo ID",
+        "summary": "Xóa vĩnh viễn một Tag",
+        "description": "Gỡ bỏ Tag này khỏi hệ thống. Những bộ bài đang sử dụng Tag này sẽ bị xóa liên kết tương ứng với nó.",
         "operationId": "deleteTag",
         "parameters": [
           {
             "name": "id",
             "in": "path",
+            "description": "ID của Nhãn chủ đề cần xóa",
             "required": true,
             "schema": { "type": "integer", "format": "int64" }
           }
@@ -94,7 +128,8 @@
     "/profiles/me": {
       "get": {
         "tags": ["Profile Controller"],
-        "summary": "Lấy thông tin profile của người dùng đang đăng nhập",
+        "summary": "Truy xuất thông tin cá nhân hiện tại",
+        "description": "Lấy dữ liệu hồ sơ (Profile) của người dùng đang đăng nhập dựa vào Access Token hiện tại, bao gồm họ tên, giới thiệu bản thân (bio), mạng xã hội, ảnh đại diện.",
         "operationId": "getMyProfile",
         "responses": {
           "200": {
@@ -111,7 +146,8 @@
       },
       "put": {
         "tags": ["Profile Controller"],
-        "summary": "Cập nhật thông tin cá nhân (tên, giới thiệu, mạng xã hội)",
+        "summary": "Cập nhật thông tin cơ bản",
+        "description": "Cho phép người dùng tự sửa đổi các thông tin hiển thị cơ bản của bản thân như: Tên hiển thị (DisplayName), Phần tự giới thiệu (Bio) và Các liên kết mạng xã hội.",
         "operationId": "updateProfile",
         "requestBody": {
           "content": {
@@ -138,7 +174,8 @@
     "/profiles/me/avatar": {
       "put": {
         "tags": ["Profile Controller"],
-        "summary": "Cập nhật avatar người dùng",
+        "summary": "Cập nhật ảnh đại diện (Avatar)",
+        "description": "Tải lên một hình ảnh từ máy cá nhân để đổi Avatar. Hệ thống tự động lưu trữ và trả về đường dẫn URL của hình ảnh mới.",
         "operationId": "updateAvatar",
         "requestBody": {
           "content": {
@@ -146,7 +183,11 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "avatarFile": { "type": "string", "format": "binary" }
+                  "avatarFile": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "File hình ảnh (JPG, PNG) của người dùng"
+                  }
                 },
                 "required": ["avatarFile"]
               }
@@ -170,8 +211,8 @@
     "/decks/{id}": {
       "get": {
         "tags": ["Deck Controller"],
-        "summary": "Lấy bộ thẻ theo ID",
-        "description": "Lấy một bộ thẻ theo ID",
+        "summary": "Lấy chi tiết Bộ thẻ theo ID",
+        "description": "Lấy mọi thông tin như tên, mô tả, quyền riêng tư, số lượng thẻ, v.v.. của bộ bài.",
         "operationId": "getDeck",
         "parameters": [
           {
@@ -196,8 +237,8 @@
       },
       "put": {
         "tags": ["Deck Controller"],
-        "summary": "Cập nhật bộ thẻ theo ID",
-        "description": "Cập nhật một bộ thẻ theo ID",
+        "summary": "Cập nhật Bộ thẻ",
+        "description": "Cập nhật tên, mô tả, ảnh bìa cho một bộ bài đã tạo.",
         "operationId": "updateDeck",
         "parameters": [
           {
@@ -239,8 +280,8 @@
       },
       "delete": {
         "tags": ["Deck Controller"],
-        "summary": "Xóa bộ thẻ theo ID",
-        "description": "Xóa một bộ thẻ theo ID",
+        "summary": "Xóa Bộ thẻ",
+        "description": "Xóa vĩnh viễn một bộ bài và toàn bộ thẻ bài (flashcards) bên trong nó.",
         "operationId": "deleteDeck",
         "parameters": [
           {
@@ -265,6 +306,8 @@
     "/decks/{id}/visibility": {
       "put": {
         "tags": ["Deck Controller"],
+        "summary": "Đổi quyền riêng tư của bộ thẻ (Công khai / Riêng tư)",
+        "description": "Chuyển một bộ bài từ PRIVATE sang PUBLIC (để chia sẻ cộng đồng) hoặc ngược lại.",
         "operationId": "convertDeckVisibility",
         "parameters": [
           {
@@ -297,8 +340,8 @@
     "/decks/{id}/shares/{profileId}": {
       "put": {
         "tags": ["Deck Controller"],
-        "summary": "Cập nhật quyền truy cập",
-        "description": "Đổi quyền (VIEWER/EDITOR) cho một user cụ thể",
+        "summary": "Đổi quyền hạn của người được chia sẻ",
+        "description": "Thay đổi cấp độ (VIEWER / EDITOR) của một người cụ thể trong danh sách đã chia sẻ.",
         "operationId": "updateSharePermission",
         "parameters": [
           {
@@ -333,8 +376,8 @@
       },
       "delete": {
         "tags": ["Deck Controller"],
-        "summary": "Thu hồi quyền truy cập",
-        "description": "Xóa user khỏi danh sách chia sẻ",
+        "summary": "Xóa quyền truy cập chia sẻ của một người",
+        "description": "Tước quyền truy cập (thu hồi) của người đã được chia sẻ trước đó.",
         "operationId": "revokeShare",
         "parameters": [
           {
@@ -365,12 +408,14 @@
     "/cards/{cardId}": {
       "get": {
         "tags": ["Card Controller"],
-        "summary": "Lấy thông tin chi tiết Thẻ ghi nhớ theo ID",
+        "summary": "Xem thông tin chi tiết một Thẻ ghi nhớ",
+        "description": "Truy xuất thông tin chi tiết (nội dung chữ, link ảnh, link audio, v.v...) của một thẻ bài dựa vào cardId.",
         "operationId": "getCardById",
         "parameters": [
           {
             "name": "cardId",
             "in": "path",
+            "description": "ID của thẻ bài cần xem",
             "required": true,
             "schema": { "type": "integer", "format": "int64" }
           }
@@ -390,12 +435,14 @@
       },
       "put": {
         "tags": ["Card Controller"],
-        "summary": "Cập nhật Thẻ ghi nhớ",
+        "summary": "Cập nhật dữ liệu thẻ ghi nhớ",
+        "description": "Sửa đổi nội dung (text), thay thế ảnh mới hoặc âm thanh mới cho thẻ bài đã tồn tại.",
         "operationId": "updateCard",
         "parameters": [
           {
             "name": "cardId",
             "in": "path",
+            "description": "ID của thẻ bài cần cập nhật",
             "required": true,
             "schema": { "type": "integer", "format": "int64" }
           }
@@ -409,8 +456,16 @@
                   "request": {
                     "$ref": "#/components/schemas/CardUpdateRequest"
                   },
-                  "imageFile": { "type": "string", "format": "binary" },
-                  "audioFile": { "type": "string", "format": "binary" }
+                  "imageFile": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Ảnh thay thế (nếu có)"
+                  },
+                  "audioFile": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Âm thanh thay thế (nếu có)"
+                  }
                 },
                 "required": ["request"]
               }
@@ -432,12 +487,14 @@
       },
       "delete": {
         "tags": ["Card Controller"],
-        "summary": "Xóa Thẻ ghi nhớ theo ID",
+        "summary": "Xóa thẻ ghi nhớ",
+        "description": "Xóa hoàn toàn thẻ bài khỏi bộ thẻ và xóa cả các tài nguyên ảnh/âm thanh đi kèm.",
         "operationId": "deleteCard",
         "parameters": [
           {
             "name": "cardId",
             "in": "path",
+            "description": "ID của thẻ bài cần xóa",
             "required": true,
             "schema": { "type": "integer", "format": "int64" }
           }
@@ -457,12 +514,14 @@
     "/cards/deck/{deckId}/positions": {
       "put": {
         "tags": ["Card Controller"],
-        "summary": "Thay đổi thứ tự danh sách thẻ bài trong bộ",
+        "summary": "Cập nhật vị trí/thứ tự của các thẻ bài",
+        "description": "Thay đổi thứ tự hiển thị của nhiều thẻ bài cùng lúc trong một bộ thẻ (hữu ích khi người dùng kéo thả để sắp xếp lại bài).",
         "operationId": "updateCardPositions",
         "parameters": [
           {
             "name": "deckId",
             "in": "path",
+            "description": "ID của bộ thẻ",
             "required": true,
             "schema": { "type": "integer", "format": "int64" }
           }
@@ -472,6 +531,7 @@
             "application/json": {
               "schema": {
                 "type": "array",
+                "description": "Danh sách vị trí mới của từng thẻ",
                 "items": { "$ref": "#/components/schemas/CardPositionRequest" }
               }
             }
@@ -493,7 +553,8 @@
     "/tags": {
       "get": {
         "tags": ["Tag Controller"],
-        "summary": "Lấy danh sách tất cả Nhãn chủ đề",
+        "summary": "Lấy danh sách tất cả các Tag",
+        "description": "Truy xuất danh sách tất cả các Nhãn chủ đề hiện có để làm bộ lọc tìm kiếm hoặc để người dùng lựa chọn khi tạo bộ bài.",
         "operationId": "getAllTags",
         "responses": {
           "200": {
@@ -510,7 +571,8 @@
       },
       "post": {
         "tags": ["Tag Controller"],
-        "summary": "Tạo mới một Nhãn chủ đề",
+        "summary": "Tạo một Tag phân loại mới",
+        "description": "Thêm một Nhãn chủ đề mới (ví dụ: Từ vựng IELTS) vào hệ thống để có thể gán vào các Bộ thẻ (Decks).",
         "operationId": "createTag",
         "requestBody": {
           "content": {
@@ -534,14 +596,45 @@
         }
       }
     },
+    "/srs/review": {
+      "post": {
+        "tags": ["Card SRS Controller"],
+        "summary": "Chấm điểm (Đánh giá) thẻ bài đã học",
+        "description": "Sau khi người dùng học/ôn một thẻ, API này nhận vào độ khó mà người dùng đánh giá (AGAIN, HARD, GOOD, EASY). Hệ thống sẽ tự động tính toán thời điểm ôn tập tiếp theo (next_review) cho thẻ đó.",
+        "operationId": "reviewCard",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SrsReviewRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSrsCardResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/oauth2/callback": {
       "post": {
-        "tags": ["oauth-2-controller"],
+        "tags": ["OAuth2 Controller"],
+        "summary": "Callback Đăng nhập qua Google (Google Sign-In)",
+        "description": "Sau khi người dùng đồng ý cấp quyền trên cửa sổ đăng nhập Google, trình duyệt sẽ bị redirect về API này kèm theo tham số 'code'. Backend sẽ trao đổi code lấy thông tin Profile Google và sinh ra Access Token của hệ thống trả về cho Client.",
         "operationId": "authenticatedUserGooglePost",
         "parameters": [
           {
             "name": "code",
             "in": "query",
+            "description": "Mã xác thực (Authorization Code) trả về từ Google Server",
             "required": true,
             "schema": { "type": "string" }
           }
@@ -564,7 +657,7 @@
       "post": {
         "tags": ["Deck Controller"],
         "summary": "Tạo mới bộ thẻ",
-        "description": "Tạo mới một bộ thẻ",
+        "description": "Tạo một bộ thẻ trống mới, cho phép đính kèm ảnh bìa đại diện (coverImage).",
         "operationId": "createDeck",
         "requestBody": {
           "content": {
@@ -600,6 +693,8 @@
     "/decks/{id}/share": {
       "post": {
         "tags": ["Deck Controller"],
+        "summary": "Chia sẻ bộ thẻ cho người dùng cụ thể",
+        "description": "Cấp quyền cho một User khác (thông qua email) được phép VIEW hoặc EDIT bộ bài của mình.",
         "operationId": "shareDeck",
         "parameters": [
           {
@@ -632,8 +727,8 @@
     "/decks/{id}/share-link/toggle": {
       "post": {
         "tags": ["Deck Controller"],
-        "summary": "Bật/Tắt chia sẻ qua link",
-        "description": "Chỉ chủ sở hữu Deck mới có quyền",
+        "summary": "Bật / Tắt chia sẻ qua đường dẫn bí mật (Link)",
+        "description": "Bật chức năng Link Sharing. Bất kỳ ai có đường Link bí mật (shareToken) đều có thể xem bộ bài.",
         "operationId": "toggleShareLink",
         "parameters": [
           {
@@ -660,6 +755,8 @@
     "/decks/{id}/fork": {
       "post": {
         "tags": ["Deck Controller"],
+        "summary": "Sao chép (Fork) bộ thẻ công khai về tài khoản của mình",
+        "description": "Tạo một bản sao độc lập của một bộ thẻ PUBLIC (của người khác) vào bộ sưu tập cá nhân của người dùng.",
         "operationId": "forkDeck",
         "parameters": [
           {
@@ -686,12 +783,14 @@
     "/cards/deck/{deckId}": {
       "get": {
         "tags": ["Card Controller"],
-        "summary": "Lấy danh sách Thẻ ghi nhớ thuộc Bộ thẻ (Phân trang)",
+        "summary": "Lấy danh sách thẻ ghi nhớ theo Bộ thẻ",
+        "description": "Lấy toàn bộ các thẻ bài có trong một bộ bài cụ thể, hỗ trợ tính năng phân trang (page, size) và sắp xếp tự động.",
         "operationId": "getCardsByDeckId",
         "parameters": [
           {
             "name": "deckId",
             "in": "path",
+            "description": "ID của bộ thẻ",
             "required": true,
             "schema": { "type": "integer", "format": "int64" }
           },
@@ -717,12 +816,14 @@
       },
       "post": {
         "tags": ["Card Controller"],
-        "summary": "Tạo mới thẻ ghi nhớ trong bộ bài",
+        "summary": "Tạo mới thẻ ghi nhớ vào một bộ bài",
+        "description": "Thêm một Flashcard mới vào bộ bài được chỉ định (deckId). Hỗ trợ upload ảnh (imageFile) minh hoạ và âm thanh (audioFile) phát âm đi kèm. JSON data của thẻ được parse từ Request part 'request'.",
         "operationId": "createCard",
         "parameters": [
           {
             "name": "deckId",
             "in": "path",
+            "description": "ID của bộ thẻ muốn thêm thẻ bài",
             "required": true,
             "schema": { "type": "integer", "format": "int64" }
           }
@@ -736,8 +837,16 @@
                   "request": {
                     "$ref": "#/components/schemas/CardCreationRequest"
                   },
-                  "imageFile": { "type": "string", "format": "binary" },
-                  "audioFile": { "type": "string", "format": "binary" }
+                  "imageFile": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "File ảnh mặt trước/sau của thẻ (tuỳ chọn)"
+                  },
+                  "audioFile": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "File âm thanh phát âm của thẻ (tuỳ chọn)"
+                  }
                 },
                 "required": ["request"]
               }
@@ -760,7 +869,9 @@
     },
     "/auth/reset-password": {
       "post": {
-        "tags": ["auth-controller"],
+        "tags": ["Auth Controller"],
+        "summary": "Đặt lại mật khẩu mới",
+        "description": "Sử dụng mã xác thực (OTP/Token) nhận được từ email để tiến hành đổi mật khẩu mới.",
         "operationId": "resetPassword",
         "requestBody": {
           "content": {
@@ -784,7 +895,9 @@
     },
     "/auth/register": {
       "post": {
-        "tags": ["auth-controller"],
+        "tags": ["Auth Controller"],
+        "summary": "Đăng ký tài khoản mới",
+        "description": "Tạo một tài khoản người dùng mới vào hệ thống. Yêu cầu truyền lên email hợp lệ, mật khẩu (đủ độ mạnh) và họ tên người dùng. Trả về thông tin người dùng vừa được tạo nếu thành công.",
         "operationId": "createUser",
         "requestBody": {
           "content": {
@@ -810,7 +923,9 @@
     },
     "/auth/refresh-token": {
       "post": {
-        "tags": ["auth-controller"],
+        "tags": ["Auth Controller"],
+        "summary": "Làm mới Access Token",
+        "description": "Sử dụng Refresh Token còn hiệu lực để xin cấp lại một Access Token mới mà không cần người dùng phải đăng nhập lại.",
         "operationId": "refreshToken",
         "requestBody": {
           "content": {
@@ -836,7 +951,9 @@
     },
     "/auth/logout": {
       "post": {
-        "tags": ["auth-controller"],
+        "tags": ["Auth Controller"],
+        "summary": "Đăng xuất tài khoản",
+        "description": "Hủy bỏ hiệu lực của Access Token và Refresh Token hiện tại, đồng thời ghi nhận người dùng đã đăng xuất khỏi hệ thống.",
         "operationId": "logout",
         "requestBody": {
           "content": {
@@ -860,7 +977,9 @@
     },
     "/auth/login": {
       "post": {
-        "tags": ["auth-controller"],
+        "tags": ["Auth Controller"],
+        "summary": "Đăng nhập hệ thống",
+        "description": "Xác thực người dùng dựa trên email và mật khẩu. Nếu hợp lệ, hệ thống sẽ trả về Access Token (dùng để gọi các API khác) và Refresh Token (dùng để cấp lại Access Token khi hết hạn).",
         "operationId": "authenticated",
         "requestBody": {
           "content": {
@@ -886,7 +1005,9 @@
     },
     "/auth/introspect": {
       "post": {
-        "tags": ["auth-controller"],
+        "tags": ["Auth Controller"],
+        "summary": "Kiểm tra trạng thái Token (Introspect)",
+        "description": "Kiểm tra xem một Access Token hoặc Refresh Token có còn hiệu lực hay không, đã bị thu hồi (logout) hay hết hạn chưa.",
         "operationId": "logout_1",
         "requestBody": {
           "content": {
@@ -914,7 +1035,9 @@
     },
     "/auth/forgot-password": {
       "post": {
-        "tags": ["auth-controller"],
+        "tags": ["Auth Controller"],
+        "summary": "Yêu cầu khôi phục mật khẩu",
+        "description": "Gửi một liên kết hoặc mã khôi phục mật khẩu đến email của người dùng nếu họ quên mật khẩu đăng nhập.",
         "operationId": "forgotPassword",
         "requestBody": {
           "content": {
@@ -936,10 +1059,103 @@
         }
       }
     },
+    "/api/ai/quiz": {
+      "post": {
+        "tags": ["AI Integration Controller"],
+        "summary": "Tự động tạo bộ câu hỏi Quiz (Kiểm tra)",
+        "description": "AI sẽ phân tích nội dung của một hoặc nhiều thẻ bài (từ khóa, định nghĩa) sau đó tự động sinh ra các câu hỏi trắc nghiệm (bao gồm đáp án đúng, sai) để kiểm tra kiến thức của người dùng.",
+        "operationId": "generateQuiz",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AiQuizRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAiQuizResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/chat": {
+      "post": {
+        "tags": ["AI Integration Controller"],
+        "summary": "Chat với AI gia sư",
+        "description": "Mở một phiên trò chuyện với AI gia sư. Người dùng có thể hỏi về các khái niệm khó hiểu, yêu cầu giải thích ngữ pháp, hoặc nhờ AI lấy ví dụ thực tế liên quan đến thẻ bài đang học.",
+        "operationId": "chat",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AiChatRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAiChatResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/srs/study-queue": {
+      "get": {
+        "tags": ["Card SRS Controller"],
+        "summary": "Lấy danh sách thẻ cần học/ôn tập",
+        "description": "Truy xuất danh sách các thẻ bài đang nằm trong hàng đợi SRS (đã đến hạn ôn tập hoặc thẻ bài mới học). Có thể lọc theo một bộ thẻ cụ thể.",
+        "operationId": "getStudyQueue",
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "query",
+            "description": "Lọc thẻ theo bộ thẻ (bỏ trống nếu muốn lấy tất cả)",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Số lượng thẻ tối đa trả về",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListSrsCardResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/progress/streak": {
       "get": {
         "tags": ["Progress Controller"],
-        "summary": "Lấy thông tin chuỗi ngày học hiện tại của tôi",
+        "summary": "Kiểm tra chuỗi ngày học tập (Streak)",
+        "description": "API tính toán và trả về chuỗi số ngày liên tiếp người dùng có hoạt động ôn tập thẻ bài (Streak hiện tại, Streak dài nhất, đã học hôm nay chưa).",
         "operationId": "getMyStreak",
         "responses": {
           "200": {
@@ -958,18 +1174,21 @@
     "/progress/activities": {
       "get": {
         "tags": ["Progress Controller"],
-        "summary": "Lấy dữ liệu nhật ký đóng góp học tập (Heatmap)",
+        "summary": "Vẽ biểu đồ Nhật ký đóng góp (Heatmap)",
+        "description": "Lấy dữ liệu tần suất học tập theo từng ngày của người dùng (tương tự như GitHub Contribution Graph). Trả về danh sách ngày và số lượng thẻ đã ôn trong khoảng thời gian chỉ định.",
         "operationId": "getMyActivities",
         "parameters": [
           {
             "name": "startDate",
             "in": "query",
+            "description": "Ngày bắt đầu lấy dữ liệu (Mặc định: 1 năm trước)",
             "required": false,
             "schema": { "type": "string", "format": "date" }
           },
           {
             "name": "endDate",
             "in": "query",
+            "description": "Ngày kết thúc lấy dữ liệu (Mặc định: Ngày hôm nay)",
             "required": false,
             "schema": { "type": "string", "format": "date" }
           }
@@ -990,18 +1209,22 @@
     },
     "/internal/cards/ids": {
       "get": {
-        "tags": ["internal-card-controller"],
+        "tags": ["Internal Card Controller"],
+        "summary": "Lấy toàn bộ ID của các thẻ bài trong hệ thống",
+        "description": "Trả về một mảng chứa ID của tất cả các thẻ bài hiện có. Thường được các Worker chạy định kỳ gọi để kiểm tra và xóa các bản ghi bị lệch pha.",
         "operationId": "getCardIds",
         "parameters": [
           {
             "name": "page",
             "in": "query",
+            "description": "Trang dữ liệu (Page)",
             "required": false,
             "schema": { "type": "integer", "format": "int32", "default": 1 }
           },
           {
             "name": "size",
             "in": "query",
+            "description": "Số lượng ID trả về trong một lượt (Max 5000)",
             "required": false,
             "schema": { "type": "integer", "format": "int32", "default": 5000 }
           }
@@ -1023,24 +1246,29 @@
     },
     "/internal/cards/changed-since": {
       "get": {
-        "tags": ["internal-card-controller"],
+        "tags": ["Internal Card Controller"],
+        "summary": "Trích xuất danh sách thẻ bài đã có thay đổi",
+        "description": "Lấy ra các thẻ bài (Flashcard) được tạo, cập nhật hoặc bị sửa đổi kể từ thời điểm (since) được cung cấp. Phục vụ cho Data Pipeline đồng bộ dữ liệu vào Vector Database hoặc AI Indexing.",
         "operationId": "getChangedCards",
         "parameters": [
           {
             "name": "since",
             "in": "query",
+            "description": "Mốc thời gian (Chuẩn ISO-8601). Nếu bỏ trống sẽ lấy từ đầu (1970).",
             "required": false,
             "schema": { "type": "string", "format": "date-time" }
           },
           {
             "name": "page",
             "in": "query",
+            "description": "Trang cần lấy dữ liệu",
             "required": false,
             "schema": { "type": "integer", "format": "int32", "default": 1 }
           },
           {
             "name": "size",
             "in": "query",
+            "description": "Kích thước mỗi trang (Mặc định 200)",
             "required": false,
             "schema": { "type": "integer", "format": "int32", "default": 200 }
           }
@@ -1063,8 +1291,8 @@
     "/decks/{id}/shares": {
       "get": {
         "tags": ["Deck Controller"],
-        "summary": "Lấy danh sách người được share",
-        "description": "Chỉ chủ sở hữu Deck mới có quyền xem",
+        "summary": "Danh sách những người được chia sẻ bộ bài",
+        "description": "Chỉ chủ sở hữu bộ bài mới có quyền xem danh sách những tài khoản đã được cấp quyền truy cập.",
         "operationId": "getSharedUsers",
         "parameters": [
           {
@@ -1097,6 +1325,8 @@
     "/decks/status": {
       "get": {
         "tags": ["Deck Controller"],
+        "summary": "Lọc bộ thẻ theo trạng thái Visibility",
+        "description": "Ví dụ lấy toàn bộ các bộ thẻ PRIVATE của mình hoặc PUBLIC của mình.",
         "operationId": "getDecksByStatus",
         "parameters": [
           {
@@ -1139,8 +1369,8 @@
     "/decks/shared/{shareToken}": {
       "get": {
         "tags": ["Deck Controller"],
-        "summary": "Truy cập Deck qua Link Share",
-        "description": "Dành cho người lạ truy cập qua link bí mật",
+        "summary": "Xem bộ bài thông qua Link Share bí mật",
+        "description": "Dành cho khách hoặc bạn bè sử dụng mã shareToken (trong URL) để tải dữ liệu bộ bài.",
         "operationId": "getDeckByShareToken",
         "parameters": [
           {
@@ -1164,9 +1394,45 @@
         }
       }
     },
+    "/decks/shared-with-me": {
+      "get": {
+        "tags": ["Deck Controller"],
+        "summary": "Lấy các bộ thẻ mà người khác chia sẻ cho tôi",
+        "description": "Liệt kê danh sách các bộ bài mà tài khoản hiện tại được người khác cấp quyền truy cập.",
+        "operationId": "getSharedWithMeDecks",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 1 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 10 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseDeckResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/decks/public": {
       "get": {
         "tags": ["Deck Controller"],
+        "summary": "Lấy danh sách bộ thẻ công khai (Khám phá)",
+        "description": "Lấy danh sách các bộ bài được cấu hình PUBLIC để người dùng khác có thể khám phá. Hỗ trợ search theo keyword, tag, ngôn ngữ.",
         "operationId": "getPublicDecks",
         "parameters": [
           {
@@ -1223,8 +1489,8 @@
     "/decks/my": {
       "get": {
         "tags": ["Deck Controller"],
-        "summary": "Lấy danh sách bộ thẻ của tôi",
-        "description": "Lấy danh sách các bộ thẻ do tôi tạo",
+        "summary": "Lấy danh sách các bộ thẻ của tôi",
+        "description": "Truy xuất danh sách tất cả các bộ bài do tài khoản hiện tại sở hữu.",
         "operationId": "getMyDecks",
         "parameters": [
           {
@@ -1253,12 +1519,92 @@
           }
         }
       }
+    },
+    "/api/chat-ai/test": {
+      "get": {
+        "tags": ["Chat AI Controller"],
+        "summary": "Test gửi tin nhắn trực tiếp đến LLM",
+        "description": "Gửi một tin nhắn văn bản đơn giản đến hệ thống Chat AI (LLM) và nhận về phản hồi thuần túy dạng Text. Chỉ dùng cho mục đích debug và kiểm tra kết nối.",
+        "operationId": "test",
+        "parameters": [
+          {
+            "name": "message",
+            "in": "query",
+            "description": "Nội dung lời nhắn để test (Ví dụ: 'Xin chào, bạn là ai?')",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": { "*/*": { "schema": { "type": "string" } } }
+          }
+        }
+      }
+    },
+    "/api/ai/search": {
+      "get": {
+        "tags": ["AI Integration Controller"],
+        "summary": "Tìm kiếm thẻ bài thông minh bằng AI",
+        "description": "Sử dụng mô hình ngôn ngữ (LLM) để hiểu ngữ nghĩa của truy vấn người dùng, từ đó tìm và trả về các thẻ bài có liên quan nhất trong hệ thống, kể cả khi không khớp từ khóa hoàn toàn.",
+        "operationId": "search",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "description": "Câu hỏi hoặc từ khóa muốn tìm kiếm (ví dụ: 'Các thì trong tiếng anh')",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAiSearchResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/srs/deck/{deckId}/reset": {
+      "delete": {
+        "tags": ["Card SRS Controller"],
+        "summary": "Khôi phục lại tiến trình học của một Bộ thẻ",
+        "description": "Xóa toàn bộ lịch sử ôn tập (SRS log) của mọi thẻ bài trong bộ thẻ được chỉ định, đưa tất cả thẻ bài về trạng thái CHƯA HỌC (New).",
+        "operationId": "resetDeckProgress",
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "description": "ID của bộ thẻ cần reset",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
       "TagRequest": {
         "type": "object",
+        "description": "Dữ liệu khởi tạo Tag (Tên, màu sắc...)",
         "properties": { "name": { "type": "string" } },
         "required": ["name"]
       },
@@ -1279,6 +1625,7 @@
       },
       "ProfileUpdateRequest": {
         "type": "object",
+        "description": "JSON Object chứa các thông tin thay đổi",
         "properties": {
           "fullName": { "type": "string" },
           "about": { "type": "string" },
@@ -1379,6 +1726,7 @@
       },
       "CardUpdateRequest": {
         "type": "object",
+        "description": "Thông tin mới của thẻ bài",
         "properties": {
           "word": { "type": "string" },
           "phonetic": { "type": "string" },
@@ -1427,6 +1775,42 @@
         "properties": {
           "cardId": { "type": "integer", "format": "int64" },
           "newPosition": { "type": "integer", "format": "int32" }
+        }
+      },
+      "SrsReviewRequest": {
+        "type": "object",
+        "description": "Dữ liệu đánh giá (ID thẻ bài và mức độ đánh giá)",
+        "properties": {
+          "cardId": { "type": "integer", "format": "int64" },
+          "rating": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 4,
+            "minimum": 1
+          }
+        },
+        "required": ["cardId"]
+      },
+      "ApiResponseSrsCardResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/SrsCardResponse" }
+        }
+      },
+      "SrsCardResponse": {
+        "type": "object",
+        "properties": {
+          "card": { "$ref": "#/components/schemas/CardResponse" },
+          "status": {
+            "type": "string",
+            "enum": ["NEW", "LEARNING", "REVIEW", "LAPSED"]
+          },
+          "repetitions": { "type": "integer", "format": "int32" },
+          "interval": { "type": "integer", "format": "int32" },
+          "easinessFactor": { "type": "number", "format": "float" },
+          "nextReviewDate": { "type": "string", "format": "date" }
         }
       },
       "ApiResponseAuthenticatedResponse": {
@@ -1505,6 +1889,7 @@
       },
       "CardCreationRequest": {
         "type": "object",
+        "description": "Thông tin chữ của thẻ bài (định dạng JSON)",
         "properties": {
           "word": { "type": "string" },
           "phonetic": { "type": "string" },
@@ -1610,6 +1995,152 @@
         "type": "object",
         "properties": { "email": { "type": "string" } }
       },
+      "AiQuizRequest": {
+        "type": "object",
+        "description": "Yêu cầu tạo quiz (bao gồm số lượng câu hỏi, danh sách thẻ bài cần tạo quiz...)",
+        "properties": {
+          "deck_id": { "type": "integer", "format": "int64" },
+          "allowed_deck_ids": {
+            "type": "array",
+            "items": { "type": "integer", "format": "int64" }
+          },
+          "question_count": { "type": "integer", "format": "int32" },
+          "types": { "type": "array", "items": { "type": "string" } },
+          "card_ids": {
+            "type": "array",
+            "items": { "type": "integer", "format": "int64" }
+          },
+          "use_ai_context": { "type": "boolean" }
+        }
+      },
+      "AiMatchingPair": {
+        "type": "object",
+        "properties": {
+          "card_id": { "type": "integer", "format": "int64" },
+          "word": { "type": "string" },
+          "correct_option_index": { "type": "integer", "format": "int32" }
+        }
+      },
+      "AiQuizQuestion": {
+        "type": "object",
+        "properties": {
+          "index": { "type": "integer", "format": "int32" },
+          "type": { "type": "string" },
+          "card_id": { "type": "integer", "format": "int64" },
+          "prompt": { "type": "string" },
+          "options": { "type": "array", "items": { "type": "string" } },
+          "correct_index": { "type": "integer", "format": "int32" },
+          "explanation": { "type": "string" },
+          "generated_by": { "type": "string" },
+          "audio_url": { "type": "string" },
+          "matching": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AiMatchingPair" }
+          }
+        }
+      },
+      "AiQuizResponse": {
+        "type": "object",
+        "properties": {
+          "questions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AiQuizQuestion" }
+          },
+          "stats": { "$ref": "#/components/schemas/AiQuizStats" }
+        }
+      },
+      "AiQuizStats": {
+        "type": "object",
+        "properties": {
+          "deterministic_count": { "type": "integer", "format": "int32" },
+          "llm_count": { "type": "integer", "format": "int32" },
+          "prompt_tokens": { "type": "integer", "format": "int32" },
+          "completion_tokens": { "type": "integer", "format": "int32" },
+          "latency_ms": { "type": "integer", "format": "int32" }
+        }
+      },
+      "ApiResponseAiQuizResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/AiQuizResponse" }
+        }
+      },
+      "AiChatRequest": {
+        "type": "object",
+        "description": "Nội dung tin nhắn và ngữ cảnh (tuỳ chọn) gửi cho AI",
+        "properties": {
+          "query": { "type": "string" },
+          "allowed_deck_ids": {
+            "type": "array",
+            "items": { "type": "integer", "format": "int64" }
+          },
+          "scope_deck_id": { "type": "integer", "format": "int64" },
+          "history": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ChatMessage" }
+          },
+          "options": { "$ref": "#/components/schemas/ChatOptions" }
+        }
+      },
+      "ChatMessage": {
+        "type": "object",
+        "properties": {
+          "role": { "type": "string" },
+          "content": { "type": "string" }
+        }
+      },
+      "ChatOptions": {
+        "type": "object",
+        "properties": {
+          "top_k": { "type": "integer", "format": "int32" },
+          "max_output_tokens": { "type": "integer", "format": "int32" }
+        }
+      },
+      "AiChatResponse": {
+        "type": "object",
+        "properties": {
+          "answer": { "type": "string" },
+          "intent": { "type": "string" },
+          "answer_source": { "type": "string" },
+          "rewritten_query": { "type": "string" },
+          "citations": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AiCitation" }
+          },
+          "usage": { "$ref": "#/components/schemas/AiUsage" }
+        }
+      },
+      "AiCitation": {
+        "type": "object",
+        "properties": {
+          "card_id": { "type": "integer", "format": "int64" },
+          "word": { "type": "string" },
+          "deck_id": { "type": "integer", "format": "int64" },
+          "score": { "type": "number", "format": "double" },
+          "rank": { "type": "integer", "format": "int32" },
+          "used_in_answer": { "type": "boolean" }
+        }
+      },
+      "AiUsage": {
+        "type": "object",
+        "properties": {
+          "provider": { "type": "string" },
+          "model": { "type": "string" },
+          "prompt_tokens": { "type": "integer", "format": "int32" },
+          "completion_tokens": { "type": "integer", "format": "int32" },
+          "latency_ms": { "type": "integer", "format": "int32" }
+        }
+      },
+      "ApiResponseAiChatResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/AiChatResponse" }
+        }
+      },
       "ApiResponseListTagResponse": {
         "type": "object",
         "properties": {
@@ -1618,6 +2149,17 @@
           "data": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/TagResponse" }
+          }
+        }
+      },
+      "ApiResponseListSrsCardResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SrsCardResponse" }
           }
         }
       },
@@ -1806,12 +2348,43 @@
           "totalPages": { "type": "integer", "format": "int32" },
           "last": { "type": "boolean" }
         }
+      },
+      "AiSearchResponse": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AiSearchResultItem" }
+          },
+          "latency_ms": { "type": "integer", "format": "int32" },
+          "candidate_count": { "type": "integer", "format": "int32" }
+        }
+      },
+      "AiSearchResultItem": {
+        "type": "object",
+        "properties": {
+          "card_id": { "type": "integer", "format": "int64" },
+          "word": { "type": "string" },
+          "meaning": { "type": "string" },
+          "deck_id": { "type": "integer", "format": "int64" },
+          "deck_title": { "type": "string" },
+          "score": { "type": "number", "format": "double" },
+          "match_type": { "type": "string" }
+        }
+      },
+      "ApiResponseAiSearchResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/AiSearchResponse" }
+        }
       }
     },
     "securitySchemes": {
       "bearerAuth": {
         "type": "http",
-        "description": "Nhập Bearer token",
+        "description": "Nhập Access Token (JWT) để xác thực. (Giao diện Swagger đã tự động thêm tiền tố 'Bearer ', bạn chỉ cần nhập chuỗi token).",
         "name": "bearerAuth",
         "in": "header",
         "scheme": "bearer",
@@ -1819,7 +2392,7 @@
       },
       "internalToken": {
         "type": "apiKey",
-        "description": "Nhập mã bí mật X-Internal-Token dành riêng cho các API của fsoft-ai",
+        "description": "Nhập mã bí mật X-Internal-Token dành riêng cho việc giao tiếp nội bộ giữa các microservices (như fsoft-ai).",
         "name": "X-Internal-Token",
         "in": "header"
       }

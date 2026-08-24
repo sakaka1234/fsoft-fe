@@ -183,7 +183,9 @@ export function ProfileView() {
               <UploadSimple aria-hidden size={16} />
               Change photo
             </Button>
-            <p className="text-sm font-medium text-muted">{session?.user.email}</p>
+            <p className="max-w-full text-sm font-medium break-all text-muted">
+              {session?.user.email}
+            </p>
           </div>
         </div>
 
