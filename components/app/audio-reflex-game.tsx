@@ -102,16 +102,16 @@ function Leaderboard({
   loading: boolean;
 }) {
   return (
-    <div className="mt-4 rounded-2xl border border-line bg-surface overflow-hidden shadow-sm">
+    <div className="mt-4 rounded-card border border-line bg-surface overflow-hidden shadow-sm">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-line bg-surface-2/60">
-        <Trophy size={16} className="text-amber-500" weight="fill" />
-        <span className="text-xs font-bold text-ink tracking-wide uppercase">Bảng xếp hạng</span>
+        <Trophy size={16} className="text-accent-text" weight="fill" />
+        <span className="text-xs font-bold text-ink tracking-wide">Bảng xếp hạng</span>
       </div>
 
       {loading ? (
         <div className="flex flex-col gap-2 p-4">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-9 animate-pulse rounded-xl bg-surface-2" />
+            <div key={i} className="h-9 animate-pulse rounded-field bg-surface-2" />
           ))}
         </div>
       ) : entries.length === 0 ? (
@@ -129,9 +129,9 @@ function Leaderboard({
               <span
                 className={cn(
                   "w-6 text-center font-mono font-bold tabular-nums",
-                  entry.rank === 1 && "text-amber-500",
-                  entry.rank === 2 && "text-slate-400",
-                  entry.rank === 3 && "text-amber-700",
+                  entry.rank === 1 && "text-accent-text",
+                  entry.rank === 2 && "text-muted",
+                  entry.rank === 3 && "text-accent-text",
                   entry.rank > 3 && "text-muted",
                 )}
               >
@@ -381,7 +381,7 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
       >
         {/* Header Lobby */}
         <div className="flex flex-col items-center gap-3 text-center py-6">
-          <div className="flex size-16 items-center justify-center rounded-2xl bg-accent/10 text-accent shadow-inner">
+          <div className="flex size-16 items-center justify-center rounded-card bg-accent/10 text-accent shadow-inner">
             <GameController size={36} weight="fill" />
           </div>
           <div>
@@ -409,7 +409,7 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
           </div>
 
           {gameError && (
-            <div className="mt-2 rounded-xl border border-danger/30 bg-danger/5 px-4 py-2 text-xs font-medium text-danger">
+            <div className="mt-2 rounded-field border border-danger/30 bg-danger/5 px-4 py-2 text-xs font-medium text-danger">
               {gameError}
             </div>
           )}
@@ -418,10 +418,10 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
             type="button"
             onClick={handleStart}
             disabled={gameLoading}
-            className="mt-3 inline-flex items-center gap-2 rounded-full bg-accent px-8 py-3.5 text-sm font-semibold text-accent-fg shadow-lg shadow-accent/20 transition-all hover:bg-accent-hover hover:scale-105 active:scale-95 disabled:opacity-60"
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-accent px-8 py-3.5 text-sm font-semibold text-accent-fg shadow-card transition-all hover:bg-accent-hover active:scale-95 disabled:opacity-60"
           >
             {gameLoading ? (
-              <span className="animate-pulse">Đang chuẩn bị...</span>
+              <span className="">Đang chuẩn bị...</span>
             ) : (
               <>
                 <GameController size={18} weight="fill" />
@@ -451,24 +451,14 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
         animate={{ opacity: 1 }}
         className="max-w-xl mx-auto w-full flex flex-col gap-4"
       >
-        {/* Progress & HUD */}
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-2.5 rounded-full bg-surface-2 overflow-hidden p-0.5 border border-line">
-            <motion.div
-              className="h-full rounded-full bg-accent"
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.4 }}
-            />
-          </div>
-          <span className="text-xs font-mono font-bold text-muted tabular-nums shrink-0 bg-surface border border-line px-2 py-0.5 rounded-full">
-            {gs.currentIndex + 1} / {gs.questions.length}
-          </span>
-        </div>
-
+        {/* HUD Header: Điểm + Số câu hỏi + Combo + Timer */}
         <div className="flex items-center justify-between gap-3 text-sm px-1">
-          <div className="flex items-center gap-1.5 font-bold text-ink">
-            <Trophy size={16} className="text-amber-500" weight="fill" />
-            <span className="font-mono text-base">{gs.score.toLocaleString()}</span>
+          <div className="flex items-center gap-2.5 font-semibold text-ink">
+            <Trophy size={20} className="text-accent-text drop-shadow-sm shrink-0" weight="fill" />
+            <span className="font-mono text-xl font-semibold">{gs.score.toLocaleString()} đ</span>
+            <span className="text-xs font-mono font-bold text-muted tabular-nums shrink-0 bg-surface border border-line px-2.5 py-0.5 rounded-full shadow-2xs">
+              {gs.currentIndex + 1} / {gs.questions.length}
+            </span>
           </div>
 
           {gs.combo >= 2 && (
@@ -476,19 +466,18 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
               key={gs.combo}
               initial={{ scale: 0.6, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="flex items-center gap-1 rounded-full bg-amber-500/15 border border-amber-500/30 px-3 py-0.5 text-xs font-extrabold text-amber-600 dark:text-amber-400 shadow-2xs"
+              className="flex items-center gap-1 rounded-full bg-accent-soft border border-accent px-3 py-0.5 text-xs font-semibold text-accent-text shadow-2xs"
             >
-              <Lightning size={13} weight="fill" />
-              🔥 x{gs.combo} Combo!
+              <Lightning size={13} weight="fill" /> x{gs.combo} Combo!
             </motion.div>
           )}
 
-          <div className="flex items-center gap-1.5">
-            <Timer size={16} className={gs.timeLeft <= 3 ? "text-danger animate-bounce" : "text-muted"} />
+          <div className="flex items-center gap-1.5 bg-surface border border-line px-3 py-1 rounded-full shadow-2xs">
+            <Timer size={18} className={gs.timeLeft <= 3 ? "text-danger" : "text-muted"} />
             <span
               className={cn(
                 "font-mono font-bold tabular-nums text-sm",
-                gs.timeLeft <= 3 ? "text-danger font-extrabold text-base" : "text-ink",
+                gs.timeLeft <= 3 ? "text-danger font-semibold text-base" : "text-ink",
               )}
             >
               {gs.timeLeft}s
@@ -497,18 +486,18 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
         </div>
 
         {/* Thanh đếm ngược */}
-        <div className="h-1.5 w-full rounded-full bg-surface-2 overflow-hidden">
+        <div className="h-2 w-full rounded-full bg-surface-2 overflow-hidden shadow-inner">
           <motion.div
             className={cn(
               "h-full rounded-full transition-colors",
-              gs.timeLeft > 5 ? "bg-accent" : gs.timeLeft > 3 ? "bg-amber-500" : "bg-danger",
+              gs.timeLeft > 5 ? "bg-accent" : gs.timeLeft > 3 ? "bg-accent" : "bg-danger",
             )}
             animate={{ width: `${timerPct}%` }}
             transition={{ duration: 0.9, ease: "linear" }}
           />
         </div>
 
-        {/* Question Card */}
+        {/* Question Card (KHUNG LOA THU GỌN CHUẨN MỚI) */}
         <AnimatePresence mode="wait">
           <motion.div
             key={gs.currentIndex}
@@ -516,50 +505,51 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="relative rounded-3xl border border-line bg-surface/90 backdrop-blur-md p-6 text-center shadow-xl"
+            className="relative rounded-card border border-line bg-surface/90 backdrop-blur-md p-4 text-center shadow-card overflow-hidden"
           >
             {/* Warning Banner khi hết giờ */}
             {isTimeout && (
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="inline-flex items-center gap-1.5 rounded-full bg-danger/15 border border-danger/30 px-3.5 py-1 text-xs font-extrabold text-danger mb-3 shadow-2xs"
+                className="inline-flex items-center gap-1.5 rounded-full bg-danger/15 border border-danger/30 px-3.5 py-1 text-xs font-semibold text-danger mb-2 shadow-2xs"
               >
                 <WarningCircle size={15} weight="fill" />
                 HẾT THỜI GIAN!
               </motion.div>
             )}
 
-            <div className="flex flex-col items-center gap-3">
-              {/* Nút phát âm thanh lớn */}
+            <div className="flex flex-col items-center gap-2">
+              {/* Nút phát âm thanh thu nhỏ chuẩn mới */}
               <motion.button
                 type="button"
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.96 }}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
                 onClick={() => speak(currentQ.word)}
-                className="group relative flex flex-col items-center justify-center gap-2.5 w-full py-7 px-6 rounded-2xl bg-accent/10 border border-accent/20 hover:bg-accent/15 transition-all cursor-pointer shadow-inner"
+                className="group relative flex items-center justify-center gap-3 w-full py-4 px-4 rounded-card bg-accent/10 border border-accent/20 hover:bg-accent/15 transition-all cursor-pointer shadow-inner overflow-hidden"
               >
-                <div className="flex size-14 items-center justify-center rounded-full bg-accent text-accent-fg shadow-md group-hover:scale-110 transition-transform">
-                  <SpeakerHigh size={28} weight="fill" />
+                <div className="relative flex size-12 items-center justify-center rounded-full bg-accent text-accent-fg shadow-md transition-transform shrink-0">
+                  <SpeakerHigh size={24} weight="fill" />
                 </div>
-                <div className="flex items-center gap-1.5 text-xs font-bold text-accent tracking-wider uppercase">
-                  <Waveform size={15} />
+
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-accent">
+                  <Waveform size={16} />
                   <span>Nhấn để nghe âm thanh</span>
                 </div>
               </motion.button>
 
-              {/* Ẩn từ gốc cho đến khi chọn xong đáp án */}
-              {gs.answered ? (
+              {/* Từ tiếng Anh sau khi trả lời */}
+              {gs.answered && (
                 <motion.div
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-1 flex flex-col items-center gap-1"
+                  className="mt-2 flex flex-col items-center gap-0.5"
                 >
-                  <h3 className="text-3xl font-extrabold tracking-tight text-ink">
+                  <h3 className="text-2xl font-semibold text-ink tracking-tight from-ink via-accent to-ink bg-clip-text text-transparent">
                     {currentQ.word}
                   </h3>
                   {currentQ.phonetic && (
-                    <p className="font-mono text-sm text-muted">{currentQ.phonetic}</p>
+                    <p className="font-mono text-xs text-muted font-bold">{currentQ.phonetic}</p>
                   )}
                   {currentQ.exampleSentence && (
                     <p className="text-xs text-muted italic max-w-sm mt-0.5">
@@ -567,39 +557,6 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
                     </p>
                   )}
                 </motion.div>
-              ) : (
-                <div className="flex flex-col items-center gap-2 mt-1">
-                  {/* Nút Gợi ý (Hint) */}
-                  <button
-                    type="button"
-                    onClick={() => setShowHint((prev) => !prev)}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface-2 px-3.5 py-1.5 text-xs font-semibold text-muted hover:text-ink hover:border-accent/40 transition-all"
-                  >
-                    <Lightbulb size={15} className={showHint ? "text-amber-500" : ""} weight="fill" />
-                    {showHint ? "Ẩn gợi ý" : "Gợi ý ký tự / ảnh"}
-                  </button>
-
-                  {/* Hiển thị Hint khi mở */}
-                  {showHint && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      className="flex flex-col items-center gap-2.5 mt-1"
-                    >
-                      {currentQ.imageUrl && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={currentQ.imageUrl}
-                          alt="Gợi ý"
-                          className="h-28 w-auto rounded-xl object-cover border border-line shadow-sm"
-                        />
-                      )}
-                      <p className="font-mono text-xl font-bold tracking-[0.25em] text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-4 py-1.5 rounded-xl">
-                        {generateMaskedWord(currentQ.word)}
-                      </p>
-                    </motion.div>
-                  )}
-                </div>
               )}
             </div>
           </motion.div>
@@ -614,11 +571,11 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
             const optionLetter = OPTION_LETTERS[idx] || "";
 
             let btnClass =
-              "group relative flex items-center gap-3 rounded-2xl border p-3.5 text-sm font-semibold transition-all duration-200 cursor-pointer select-none text-left shadow-2xs";
+              "group relative flex items-center gap-3 rounded-card border p-3.5 text-sm font-semibold transition-all duration-200 cursor-pointer select-none text-left shadow-2xs";
 
             if (showResult) {
               if (isCorrect) {
-                btnClass += " border-emerald-500 bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 shadow-md";
+                btnClass += " border-ok bg-ok-soft text-ok shadow-md";
               } else if (isSelected && !isCorrect) {
                 btnClass += " border-danger bg-danger/15 text-danger";
               } else {
@@ -645,9 +602,9 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
                     "flex size-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold font-mono transition-colors",
                     showResult
                       ? isCorrect
-                        ? "bg-emerald-500 text-white"
+                        ? "bg-ok text-accent-fg"
                         : isSelected && !isCorrect
-                        ? "bg-danger text-white"
+                        ? "bg-danger text-accent-fg"
                         : "bg-surface-2 text-muted"
                       : "bg-surface-2 text-muted group-hover:bg-accent group-hover:text-accent-fg",
                   )}
@@ -660,7 +617,7 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
                 </span>
 
                 {showResult && isCorrect && (
-                  <CheckCircle size={18} weight="fill" className="text-emerald-500 shrink-0" />
+                  <CheckCircle size={18} weight="fill" className="text-ok shrink-0" />
                 )}
                 {showResult && isSelected && !isCorrect && (
                   <XCircle size={18} weight="fill" className="text-danger shrink-0" />
@@ -688,24 +645,24 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
         animate={{ opacity: 1, scale: 1 }}
         className="max-w-xl mx-auto flex flex-col gap-6"
       >
-        <div className="flex flex-col items-center gap-4 rounded-3xl border border-line bg-surface p-8 text-center shadow-xl">
-          <div className="flex size-16 items-center justify-center rounded-full bg-amber-500/10 text-amber-500 shadow-inner">
+        <div className="flex flex-col items-center gap-4 rounded-card border border-line bg-surface p-8 text-center shadow-card">
+          <div className="flex size-16 items-center justify-center rounded-full bg-accent-soft text-accent-text shadow-inner">
             <Trophy size={36} weight="fill" />
           </div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-muted">Tổng điểm đạt được</p>
-            <p className="text-5xl font-extrabold tracking-tight text-ink mt-1">
+            <p className="text-xs font-bold text-muted">Tổng điểm đạt được</p>
+            <p className="text-5xl font-semibold tracking-tight text-ink mt-1">
               {gs.score.toLocaleString()}
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 w-full max-w-sm mt-2 p-4 rounded-2xl bg-surface-2/60 border border-line">
+          <div className="grid grid-cols-3 gap-4 w-full max-w-sm mt-2 p-4 rounded-card bg-surface-2/60 border border-line">
             <div className="flex flex-col items-center gap-0.5">
-              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{accuracy}%</p>
+              <p className="text-2xl font-bold text-ok">{accuracy}%</p>
               <p className="text-xs text-muted font-medium">Chính xác</p>
             </div>
             <div className="flex flex-col items-center gap-0.5">
-              <p className="text-2xl font-bold text-amber-500">{gs.maxCombo}x</p>
+              <p className="text-2xl font-bold text-accent-text">{gs.maxCombo}x</p>
               <p className="text-xs text-muted font-medium">Max combo</p>
             </div>
             <div className="flex flex-col items-center gap-0.5">
@@ -721,7 +678,7 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
           <button
             type="button"
             onClick={handleReplay}
-            className="mt-2 inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3 text-sm font-semibold text-accent-fg shadow-lg shadow-accent/20 transition-all hover:bg-accent-hover hover:scale-105 active:scale-95 cursor-pointer"
+            className="mt-2 inline-flex items-center gap-2 rounded-full bg-accent px-7 py-3 text-sm font-semibold text-accent-fg shadow-card transition-all hover:bg-accent-hover active:scale-95 cursor-pointer"
           >
             <ArrowCounterClockwise size={16} weight="bold" />
             Chơi lại ngay
@@ -729,7 +686,7 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
         </div>
 
         {submitLoading ? (
-          <div className="text-center text-xs text-muted animate-pulse">Đang lưu kết quả lên bảng xếp hạng...</div>
+          <div className="text-center text-xs text-muted">Đang lưu kết quả lên bảng xếp hạng...</div>
         ) : (
           <Leaderboard entries={leaderboard} loading={leaderboardLoading} />
         )}

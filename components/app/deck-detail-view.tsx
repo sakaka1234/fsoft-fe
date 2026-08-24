@@ -17,10 +17,13 @@ import { Users } from "@phosphor-icons/react/Users";
 import { Brain } from "@phosphor-icons/react/Brain";
 import { Sparkle } from "@phosphor-icons/react/Sparkle";
 import { ChatCircleDots } from "@phosphor-icons/react/ChatCircleDots";
+import { CaretRight } from "@phosphor-icons/react/CaretRight";
 import { UserPlus } from "@phosphor-icons/react/UserPlus";
 
 
 import { AudioReflexGame } from "@/components/app/audio-reflex-game";
+import { AudioReflexMultiplayer } from "@/components/app/audio-reflex-multiplayer";
+import { FsrsStudyMode } from "@/components/app/fsrs-study-mode";
 
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -32,7 +35,6 @@ import { CardContextBlock } from "@/components/app/card-context-block";
 import { DeckSharePanel } from "@/components/app/deck-share-panel";
 import { DeckAiChat } from "@/components/app/deck-ai-chat";
 import { AiQuizView } from "@/components/app/ai-quiz-view";
-import { SrsStudyView } from "@/components/app/srs-study-view";
 import {
   DeckModeSwitcher,
   type DeckMode,
@@ -83,11 +85,32 @@ function DeckDetailCover({ src, alt }: { src: string; alt: string }) {
   );
 }
 
+/**
+ * The two ways to play, as data rather than two hand written tiles.
+ * They read as one list because they are one choice; giving each its own
+ * colour would have put a third and fourth brand hue on a page that has
+ * exactly one accent.
+ */
+const GAME_MODES = [
+  {
+    key: "solo" as const,
+    title: "Chơi một mình",
+    body: "Luyện phản xạ nghe, cộng điểm combo và leo bảng xếp hạng.",
+    Icon: GameController,
+  },
+  {
+    key: "multiplayer" as const,
+    title: "Thi đấu với bạn bè",
+    body: "Tạo phòng sáu ký tự hoặc nhập mã để đấu trực tiếp.",
+    Icon: Users,
+  },
+];
+
 /** One row per mode. The switcher renders from this and nothing else. */
 const DECK_MODES: DeckMode[] = [
   { key: "list", label: "Quản lý card", Icon: List },
   { key: "single", label: "Xem card", Icon: CardsIcon },
-  { key: "srs", label: "Ôn tập", Icon: Brain },
+  { key: "study", label: "Ôn tập", Icon: Brain },
   { key: "quiz", label: "Quiz AI", Icon: Sparkle },
   { key: "ask", label: "Hỏi AI", Icon: ChatCircleDots },
   { key: "game", label: "Chơi game", Icon: GameController, accent: true },
@@ -102,7 +125,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<DeckViewMode>("single");
-  const [gameSubMode, setGameSubMode] = useState<null | "solo">(null);
+  const [gameSubMode, setGameSubMode] = useState<null | "solo" | "multiplayer">(null);
   const [singleCardIndex, setSingleCardIndex] = useState(0);
   const [rowError, setRowError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -415,8 +438,12 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                   }}
                 />
               </div>
-            ) : viewMode === "srs" ? (
-              <SrsStudyView deckId={deckId} />
+            ) : viewMode === "study" ? (
+              <FsrsStudyMode
+                cards={cards.data.content}
+                onFinished={() => setViewMode("single")}
+                onCardReviewed={() => cards.reload()}
+              />
             ) : viewMode === "quiz" ? (
               <AiQuizView deckId={deckId} />
             ) : viewMode === "ask" ? (
@@ -436,20 +463,74 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                 }}
               />
             ) : viewMode === "game" ? (
-              <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-line bg-surface p-10 text-center shadow-sm max-w-md mx-auto my-6">
-                <div className="flex size-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500">
-                  <GameController size={36} weight="fill" />
-                </div>
+              gameSubMode === "solo" ? (
                 <div>
-                  <h3 className="text-xl font-bold tracking-tight text-ink">Chơi Game</h3>
-                  <p className="mt-1.5 text-sm text-muted">
-                    Tính năng chơi game đang được phát triển và sẽ sớm ra mắt!
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setGameSubMode(null)}
+                    className="mb-4 inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+                  >
+                    <ArrowLeft aria-hidden size={15} />
+                    Đổi chế độ chơi
+                  </button>
+                  <AudioReflexGame
+                    deckId={deckId}
+                    deckTitle={deck.data?.title ?? ""}
+                  />
                 </div>
-                <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-4 py-1 text-xs font-bold text-amber-600 dark:text-amber-400">
-                  🚧 Đang phát triển
-                </span>
-              </div>
+              ) : gameSubMode === "multiplayer" ? (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setGameSubMode(null)}
+                    className="mb-4 inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+                  >
+                    <ArrowLeft aria-hidden size={15} />
+                    Đổi chế độ chơi
+                  </button>
+                  <AudioReflexMultiplayer
+                    deckId={deckId}
+                    deckTitle={deck.data?.title ?? ""}
+                    onBackToSolo={() => setGameSubMode(null)}
+                  />
+                </div>
+              ) : (
+                <div className="mx-auto max-w-lg py-4">
+                  <h3 className="text-xl font-semibold tracking-tight">
+                    Chọn cách chơi
+                  </h3>
+                  <p className="mt-2 text-base text-muted">
+                    Cùng một bộ thẻ, nghe rồi chọn nghĩa thật nhanh.
+                  </p>
+
+                  <ul className="mt-6 divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
+                    {GAME_MODES.map(({ key, title, body, Icon }) => (
+                      <li key={key}>
+                        <button
+                          type="button"
+                          onClick={() => setGameSubMode(key)}
+                          className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-surface-2"
+                        >
+                          <span className="flex size-11 shrink-0 items-center justify-center rounded-field bg-accent-soft text-accent-text">
+                            <Icon aria-hidden size={22} weight="fill" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-semibold">{title}</span>
+                            <span className="mt-0.5 block text-sm text-muted">
+                              {body}
+                            </span>
+                          </span>
+                          <CaretRight
+                            aria-hidden
+                            size={16}
+                            className="shrink-0 text-muted"
+                          />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )
             ) : viewMode === "single" ? (
 
               <SingleCardView

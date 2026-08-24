@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -16,6 +16,8 @@ import { endSession, getSession } from "@/lib/auth/session-store";
 import { useSession } from "@/lib/auth/use-session";
 import { EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/cn";
+import { getFsrsStudyQueue } from "@/lib/api/fsrs";
+import { FsrsNotificationToast } from "@/components/app/fsrs-notification-toast";
 
 const APP_NAV = [
   { label: "Dashboard", href: "/dashboard" },
@@ -31,6 +33,28 @@ const APP_NAV = [
  * "/decks" while sitting on a future "/decks-archive", and every prefix that
  * happens to share leading characters.
  */
+/**
+ * Count of cards due for review, shown against the Decks link.
+ *
+ * bg-danger rather than a literal rose: every other colour on this page
+ * comes from a token, and a hardcoded red would not follow the theme.
+ * text-paper reads against danger in both themes, because paper and danger
+ * invert together. No pulse either: a badge that never stops moving is noise
+ * once you have seen it, and it would have to be gated on
+ * prefers-reduced-motion to be shippable at all.
+ */
+function DueBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      aria-label={String(count) + " thẻ tới hạn ôn tập"}
+      className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-danger px-1.5 font-mono text-[0.7rem] font-bold text-paper"
+    >
+      {count}
+    </span>
+  );
+}
+
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -56,9 +80,55 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const reduce = useReducedMotion();
   const [open, setOpen] = useState(false);
 
+  const [dueCount, setDueCount] = useState(0);
+  const [isToastOpen, setIsToastOpen] = useState(false);
+  const [lastDismissedCount, setLastDismissedCount] = useState(0);
+
+  /* setState inside .then rather than after an await in an async body: the
+     react-hooks/set-state-in-effect rule reads the effect body statically and
+     cannot see that the await defers it. lib/use-async.ts is shaped the same
+     way for the same reason. */
+  const fetchDueQueue = useCallback(() => {
+    getFsrsStudyQueue(undefined, 120, 30)
+      .then((queue) => {
+        const count = queue.length;
+        setDueCount(count);
+        /* Only reopen for a count the reader has not already dismissed, or
+           every poll would put the same toast back on screen. */
+        if (count > 0 && count !== lastDismissedCount) setIsToastOpen(true);
+      })
+      .catch(() => {
+        // A background reminder is not worth surfacing an error for.
+      });
+  }, [lastDismissedCount]);
+
   useEffect(() => {
-    if (!getSession()) router.replace("/login");
-  }, [router, session]);
+    if (!getSession()) {
+      router.replace("/login");
+      return;
+    }
+
+    fetchDueQueue();
+
+    const interval = setInterval(
+      () => {
+        if (document.visibilityState === "visible") fetchDueQueue();
+      },
+      5 * 60 * 1000,
+    );
+
+    /* On document, which is where visibilitychange is fired. Polling alone
+       would leave a tab that slept for an hour showing a stale count. */
+    function onVisibility() {
+      if (document.visibilityState === "visible") fetchDueQueue();
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [router, session, fetchDueQueue]);
 
   async function onLogout() {
     const accessToken = getSession()?.token.accessToken;
@@ -111,11 +181,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       href={item.href}
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "text-sm whitespace-nowrap transition-colors",
+                        "flex items-center gap-1.5 text-sm whitespace-nowrap transition-colors",
                         active ? "text-ink" : "text-muted hover:text-ink",
                       )}
                     >
                       {item.label}
+                      {item.href === "/decks" ? (
+                        <DueBadge count={dueCount} />
+                      ) : null}
                     </Link>
                   );
                 })}
@@ -181,11 +254,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                            effect, which would be a synchronous setState there. */
                         onClick={() => setOpen(false)}
                         className={cn(
-                          "border-b border-line py-3.5 text-base last:border-b-0",
+                          "flex items-center gap-2 border-b border-line py-3.5 text-base last:border-b-0",
                           active ? "text-ink" : "text-muted",
                         )}
                       >
                         {item.label}
+                        {item.href === "/decks" ? (
+                          <DueBadge count={dueCount} />
+                        ) : null}
                       </Link>
                     );
                   })}
@@ -210,7 +286,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </AnimatePresence>
       </header>
 
-      <main className="flex-1 py-10 md:py-14">{children}</main>
+      <main className="flex-1 pt-4 pb-10 md:pt-6 md:pb-14">{children}</main>
+
+      <FsrsNotificationToast
+        count={dueCount}
+        isOpen={isToastOpen}
+        onClose={() => {
+          setIsToastOpen(false);
+          setLastDismissedCount(dueCount);
+        }}
+        onStartReview={() => {
+          setIsToastOpen(false);
+          router.push("/decks?tab=srs");
+        }}
+      />
     </div>
   );
 }

@@ -271,6 +271,43 @@ export type UserActivityResponse = {
 };
 
 /* ---------------------------------------------------------------------------
+   SRS / FSRS Types
+   ------------------------------------------------------------------------- */
+
+/**
+ * LAPSED, not RELEARNING. The OpenAPI document types
+ * ReviewCardResponse.status as NEW|LEARNING|REVIEW|LAPSED, and a live queue
+ * answered NEW and LEARNING. RELEARNING would never match.
+ */
+export type SrsStatus = "NEW" | "LEARNING" | "REVIEW" | "LAPSED";
+
+export type ReviewCardResponse = {
+  card: CardResponse;
+  status: SrsStatus;
+  easinessFactor: number;
+  stability: number | null;
+  difficulty: number | null;
+  repetitions: number;
+  interval: number;
+  nextReviewDate?: string;
+  lastReviewedAt?: string | null;
+};
+
+/**
+ * 1 Again, 2 Hard, 3 Good, 4 Easy, the SM-2 ordering. Established by grading
+ * four identical NEW cards one level each: 1 reset repetitions to 0, cut
+ * easiness from 2.5 to 1.96 and rescheduled for the same day, while 2, 3 and 4
+ * moved to the next day at easiness 2.18, 2.36 and 2.50. Outside 1 to 4 the
+ * server answers 400 with a field error on rating.
+ */
+export type SrsRating = 1 | 2 | 3 | 4;
+
+export type SrsReviewRequest = {
+  cardId: number;
+  rating: SrsRating;
+};
+
+/* ---------------------------------------------------------------------------
    AI and SRS.
 
    Everything below the AI line uses snake_case, unlike the rest of this file.
@@ -390,31 +427,4 @@ export type AiSearchResponse = {
   results: AiSearchResultItem[];
   latency_ms: number;
   candidate_count: number;
-};
-
-/** Back to camelCase from here: the SRS controller follows the house style. */
-export type SrsStatus = "NEW" | "LEARNING" | "REVIEW" | "LAPSED";
-
-/**
- * 1 Again, 2 Hard, 3 Good, 4 Easy, the SM-2 ordering. Established by rating
- * four identical NEW cards one level each and reading back the result:
- * 1 reset repetitions to 0, dropped easiness 2.5 to 1.96 and scheduled the
- * card for the same day; 2, 3 and 4 all advanced to tomorrow with easiness
- * 2.18, 2.36 and 2.50. Out of range answers 400.
- */
-export type SrsRating = 1 | 2 | 3 | 4;
-
-export type SrsReviewRequest = {
-  cardId: number;
-  rating: SrsRating;
-};
-
-export type SrsCardResponse = {
-  card: CardResponse;
-  status: SrsStatus;
-  repetitions: number;
-  interval: number;
-  easinessFactor: number;
-  /** Null while the card is still NEW. */
-  nextReviewDate: string | null;
 };

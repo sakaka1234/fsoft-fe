@@ -71,3 +71,90 @@ export function getAudioReflexLeaderboard(deckId: number, limit = 10) {
     { auth: true },
   );
 }
+
+/* ---------------------------------------------------------------------------
+   Multiplayer Audio Reflex Room APIs
+   ------------------------------------------------------------------------- */
+
+export interface MultiPlayerState {
+  userId: string;
+  displayName: string;
+  avatar: string | null;
+  host: boolean;
+  score: number;
+  correctCount: number;
+  lastAnswerAt?: number;
+  selectedDeckId?: number | null;
+  selectedDeckTitle?: string | null;
+  selectedDeckCardCount?: number;
+  connected: boolean;
+}
+
+export interface AudioReflexRoomState {
+  roomCode: string;
+  deckId: number;
+  hostUserId: string;
+  status: "WAITING" | "PLAYING" | "FINISHED";
+  questionCount: number;
+  questions: AudioQuestionItem[];
+  currentQuestionIndex: number;
+  startedAt: number;
+  currentQuestionStartedAt: number;
+  players: Record<string, MultiPlayerState>;
+  answeredThisQuestion: string[];
+}
+
+export function createAudioReflexRoom(deckId: number, questionCount = 10) {
+  return apiFetch<AudioReflexRoomState>(
+    `/games/audio-reflex/rooms?deckId=${deckId}&questionCount=${questionCount}`,
+    { method: "POST", auth: true },
+  );
+}
+
+export function joinAudioReflexRoom(roomCode: string) {
+  return apiFetch<AudioReflexRoomState>(
+    `/games/audio-reflex/rooms/${roomCode}/join`,
+    { method: "POST", auth: true },
+  );
+}
+
+export function startAudioReflexRoomGame(roomCode: string) {
+  return apiFetch<AudioReflexRoomState>(
+    `/games/audio-reflex/rooms/${roomCode}/start`,
+    { method: "POST", auth: true },
+  );
+}
+
+export function getAudioReflexRoom(roomCode: string) {
+  return apiFetch<AudioReflexRoomState>(
+    `/games/audio-reflex/rooms/${roomCode}`,
+    { method: "GET", auth: true },
+  );
+}
+
+export function leaveAudioReflexRoom(roomCode: string) {
+  return apiFetch<void>(
+    `/games/audio-reflex/rooms/${roomCode}/leave`,
+    { method: "DELETE", auth: true },
+  );
+}
+
+export function selectPlayerDeckInRoom(roomCode: string, selectedDeckId?: number | null) {
+  const query = selectedDeckId ? `?selectedDeckId=${selectedDeckId}` : "";
+  return apiFetch<AudioReflexRoomState>(
+    `/games/audio-reflex/rooms/${roomCode}/select-deck${query}`,
+    { method: "PUT", auth: true },
+  );
+}
+
+export function submitAudioReflexRoomAnswer(roomCode: string, cardId: number) {
+  return apiFetch<AudioReflexRoomState>(
+    `/games/audio-reflex/rooms/${roomCode}/answer`,
+    {
+      method: "POST",
+      auth: true,
+      body: JSON.stringify({ cardId }),
+    },
+  );
+}
+

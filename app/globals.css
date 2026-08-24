@@ -63,6 +63,13 @@
   --accent-text: #b23c0a;
   --accent-soft: rgb(235 100 33 / 0.1);
   --danger: #b42318;
+  /* A quiz has to say right as well as wrong, and this palette had no word for
+     right. That gap is why the game screens reached past the tokens and
+     invented emerald for themselves. Measured both directions like the accent:
+     white on #15803d is 5.02:1, and #15803d on paper is 5.14:1. */
+  --ok: #15803d;
+  --ok-fg: #ffffff;
+  --ok-soft: rgb(21 128 61 / 0.1);
   --art-bg: #fff1e3;
   --shadow-card: 0 1px 2px rgb(28 25 23 / 0.04), 0 12px 28px rgb(28 25 23 / 0.06);
 }
@@ -83,6 +90,9 @@
     --accent-text: #ff9a34;
     --accent-soft: rgb(255 154 52 / 0.13);
     --danger: #fca5a5;
+    --ok: #4ade80;
+    --ok-fg: #1c1917;
+    --ok-soft: rgb(74 222 128 / 0.13);
     --art-bg: #f2e3d4;
     --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 28px rgb(0 0 0 / 0.28);
   }
@@ -119,6 +129,9 @@
   --accent-text: #ff9a34;
   --accent-soft: rgb(255 154 52 / 0.13);
   --danger: #fca5a5;
+  --ok: #4ade80;
+  --ok-fg: #1c1917;
+  --ok-soft: rgb(74 222 128 / 0.13);
   --art-bg: #f2e3d4;
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 28px rgb(0 0 0 / 0.28);
 }
@@ -136,6 +149,9 @@
   --color-accent-text: var(--accent-text);
   --color-accent-soft: var(--accent-soft);
   --color-danger: var(--danger);
+  --color-ok: var(--ok);
+  --color-ok-fg: var(--ok-fg);
+  --color-ok-soft: var(--ok-soft);
   --color-art: var(--art-bg);
 
   --font-sans: var(--font-eb-garamond);

@@ -208,6 +208,70 @@
         }
       }
     },
+    "/games/space-striker/rooms/{code}/select-deck": {
+      "put": {
+        "tags": ["Space Striker Multiplayer Room"],
+        "operationId": "selectDeck",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "selectedDeckId",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSpaceStrikerRoomState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/audio-reflex/rooms/{code}/select-deck": {
+      "put": {
+        "tags": ["Audio Reflex Multiplayer Room"],
+        "operationId": "selectDeck_1",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "selectedDeckId",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAudioReflexRoomState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/decks/{id}": {
       "get": {
         "tags": ["Deck Controller"],
@@ -616,7 +680,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseSrsCardResponse"
+                  "$ref": "#/components/schemas/ApiResponseReviewCardResponse"
                 }
               }
             }
@@ -646,6 +710,271 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseAuthenticatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/space-striker/rooms": {
+      "post": {
+        "tags": ["Space Striker Multiplayer Room"],
+        "operationId": "createRoom",
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "questionCount",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 10 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSpaceStrikerRoomState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/space-striker/rooms/{code}/start": {
+      "post": {
+        "tags": ["Space Striker Multiplayer Room"],
+        "operationId": "start",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSpaceStrikerRoomState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/space-striker/rooms/{code}/join": {
+      "post": {
+        "tags": ["Space Striker Multiplayer Room"],
+        "operationId": "join",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSpaceStrikerRoomState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/space-striker/rooms/{code}/answer": {
+      "post": {
+        "tags": ["Space Striker Multiplayer Room"],
+        "operationId": "submitAnswer",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SubmitAnswerRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSpaceStrikerRoomState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/audio-reflex/submit": {
+      "post": {
+        "tags": ["Audio Reflex Game Controller"],
+        "summary": "Nộp kết quả ván chơi và lưu điểm số",
+        "operationId": "submitResult",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AudioReflexSubmitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAudioReflexLeaderboardResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/audio-reflex/rooms": {
+      "post": {
+        "tags": ["Audio Reflex Multiplayer Room"],
+        "operationId": "createRoom_1",
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "questionCount",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 10 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAudioReflexRoomState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/audio-reflex/rooms/{code}/start": {
+      "post": {
+        "tags": ["Audio Reflex Multiplayer Room"],
+        "operationId": "start_1",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAudioReflexRoomState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/audio-reflex/rooms/{code}/join": {
+      "post": {
+        "tags": ["Audio Reflex Multiplayer Room"],
+        "operationId": "join_1",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAudioReflexRoomState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/audio-reflex/rooms/{code}/answer": {
+      "post": {
+        "tags": ["Audio Reflex Multiplayer Room"],
+        "operationId": "submitAnswer_1",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SubmitAnswerRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAudioReflexRoomState"
                 }
               }
             }
@@ -773,6 +1102,64 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseDeckResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chat/messages": {
+      "get": {
+        "tags": ["Community Chat Controller"],
+        "summary": "Lấy lịch sử tin nhắn cộng đồng phân trang",
+        "operationId": "getMessages",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 1 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseChatMessageResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Community Chat Controller"],
+        "summary": "Gửi tin nhắn qua REST API",
+        "operationId": "postMessage",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ChatMessageRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseChatMessageResponse"
                 }
               }
             }
@@ -1087,6 +1474,103 @@
         }
       }
     },
+    "/api/ai/extract/url": {
+      "post": {
+        "tags": ["ai-extraction-controller"],
+        "operationId": "extractFromUrl",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UrlExtractionRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListCardCreationRequest"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/extract/text": {
+      "post": {
+        "tags": ["ai-extraction-controller"],
+        "operationId": "extractFromText",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TextExtractionRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListCardCreationRequest"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/extract/file": {
+      "post": {
+        "tags": ["ai-extraction-controller"],
+        "operationId": "extractFromFile",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "deckId",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary" }
+                },
+                "required": ["file"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListCardCreationRequest"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ai/chat": {
       "post": {
         "tags": ["AI Integration Controller"],
@@ -1143,7 +1627,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListSrsCardResponse"
+                  "$ref": "#/components/schemas/ApiResponseListReviewCardResponse"
                 }
               }
             }
@@ -1286,6 +1770,124 @@
           }
         },
         "security": [{ "internalToken": [] }]
+      }
+    },
+    "/games/space-striker/rooms/{code}": {
+      "get": {
+        "tags": ["Space Striker Multiplayer Room"],
+        "operationId": "get",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSpaceStrikerRoomState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/audio-reflex/rooms/{code}": {
+      "get": {
+        "tags": ["Audio Reflex Multiplayer Room"],
+        "operationId": "get_1",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAudioReflexRoomState"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/audio-reflex/play/{deckId}": {
+      "get": {
+        "tags": ["Audio Reflex Game Controller"],
+        "summary": "Tạo bộ câu hỏi nghe phản xạ cho 1 người chơi",
+        "operationId": "startGame",
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "questionCount",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 10 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAudioReflexGameResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/audio-reflex/leaderboard/{deckId}": {
+      "get": {
+        "tags": ["Audio Reflex Game Controller"],
+        "summary": "Lấy Bảng xếp hạng điểm số game phản xạ nghe",
+        "operationId": "getLeaderboard",
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 10 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListAudioReflexLeaderboardResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/decks/{id}/shares": {
@@ -1520,6 +2122,49 @@
         }
       }
     },
+    "/chat/online-count": {
+      "get": {
+        "tags": ["Community Chat Controller"],
+        "summary": "Lấy số lượng người dùng đang online",
+        "operationId": "getOnlineCount",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMapStringInteger"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dictionary/lookup": {
+      "get": {
+        "tags": ["dictionary-controller"],
+        "operationId": "lookupWord",
+        "parameters": [
+          {
+            "name": "word",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseObject" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/chat-ai/test": {
       "get": {
         "tags": ["Chat AI Controller"],
@@ -1598,6 +2243,54 @@
           }
         }
       }
+    },
+    "/games/space-striker/rooms/{code}/leave": {
+      "delete": {
+        "tags": ["Space Striker Multiplayer Room"],
+        "operationId": "leave",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/games/audio-reflex/rooms/{code}/leave": {
+      "delete": {
+        "tags": ["Audio Reflex Multiplayer Room"],
+        "operationId": "leave_1",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1656,6 +2349,120 @@
           "linkedin": { "type": "string" },
           "facebook": { "type": "string" },
           "youtube": { "type": "string" }
+        }
+      },
+      "ApiResponseSpaceStrikerRoomState": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/SpaceStrikerRoomState" }
+        }
+      },
+      "AudioQuestionItem": {
+        "type": "object",
+        "properties": {
+          "cardId": { "type": "integer", "format": "int64" },
+          "word": { "type": "string" },
+          "phonetic": { "type": "string" },
+          "imageUrl": { "type": "string" },
+          "exampleSentence": { "type": "string" },
+          "exampleMeaning": { "type": "string" },
+          "correctOptionId": { "type": "integer", "format": "int64" },
+          "options": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OptionItem" }
+          }
+        }
+      },
+      "OptionItem": {
+        "type": "object",
+        "properties": {
+          "optionId": { "type": "integer", "format": "int64" },
+          "text": { "type": "string" }
+        }
+      },
+      "PlayerState": {
+        "type": "object",
+        "properties": {
+          "userId": { "type": "string" },
+          "displayName": { "type": "string" },
+          "avatar": { "type": "string" },
+          "host": { "type": "boolean" },
+          "score": { "type": "integer", "format": "int32" },
+          "correctCount": { "type": "integer", "format": "int32" },
+          "lastAnswerAt": { "type": "integer", "format": "int64" },
+          "selectedDeckId": { "type": "integer", "format": "int64" },
+          "selectedDeckTitle": { "type": "string" },
+          "selectedDeckCardCount": { "type": "integer", "format": "int32" },
+          "connected": { "type": "boolean" },
+          "lives": { "type": "integer", "format": "int32" }
+        }
+      },
+      "SpaceStrikerRoomState": {
+        "type": "object",
+        "properties": {
+          "roomCode": { "type": "string" },
+          "deckId": { "type": "integer", "format": "int64" },
+          "hostUserId": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["WAITING", "PLAYING", "FINISHED"]
+          },
+          "questionCount": { "type": "integer", "format": "int32" },
+          "questions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AudioQuestionItem" }
+          },
+          "currentQuestionIndex": { "type": "integer", "format": "int32" },
+          "startedAt": { "type": "integer", "format": "int64" },
+          "currentQuestionStartedAt": { "type": "integer", "format": "int64" },
+          "players": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PlayerState"
+            }
+          },
+          "questionResolved": { "type": "boolean" }
+        }
+      },
+      "ApiResponseAudioReflexRoomState": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/AudioReflexRoomState" }
+        }
+      },
+      "AudioReflexRoomState": {
+        "type": "object",
+        "properties": {
+          "roomCode": { "type": "string" },
+          "deckId": { "type": "integer", "format": "int64" },
+          "hostUserId": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["WAITING", "PLAYING", "FINISHED"]
+          },
+          "questionCount": { "type": "integer", "format": "int32" },
+          "questions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AudioQuestionItem" }
+          },
+          "currentQuestionIndex": { "type": "integer", "format": "int32" },
+          "startedAt": { "type": "integer", "format": "int64" },
+          "currentQuestionStartedAt": { "type": "integer", "format": "int64" },
+          "players": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PlayerState"
+            }
+          },
+          "answeredThisQuestion": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true
+          }
         }
       },
       "DeckUpdateRequest": {
@@ -1791,15 +2598,15 @@
         },
         "required": ["cardId"]
       },
-      "ApiResponseSrsCardResponse": {
+      "ApiResponseReviewCardResponse": {
         "type": "object",
         "properties": {
           "status": { "type": "integer", "format": "int32" },
           "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/SrsCardResponse" }
+          "data": { "$ref": "#/components/schemas/ReviewCardResponse" }
         }
       },
-      "SrsCardResponse": {
+      "ReviewCardResponse": {
         "type": "object",
         "properties": {
           "card": { "$ref": "#/components/schemas/CardResponse" },
@@ -1810,6 +2617,8 @@
           "repetitions": { "type": "integer", "format": "int32" },
           "interval": { "type": "integer", "format": "int32" },
           "easinessFactor": { "type": "number", "format": "float" },
+          "stability": { "type": "number", "format": "double" },
+          "difficulty": { "type": "number", "format": "double" },
           "nextReviewDate": { "type": "string", "format": "date" }
         }
       },
@@ -1860,6 +2669,45 @@
           }
         }
       },
+      "SubmitAnswerRequest": {
+        "type": "object",
+        "properties": { "cardId": { "type": "integer", "format": "int64" } }
+      },
+      "AudioReflexSubmitRequest": {
+        "type": "object",
+        "properties": {
+          "deckId": { "type": "integer", "format": "int64" },
+          "score": { "type": "integer", "format": "int32" },
+          "maxCombo": { "type": "integer", "format": "int32" },
+          "correctAnswers": { "type": "integer", "format": "int32" },
+          "totalQuestions": { "type": "integer", "format": "int32" },
+          "completionTime": { "type": "number", "format": "double" }
+        },
+        "required": ["deckId"]
+      },
+      "ApiResponseAudioReflexLeaderboardResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": {
+            "$ref": "#/components/schemas/AudioReflexLeaderboardResponse"
+          }
+        }
+      },
+      "AudioReflexLeaderboardResponse": {
+        "type": "object",
+        "properties": {
+          "rank": { "type": "integer", "format": "int32" },
+          "userId": { "type": "string" },
+          "userName": { "type": "string" },
+          "userAvatar": { "type": "string" },
+          "score": { "type": "integer", "format": "int32" },
+          "maxCombo": { "type": "integer", "format": "int32" },
+          "accuracy": { "type": "number", "format": "double" },
+          "playedAt": { "type": "string", "format": "date-time" }
+        }
+      },
       "DeckCreateRequest": {
         "type": "object",
         "properties": {
@@ -1886,6 +2734,42 @@
           "permission": { "type": "string", "enum": ["VIEW", "EDIT"] }
         },
         "required": ["email", "permission"]
+      },
+      "ChatMessageRequest": {
+        "type": "object",
+        "properties": {
+          "content": { "type": "string" },
+          "replyToId": { "type": "string" }
+        },
+        "required": ["content"]
+      },
+      "ApiResponseChatMessageResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/ChatMessageResponse" }
+        }
+      },
+      "ChatMessageResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "senderId": { "type": "string" },
+          "senderName": { "type": "string" },
+          "senderAvatar": { "type": "string" },
+          "content": { "type": "string" },
+          "replyTo": { "$ref": "#/components/schemas/ReplyMessageResponse" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ReplyMessageResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "senderName": { "type": "string" },
+          "content": { "type": "string" }
+        }
       },
       "CardCreationRequest": {
         "type": "object",
@@ -2000,10 +2884,6 @@
         "description": "Yêu cầu tạo quiz (bao gồm số lượng câu hỏi, danh sách thẻ bài cần tạo quiz...)",
         "properties": {
           "deck_id": { "type": "integer", "format": "int64" },
-          "allowed_deck_ids": {
-            "type": "array",
-            "items": { "type": "integer", "format": "int64" }
-          },
           "question_count": { "type": "integer", "format": "int32" },
           "types": { "type": "array", "items": { "type": "string" } },
           "card_ids": {
@@ -2067,15 +2947,38 @@
           "data": { "$ref": "#/components/schemas/AiQuizResponse" }
         }
       },
+      "UrlExtractionRequest": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string" },
+          "category": { "type": "string" },
+          "deckId": { "type": "integer", "format": "int64" }
+        }
+      },
+      "ApiResponseListCardCreationRequest": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CardCreationRequest" }
+          }
+        }
+      },
+      "TextExtractionRequest": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string" },
+          "category": { "type": "string" },
+          "deckId": { "type": "integer", "format": "int64" }
+        }
+      },
       "AiChatRequest": {
         "type": "object",
         "description": "Nội dung tin nhắn và ngữ cảnh (tuỳ chọn) gửi cho AI",
         "properties": {
           "query": { "type": "string" },
-          "allowed_deck_ids": {
-            "type": "array",
-            "items": { "type": "integer", "format": "int64" }
-          },
           "scope_deck_id": { "type": "integer", "format": "int64" },
           "history": {
             "type": "array",
@@ -2152,14 +3055,14 @@
           }
         }
       },
-      "ApiResponseListSrsCardResponse": {
+      "ApiResponseListReviewCardResponse": {
         "type": "object",
         "properties": {
           "status": { "type": "integer", "format": "int32" },
           "message": { "type": "string" },
           "data": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/SrsCardResponse" }
+            "items": { "$ref": "#/components/schemas/ReviewCardResponse" }
           }
         }
       },
@@ -2263,6 +3166,39 @@
           "last": { "type": "boolean" }
         }
       },
+      "ApiResponseAudioReflexGameResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/AudioReflexGameResponse" }
+        }
+      },
+      "AudioReflexGameResponse": {
+        "type": "object",
+        "properties": {
+          "deckId": { "type": "integer", "format": "int64" },
+          "deckTitle": { "type": "string" },
+          "totalQuestions": { "type": "integer", "format": "int32" },
+          "questions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AudioQuestionItem" }
+          }
+        }
+      },
+      "ApiResponseListAudioReflexLeaderboardResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AudioReflexLeaderboardResponse"
+            }
+          }
+        }
+      },
       "Pageable": {
         "type": "object",
         "properties": {
@@ -2327,6 +3263,41 @@
           "last": { "type": "boolean" }
         }
       },
+      "ApiResponseMapStringInteger": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": {
+            "type": "object",
+            "additionalProperties": { "type": "integer", "format": "int32" }
+          }
+        }
+      },
+      "ApiResponsePageResponseChatMessageResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": {
+            "$ref": "#/components/schemas/PageResponseChatMessageResponse"
+          }
+        }
+      },
+      "PageResponseChatMessageResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ChatMessageResponse" }
+          },
+          "pageNo": { "type": "integer", "format": "int32" },
+          "pageSize": { "type": "integer", "format": "int32" },
+          "totalElements": { "type": "integer", "format": "int64" },
+          "totalPages": { "type": "integer", "format": "int32" },
+          "last": { "type": "boolean" }
+        }
+      },
       "ApiResponsePageResponseCardResponse": {
         "type": "object",
         "properties": {
@@ -2347,6 +3318,14 @@
           "totalElements": { "type": "integer", "format": "int64" },
           "totalPages": { "type": "integer", "format": "int32" },
           "last": { "type": "boolean" }
+        }
+      },
+      "ApiResponseObject": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "type": "object" }
         }
       },
       "AiSearchResponse": {

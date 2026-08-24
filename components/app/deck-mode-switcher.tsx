@@ -7,7 +7,7 @@ import { cn } from "@/lib/cn";
 export type DeckViewMode =
   | "list"
   | "single"
-  | "srs"
+  | "study"
   | "quiz"
   | "ask"
   | "game";
