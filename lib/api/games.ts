@@ -158,3 +158,117 @@ export function submitAudioReflexRoomAnswer(roomCode: string, cardId: number) {
   );
 }
 
+/* ---------------------------------------------------------------------------
+   Multiplayer Space Striker Room APIs — /games/space-striker/rooms
+   Tái dùng AudioQuestionItem/AudioOptionItem ở trên (backend dùng chung
+   AudioReflexGameResponse.AudioQuestionItem cho cả 2 game).
+   ------------------------------------------------------------------------- */
+
+export interface SpaceStrikerPlayerState {
+  userId: string;
+  displayName: string;
+  avatar: string | null;
+  host: boolean;
+  score: number;
+  correctCount: number;
+  lastAnswerAt?: number;
+  selectedDeckId?: number | null;
+  selectedDeckTitle?: string | null;
+  selectedDeckCardCount?: number;
+  connected: boolean;
+  /** Mặc định 3, 0 = đã bị loại, không bắn được nữa. */
+  lives: number;
+}
+
+export interface SpaceStrikerRoomState {
+  roomCode: string;
+  deckId: number;
+  hostUserId: string;
+  status: "WAITING" | "PLAYING" | "FINISHED";
+  questionCount: number;
+  questions: AudioQuestionItem[];
+  currentQuestionIndex: number;
+  startedAt: number;
+  currentQuestionStartedAt: number;
+  players: Record<string, SpaceStrikerPlayerState>;
+  /** true khi câu hiện tại đã có người bắn trúng đầu tiên, đang chờ chuyển câu. */
+  questionResolved: boolean;
+}
+
+/** Sự kiện đầy đủ mà server phát qua /topic/space-room/{code}. */
+export type SpaceStrikerEventType =
+  | "PLAYER_JOINED"
+  | "PLAYER_LEFT"
+  | "PLAYER_DISCONNECTED"
+  | "PLAYER_RECONNECTED"
+  | "PLAYER_DECK_SELECTED"
+  | "ROOM_STARTED"
+  | "PLAYER_MISSED"
+  | "PLAYER_ELIMINATED"
+  | "NEXT_QUESTION"
+  | "QUESTION_TIMEOUT_NEXT"
+  | "ROOM_FINISHED";
+
+export interface SpaceStrikerSocketPayload {
+  type: SpaceStrikerEventType;
+  timeLimitSeconds: number;
+  room: SpaceStrikerRoomState;
+}
+
+export function createSpaceStrikerRoom(deckId: number, questionCount = 10) {
+  return apiFetch<SpaceStrikerRoomState>(
+    `/games/space-striker/rooms?deckId=${deckId}&questionCount=${questionCount}`,
+    { method: "POST", auth: true },
+  );
+}
+
+export function joinSpaceStrikerRoom(roomCode: string) {
+  return apiFetch<SpaceStrikerRoomState>(
+    `/games/space-striker/rooms/${roomCode}/join`,
+    { method: "POST", auth: true },
+  );
+}
+
+export function startSpaceStrikerRoomGame(roomCode: string) {
+  return apiFetch<SpaceStrikerRoomState>(
+    `/games/space-striker/rooms/${roomCode}/start`,
+    { method: "POST", auth: true },
+  );
+}
+
+export function getSpaceStrikerRoom(roomCode: string) {
+  return apiFetch<SpaceStrikerRoomState>(
+    `/games/space-striker/rooms/${roomCode}`,
+    { method: "GET", auth: true },
+  );
+}
+
+export function leaveSpaceStrikerRoom(roomCode: string) {
+  return apiFetch<void>(
+    `/games/space-striker/rooms/${roomCode}/leave`,
+    { method: "DELETE", auth: true },
+  );
+}
+
+export function selectPlayerDeckInSpaceStrikerRoom(
+  roomCode: string,
+  selectedDeckId?: number | null,
+) {
+  const query = selectedDeckId ? `?selectedDeckId=${selectedDeckId}` : "";
+  return apiFetch<SpaceStrikerRoomState>(
+    `/games/space-striker/rooms/${roomCode}/select-deck${query}`,
+    { method: "PUT", auth: true },
+  );
+}
+
+/** apiFetch tự JSON.stringify body — truyền object thuần, không tự stringify lần nữa. */
+export function submitSpaceStrikerRoomAnswer(roomCode: string, cardId: number) {
+  return apiFetch<SpaceStrikerRoomState>(
+    `/games/space-striker/rooms/${roomCode}/answer`,
+    {
+      method: "POST",
+      auth: true,
+      body: { cardId },
+    },
+  );
+}

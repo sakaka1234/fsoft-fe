@@ -15,10 +15,12 @@ import { List } from "@phosphor-icons/react/List";
 import { GameController } from "@phosphor-icons/react/GameController";
 import { Users } from "@phosphor-icons/react/Users";
 import { UserPlus } from "@phosphor-icons/react/UserPlus";
+import { Rocket } from "@phosphor-icons/react/Rocket";
 
 
 import { AudioReflexGame } from "@/components/app/audio-reflex-game";
 import { AudioReflexMultiplayer } from "@/components/app/audio-reflex-multiplayer";
+import { SpaceStrikerMultiplayer } from "@/components/app/space-striker-multiplayer";
 
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -83,7 +85,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"single" | "list" | "game">("single");
-  const [gameSubMode, setGameSubMode] = useState<null | "solo" | "multiplayer">(null);
+  const [gameSubMode, setGameSubMode] = useState<null | "solo" | "multiplayer-select" | "multiplayer" | "space-striker">(null);
   const [singleCardIndex, setSingleCardIndex] = useState(0);
   const [rowError, setRowError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -494,16 +496,80 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                     <div className="mb-4 flex items-center justify-between">
                       <button
                         type="button"
-                        onClick={() => setGameSubMode(null)}
+                        onClick={() => setGameSubMode("multiplayer-select")}
                         className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink transition-colors cursor-pointer"
+                      >
+                        <ArrowLeft size={14} /> Chọn game khác
+                      </button>
+                    </div>
+                    <AudioReflexMultiplayer deckId={deckId} deckTitle={deck.data?.title ?? ""} onBackToSolo={() => setGameSubMode("multiplayer-select")} />
+                  </div>
+                ) : gameSubMode === "space-striker" ? (
+                  <div>
+                    <div className="mb-4 flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setGameSubMode("multiplayer-select")}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink transition-colors cursor-pointer"
+                      >
+                        <ArrowLeft size={14} /> Chọn game khác
+                      </button>
+                    </div>
+                    <SpaceStrikerMultiplayer deckId={deckId} deckTitle={deck.data?.title ?? ""} onBackToSolo={() => setGameSubMode("multiplayer-select")} />
+                  </div>
+                ) : gameSubMode === "multiplayer-select" ? (
+                  <div className="max-w-3xl mx-auto flex flex-col gap-6 py-6 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setGameSubMode(null)}
+                        className="mb-1 inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-ink transition-colors cursor-pointer self-start"
                       >
                         <ArrowLeft size={14} /> Chuyển chế độ game
                       </button>
+                      <Users size={42} className="text-indigo-500" weight="fill" />
+                      <h3 className="text-2xl font-extrabold text-ink">Chọn Game Nhiều Người</h3>
+                      <p className="text-sm text-muted">Tạo phòng riêng tư hoặc nhập mã để thi đấu cùng bạn bè real-time</p>
                     </div>
-                    <AudioReflexMultiplayer deckId={deckId} deckTitle={deck.data?.title ?? ""} onBackToSolo={() => setGameSubMode(null)} />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setGameSubMode("multiplayer")}
+                        className="group flex flex-col items-center justify-between p-6 rounded-3xl border border-line bg-surface hover:border-indigo-500 hover:shadow-lg transition-all cursor-pointer text-center"
+                      >
+                        <div className="flex size-14 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-500 group-hover:scale-110 transition-transform">
+                          <Users size={32} weight="fill" />
+                        </div>
+                        <div className="mt-4">
+                          <h4 className="font-bold text-ink text-base">Thử Thách Phản Xạ Nghe</h4>
+                          <p className="text-xs text-muted mt-1">Nghe & chọn nghĩa đúng nhanh nhất, thi đấu theo phòng real-time</p>
+                        </div>
+                        <span className="mt-4 w-full py-2.5 rounded-full bg-surface-2 text-xs font-semibold text-ink group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                          Vào Thi Đấu
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setGameSubMode("space-striker")}
+                        className="group flex flex-col items-center justify-between p-6 rounded-3xl border border-line bg-surface hover:border-cyan-500 hover:shadow-lg transition-all cursor-pointer text-center"
+                      >
+                        <div className="flex size-14 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-500 group-hover:scale-110 transition-transform">
+                          <Rocket size={32} weight="fill" />
+                        </div>
+                        <div className="mt-4">
+                          <h4 className="font-bold text-ink text-base">Space Striker</h4>
+                          <p className="text-xs text-muted mt-1">Bắn phi thuyền diệt quái từ vựng, PvP tốc độ real-time</p>
+                        </div>
+                        <span className="mt-4 w-full py-2.5 rounded-full bg-surface-2 text-xs font-semibold text-ink group-hover:bg-cyan-500 group-hover:text-white transition-colors">
+                          Vào Không Chiến
+                        </span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <div className="max-w-xl mx-auto flex flex-col gap-6 py-6 text-center">
+                  <div className="max-w-2xl mx-auto flex flex-col gap-6 py-6 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <GameController size={42} className="text-accent" weight="fill" />
                       <h3 className="text-2xl font-extrabold text-ink">Chọn Chế Độ Chơi Game</h3>
@@ -530,7 +596,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
 
                       <button
                         type="button"
-                        onClick={() => setGameSubMode("multiplayer")}
+                        onClick={() => setGameSubMode("multiplayer-select")}
                         className="group flex flex-col items-center justify-between p-6 rounded-3xl border border-line bg-surface hover:border-indigo-500 hover:shadow-lg transition-all cursor-pointer text-center"
                       >
                         <div className="flex size-14 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-500 group-hover:scale-110 transition-transform">
@@ -541,7 +607,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                           <p className="text-xs text-muted mt-1">Tạo phòng riêng tư 6 ký tự hoặc nhập mã để thi đấu real-time</p>
                         </div>
                         <span className="mt-4 w-full py-2.5 rounded-full bg-surface-2 text-xs font-semibold text-ink group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-                          Vào Thi Đấu
+                          Chọn Game Thi Đấu
                         </span>
                       </button>
                     </div>
