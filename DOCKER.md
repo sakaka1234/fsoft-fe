@@ -83,7 +83,14 @@ Build 4 tầng, chỉ tầng cuối được ship:
 | `builder` | `next build` |
 | `runner` | Node thuần, không pnpm, không mã nguồn |
 
-`next.config.ts` bật `output: "standalone"`, nên Next chỉ chép ra server và
+`next.config.ts` bật `output: "standalone"` **chỉ khi biến `BUILD_STANDALONE=1`**,
+và tầng `builder` của Dockerfile là chỗ duy nhất đặt biến đó. Lý do: bật vô
+điều kiện làm hỏng deploy trên Vercel (`ENOENT ... next-server.js.nft.json`),
+vì Vercel có định dạng output riêng và không cần standalone. Nếu bạn build image
+bằng cách khác Dockerfile này, nhớ truyền biến đó, không thì `.next/standalone`
+sẽ không được tạo.
+
+Khi đã bật, Next chỉ chép ra server và
 đúng những file trong `node_modules` mà nó truy vết được là có dùng. Tầng
 `runner` vì thế không cài dependency lần nào. Standalone cố ý bỏ qua `public/`
 và `.next/static/` vì mặc định coi như có CDN phục vụ; ở đây không có CDN nên

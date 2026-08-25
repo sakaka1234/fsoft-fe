@@ -67,6 +67,12 @@ ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
 ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
 ENV NODE_ENV=production
 
+# Turns on `output: "standalone"` in next.config.ts, which is off by default.
+# It is a flag rather than a constant because setting it unconditionally broke
+# Vercel deploys with an ENOENT on .next/next-server.js.nft.json; the reasoning
+# is written out in next.config.ts. This image is the only thing that wants it.
+ENV BUILD_STANDALONE=1
+
 # Fail loudly at build time. Without this the build succeeds and every API
 # call in the running container resolves against the container's own origin,
 # which looks like a backend outage rather than a missing argument.

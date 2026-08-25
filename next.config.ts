@@ -2,13 +2,31 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /**
-   * Emit .next/standalone: a self-contained server plus only the traced
-   * node_modules files, so the runtime image never installs dependencies.
-   * The Dockerfile depends on this; removing it breaks the image, not the
-   * local build. `public` and `.next/static` are not copied into standalone
-   * automatically, which is why the Dockerfile copies them itself.
+   * Standalone output is OPT IN, and only the Dockerfile opts in.
+   *
+   * Setting it unconditionally broke deploys on Vercel:
+   *
+   *   Error: ENOENT: no such file or directory, open
+   *   '/vercel/path0/.next/next-server.js.nft.json'
+   *
+   * The mechanism: `output: "standalone"` makes Next run copyTracedFiles()
+   * (node_modules/next/dist/build/utils.js:1106), which READS that trace file.
+   * The file is written only by collectBuildTraces(), and both of its call
+   * sites in build/index.js are gated on the bundler not being Turbopack. On
+   * Vercel the writer did not run and the reader still did, so the build died.
+   * The same build succeeds locally, which is why this was worth pinning to a
+   * flag rather than to a guess about which platform behaves how.
+   *
+   * Vercel does not need this setting: it produces its own deployment output.
+   * Only a self-hosted container does, so the Docker builder stage sets
+   * BUILD_STANDALONE=1 and nothing else does. Keeping the default equal to
+   * stock Next means the everyday `pnpm build` and CI take the well trodden
+   * path.
+   *
+   * `public` and `.next/static` are not copied into standalone automatically,
+   * which is why the Dockerfile copies them itself.
    */
-  // output: "standalone",
+  output: process.env.BUILD_STANDALONE === "1" ? "standalone" : undefined,
 
   /**
    * Origins allowed to reach the dev server's internal endpoints. The port the
