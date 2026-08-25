@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
    * local build. `public` and `.next/static` are not copied into standalone
    * automatically, which is why the Dockerfile copies them itself.
    */
-  output: "standalone",
+  // output: "standalone",
 
   /**
    * Origins allowed to reach the dev server's internal endpoints. The port the
