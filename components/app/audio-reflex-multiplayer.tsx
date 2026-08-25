@@ -381,7 +381,7 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
         className="max-w-xl mx-auto flex flex-col gap-6"
       >
         <div className="flex flex-col items-center gap-4 text-center py-6">
-          <div className="relative flex size-20 items-center justify-center rounded-card via-accent/20 text-accent shadow-card border border-accent/20 backdrop-blur-md">
+          <div className="relative flex size-20 items-center justify-center rounded-card bg-accent-soft text-accent shadow-card border border-accent/20 backdrop-blur-md">
             <Users size={42} weight="fill" className="text-accent drop-shadow-md" />
             <motion.div
               animate={{ rotate: 360 }}
@@ -393,7 +393,7 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
           </div>
 
           <div>
-            <h2 className="text-3xl font-semibold tracking-tight text-ink from-ink via-accent to-ink bg-clip-text text-transparent">
+            <h2 className="text-3xl font-semibold tracking-tight text-ink">
               Chơi Cùng Bạn Bè
             </h2>
             <p className="mt-1.5 text-sm text-muted max-w-md">
@@ -413,7 +413,7 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 w-full mt-4">
             {/* Card 1: Tạo phòng mới */}
-            <div className="group relative flex flex-col items-center justify-between gap-5 p-7 rounded-card border border-accent from-surface via-surface shadow-card hover:shadow-card hover:border-accent transition-all duration-300 text-center">
+            <div className="group relative flex flex-col items-center justify-between gap-5 p-7 rounded-card border border-accent bg-surface shadow-card hover:border-accent transition-all duration-300 text-center">
               <div className="flex flex-col items-center gap-3">
                 <div className="flex size-14 items-center justify-center rounded-card bg-accent-soft text-accent-text shadow-inner transition-transform">
                   <Crown size={32} weight="fill" />
@@ -427,14 +427,14 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
                 type="button"
                 onClick={handleCreateRoom}
                 disabled={loading}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-bold text-accent-fg shadow-card shadow-card hover:hover:active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-bold bg-accent text-accent-fg shadow-card hover:bg-accent-hover active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
               >
                 {loading ? "Đang khởi tạo..." : "Tạo Phòng Mới"}
               </button>
             </div>
 
             {/* Card 2: Nhập mã phòng */}
-            <div className="group relative flex flex-col items-center justify-between gap-5 p-7 rounded-card border border-accent from-surface via-surface shadow-card hover:shadow-card hover:border-accent transition-all duration-300 text-center">
+            <div className="group relative flex flex-col items-center justify-between gap-5 p-7 rounded-card border border-accent bg-surface shadow-card hover:border-accent transition-all duration-300 text-center">
               <div className="flex flex-col items-center gap-3 w-full">
                 <div className="flex size-14 items-center justify-center rounded-card bg-accent-soft text-accent-text shadow-inner transition-transform">
                   <GameController size={32} weight="fill" />
@@ -456,7 +456,7 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
                 type="button"
                 onClick={() => handleJoinRoom()}
                 disabled={loading || !joinCodeInput.trim()}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-sm font-bold text-accent-fg shadow-card shadow-card hover:bg-accent active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-sm font-bold text-accent-fg shadow-card hover:bg-accent-hover active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
               >
                 {loading ? "Đang vào..." : "Vào Phòng"}
               </button>
@@ -570,7 +570,7 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
               <li key={p.userId} className="flex items-center justify-between p-4 text-sm hover:bg-surface-2/40 transition-colors">
                 <div className="flex items-center gap-3.5">
                   <div className="relative">
-                    <div className="flex size-11 items-center justify-center rounded-full from-accent/20 font-semibold text-accent text-base border border-accent/30 shadow-xs">
+                    <div className="flex size-11 items-center justify-center rounded-full bg-accent-soft font-semibold text-accent text-base border border-accent/30 shadow-xs">
                       {p.displayName?.substring(0, 1) || "U"}
                     </div>
                     {!p.connected && (
@@ -871,7 +871,7 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
                     animate={{ opacity: 1, y: 0 }}
                     className="mt-2.5 flex flex-col items-center gap-0.5"
                   >
-                    <h3 className="text-2xl font-semibold text-ink tracking-tight from-ink via-accent to-ink bg-clip-text text-transparent">
+                    <h3 className="text-2xl font-semibold text-ink tracking-tight">
                       {currentQ.word}
                     </h3>
                     {currentQ.phonetic && (
@@ -1082,7 +1082,7 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
             <Trophy size={46} weight="fill" className="drop-shadow-md" />
           </div>
           <div>
-            <h2 className="text-3xl font-semibold text-ink tracking-tight via-accent bg-clip-text text-transparent">
+            <h2 className="text-3xl font-semibold text-ink tracking-tight">
               Kết Thúc Trận Đấu!
             </h2>
             <p className="text-sm font-semibold text-muted mt-1">Bảng vinh danh bục vương miện thi đấu</p>
@@ -1125,7 +1125,7 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
             >
               <div className="flex flex-col items-center mb-2 relative">
                 <Crown size={32} weight="fill" className="text-accent-text absolute -top-8" />
-                <div className="flex size-18 items-center justify-center rounded-full text-accent-fg font-semibold text-2xl border-4 border-accent shadow-card ring-4 ring-accent">
+                <div className="flex size-18 items-center justify-center rounded-full bg-accent text-accent-fg font-semibold text-2xl border-4 border-accent shadow-card ring-4 ring-accent">
                   {top1.displayName?.substring(0, 1)}
                 </div>
                 <span className="font-semibold text-base text-accent-text truncate max-w-[130px] mt-1">
@@ -1133,7 +1133,7 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
                 </span>
                 <span className="font-mono text-sm font-semibold text-accent">{top1.score.toLocaleString()} đ</span>
               </div>
-              <div className="w-full h-44 rounded-t-3xl to-transparent border-t-4 border-accent flex flex-col items-center justify-start pt-4 shadow-card">
+              <div className="w-full h-44 rounded-t-3xl bg-accent-soft border-t-4 border-accent flex flex-col items-center justify-start pt-4 shadow-card">
                 <Trophy size={34} className="text-accent-text" weight="fill" />
                 <span className="font-mono font-semibold text-accent-text text-2xl">#1</span>
                 <span className="text-xs font-semibold text-accent-text bg-accent-soft px-2 py-0.5 rounded-full mt-1">
@@ -1160,7 +1160,7 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
                 </span>
                 <span className="font-mono text-xs font-semibold text-accent">{top3.score.toLocaleString()} đ</span>
               </div>
-              <div className="w-full h-24 rounded-t-3xl to-transparent border-t-4 border-accent flex flex-col items-center justify-start pt-2 shadow-card">
+              <div className="w-full h-24 rounded-t-3xl bg-accent-soft border-t-4 border-accent flex flex-col items-center justify-start pt-2 shadow-card">
                 <Medal size={24} className="text-accent-text" weight="fill" />
                 <span className="font-mono font-semibold text-accent-text text-base">#3</span>
               </div>

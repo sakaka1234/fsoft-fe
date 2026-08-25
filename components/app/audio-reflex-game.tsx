@@ -545,7 +545,7 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
                   animate={{ opacity: 1, y: 0 }}
                   className="mt-2 flex flex-col items-center gap-0.5"
                 >
-                  <h3 className="text-2xl font-semibold text-ink tracking-tight from-ink via-accent to-ink bg-clip-text text-transparent">
+                  <h3 className="text-2xl font-semibold text-ink tracking-tight">
                     {currentQ.word}
                   </h3>
                   {currentQ.phonetic && (

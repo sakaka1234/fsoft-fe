@@ -1,0 +1,46 @@
+# Build context exclusions. Everything here either bloats the image, breaks
+# the build, or leaks a secret.
+
+# Reinstalled inside the image against the lockfile. Copying the host copy in
+# would also ship Windows-built native binaries into a Linux container.
+node_modules
+.pnpm-store
+
+# Built fresh in the builder stage. A stale host build would be copied over
+# and then overwritten, costing upload time for nothing.
+.next
+out
+build
+
+# SECRETS. .env.local holds the real Google client id. If it reached the
+# builder, Next would load it during `next build` and silently override the
+# --build-arg values, so the image would be built against whatever this
+# machine happens to have. The *.example files carry no values and are kept.
+.env
+.env.*
+!.env.example
+!.env.docker.example
+
+# History and tooling
+.git
+.gitignore
+.vscode
+.idea
+.claude
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Docs and container files: not read at build time
+Dockerfile
+.dockerignore
+docker-compose.yml
+README.md
+DOCKER.md
+AGENTS.md
+CLAUDE.md
+docs
+
+# OS noise
+.DS_Store
+Thumbs.db

@@ -1,0 +1,28 @@
+# Convenience wrapper so the whole thing is one command:
+#
+#   docker compose up --build
+#
+# Compose substitutes ${...} below from a `.env` file next to this one, or
+# from the shell. Copy .env.docker.example to .env and fill it in. Note that
+# these are *build* args, not runtime env: Compose cannot inject them into a
+# container that is already built, so changing them requires --build.
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Defaulted to the deployed backend so `docker compose up --build`
+        # works on a fresh clone with no .env at all.
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://fsoft-project-production.up.railway.app/fsoft}
+        # No default: an invented client id would fail at Google's consent
+        # screen with a confusing error. Empty just disables Google sign-in.
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
+    image: fsoft-fe:local
+    ports:
+      # host:container. Change only the left number to serve on another port;
+      # the right one must match PORT in the Dockerfile.
+      - "${PORT:-4000}:4000"
+    restart: unless-stopped
+    # The Dockerfile's HEALTHCHECK applies automatically.
