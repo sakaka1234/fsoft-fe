@@ -310,11 +310,18 @@ export type SrsReviewRequest = {
 /* ---------------------------------------------------------------------------
    AI and SRS.
 
-   Everything below the AI line uses snake_case, unlike the rest of this file.
-   That is not a transcription slip: verified live against GET /api/ai/search,
-   which answers {"results":[{"card_id":..,"deck_id":..,"match_type":".."}],
-   "latency_ms":5,"candidate_count":1}. Renaming these to camelCase for
-   consistency will break every AI call silently.
+   The chat, quiz and search types use snake_case, unlike the rest of this
+   file. That is not a transcription slip: verified live against GET
+   /api/ai/search, which answers {"results":[{"card_id":..,"deck_id":..,
+   "match_type":".."}],"latency_ms":5,"candidate_count":1}. Renaming these to
+   camelCase for consistency will break every AI call silently.
+
+   BUT THE EXTRACTION TYPES FURTHER DOWN ARE camelCase. Same /api/ai prefix,
+   opposite convention, and getting it wrong does not error: the extraction
+   controller ignores unknown properties, so deck_id is accepted, dropped, and
+   deckId arrives null. Verified by type mismatch, which is the only probe that
+   names the real field: deckId:"abc" answers 400 naming
+   TextExtractionRequest["deckId"], while deck_id:"abc" answers 200.
 
    The AI routes also carry an /api prefix that no other route in this API has
    (/decks, /cards, /srs sit at the root). Verified: dropping it answers 500
@@ -427,4 +434,199 @@ export type AiSearchResponse = {
   results: AiSearchResultItem[];
   latency_ms: number;
   candidate_count: number;
+};
+
+/* ---------------------------------------------------------------------------
+   AI extraction.
+
+   camelCase, unlike chat/quiz/search above. See the note at the top of the AI
+   section: this is verified, not assumed.
+
+   The spec marks every request field optional. That is wrong. Omitting
+   `category` throws an unguarded NPE server side (HTTP 500, "Something went
+   wrong: null") in under half a second, before any model call, and omitting
+   `text` answers 500 'Cannot invoke "String.length()" because "text" is null'.
+   Neither is a 400, so a caller cannot tell a validation mistake from a server
+   fault. Guard both client side.
+   ------------------------------------------------------------------------- */
+
+/**
+ * One card the extractor proposes. Same shape the card create endpoint takes,
+ * which is the point: the reader reviews these and then saves them.
+ *
+ * Every field except word and meaning is spec-only. The live endpoint answered
+ * 200 with an empty array on all 11 probes (plain prose, word lists, a single
+ * word, several categories, with and without a real deck), so nothing below
+ * has been seen populated. Treat a non-empty response as the first real
+ * sighting and check it against this type before trusting it.
+ */
+export type CardCreationRequest = {
+  word: string;
+  meaning: string;
+  phonetic?: string;
+  partOfSpeech?: string;
+  definitionEn?: string;
+  exampleSentence?: string;
+  exampleMeaning?: string;
+  imageUrl?: string;
+  audioUrl?: string;
+  note?: string;
+  position?: number;
+};
+
+export type TextExtractionRequest = {
+  /** Required in practice. Empty string is accepted but burns a model call. */
+  text: string;
+  /** Required in practice, despite the spec. Omitting it is a server NPE. */
+  category: string;
+  /**
+   * Accepted and then ignored. A nonexistent id, someone else's deck and no
+   * id at all all answer 200 identically, so this does not scope or attach
+   * anything today. Sent anyway, because the field is real and the behaviour
+   * may be finished later.
+   */
+  deckId?: number;
+};
+
+export type UrlExtractionRequest = {
+  url: string;
+  category: string;
+  deckId?: number;
+};
+
+/* ---------------------------------------------------------------------------
+   Dictionary.
+
+   GET /api/dictionary/lookup is a verbatim passthrough of the Free Dictionary
+   API (Wiktionary data), so this is that project's shape, not one this backend
+   designed. It can therefore drift without a backend deploy.
+
+   Two things a caller has to know:
+
+   - A MISS IS AN HTTP 500, not a 404 and not an empty array. An unknown word
+     answers 500 with body {"status":431,"message":"Lỗi tra từ điển"} and no
+     data key. Upstream downtime looks identical. isWordNotFound() in
+     lib/api/dictionary.ts exists so this does not get reported to the reader
+     as an outage every time they typo.
+   - The payload carries a CC BY-SA licence block and sourceUrls. If entries
+     are rendered, that attribution should be rendered with them.
+   ------------------------------------------------------------------------- */
+
+export type DictionaryLicense = {
+  name: string;
+  url: string;
+};
+
+export type DictionaryPhonetic = {
+  /** Present on every sample, but frequently the empty string. */
+  audio: string;
+  /** The IPA. Missing on 4 of 44 sampled entries, so fall back across the list. */
+  text?: string;
+  sourceUrl?: string;
+  license?: DictionaryLicense;
+};
+
+export type DictionaryDefinition = {
+  definition: string;
+  synonyms: string[];
+  antonyms: string[];
+  example?: string;
+};
+
+export type DictionaryMeaning = {
+  partOfSpeech: string;
+  definitions: DictionaryDefinition[];
+  synonyms: string[];
+  antonyms: string[];
+};
+
+/**
+ * One etymology. A word can return several: "bank" answers four, "run" one,
+ * so callers must handle N entries rather than reading data[0] and stopping.
+ */
+export type DictionaryEntry = {
+  word: string;
+  /** Top level IPA, absent on 4 of 19 sampled entries. Prefer phonetics[]. */
+  phonetic?: string;
+  phonetics: DictionaryPhonetic[];
+  meanings: DictionaryMeaning[];
+  license: DictionaryLicense;
+  sourceUrls: string[];
+};
+
+/* ---------------------------------------------------------------------------
+   Admin.
+
+   Routes live at /admin/... with NO /api prefix, the opposite of the AI group.
+   Verified: /api/admin/dashboard/stats answers "No static resource".
+
+   THIS API DOES NOT RETURN 403. A caller without the role gets HTTP 500 with
+   message "Something went wrong: Access Denied", and a route that does not
+   exist gets HTTP 500 with message "No static resource ...". The status code
+   cannot tell those apart; only the message can. isAccessDenied() in
+   lib/api/admin.ts is the supported way to check.
+
+   Validation runs before authorization, which is how the field names below
+   were confirmed without ever holding an admin token.
+   ------------------------------------------------------------------------- */
+
+/**
+ * Roles come back as plain strings here, unlike UserResponse.roles, which is
+ * RoleResponse[] ({ name: string }). Both shapes are real and they describe
+ * the same thing; do not feed one to code expecting the other.
+ *
+ * Unverified: no admin token was available, so this is the spec's shape. The
+ * string[] claim in particular disagrees with every other roles payload in
+ * this API, and /auth/register answers roles:[{"name":"USER"}]. Check it
+ * against a real response before relying on it.
+ */
+export type AdminUserResponse = {
+  id: string;
+  email: string;
+  phone?: string;
+  fullName?: string;
+  avatar?: string;
+  roles: string[];
+  createTime?: string;
+  updateTime?: string;
+};
+
+export type AdminUpdateUserRolesRequest = {
+  /** camelCase confirmed: role_names is accepted and silently ignored. */
+  roleNames: string[];
+};
+
+export type AdminDashboardStats = {
+  totalUsers: number;
+  totalDecks: number;
+  totalCards: number;
+  totalGameRecords: number;
+  totalOfficialDecks: number;
+  totalPublicDecks: number;
+};
+
+export type AdminGameRecord = {
+  id: string;
+  gameType: string;
+  score: number;
+  totalCards: number;
+  correctCount: number;
+  timeInSeconds: number;
+  accuracyRate: number;
+  /** A Long, not a UUID. Confirmed by the type-conversion 400. */
+  deckId: number;
+  deckTitle?: string;
+  userEmail?: string;
+  userFullName?: string;
+  createdAt?: string;
+};
+
+/**
+ * The read/write asymmetry on this flag is real and has bitten this project
+ * before. Decks READ back as `official` (GET /decks/public never returns
+ * isOfficial), but both admin write DTOs demand `isOfficial`. Confirmed live:
+ * PATCH with {"official":true} answers 400 "isOfficial flag is required".
+ */
+export type AdminUpdateDeckOfficialRequest = {
+  isOfficial: boolean;
 };

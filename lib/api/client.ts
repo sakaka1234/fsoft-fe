@@ -56,6 +56,34 @@ type UploadOptions = BaseOptions & {
   files?: Record<string, File | null | undefined>;
 };
 
+/**
+ * Google's OAuth error body, which is not this API's envelope.
+ *
+ * /oauth2/callback passes the token endpoint's failure straight through
+ * instead of wrapping it. Verified live: a bad code answers HTTP 400 with
+ * {"error":"invalid_grant","error_description":"Malformed auth code."}, while
+ * every other endpoint answers {status, message, data}.
+ */
+type OAuthErrorBody = { error?: string; error_description?: string };
+
+/**
+ * Best available reason for a failed response.
+ *
+ * Without the OAuth branch, a Google sign in that fails shows "Request failed
+ * with status 400" and throws away the only sentence that explains why, since
+ * the passthrough body has no `message` field at all.
+ */
+function errorMessage(payload: unknown, status: number): string {
+  const envelope = payload as ApiResponse<unknown> | null;
+  if (envelope?.message) return envelope.message;
+
+  const oauth = payload as OAuthErrorBody | null;
+  if (oauth?.error_description) return oauth.error_description;
+  if (oauth?.error) return oauth.error;
+
+  return `Request failed with status ${status}`;
+}
+
 async function send<T>(
   path: string,
   init: RequestInit,
@@ -97,7 +125,7 @@ async function send<T>(
     }
     const validation = payload?.data as ValidationErrorData | undefined;
     throw new ApiError(
-      payload?.message ?? `Request failed with status ${response.status}`,
+      errorMessage(payload, response.status),
       response.status,
       validation?.errors ?? {},
     );

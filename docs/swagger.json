@@ -22,6 +22,30 @@
       "description": "Công cụ nội bộ để test thử khả năng của mô hình AI Chat"
     },
     {
+      "name": "Admin User Controller",
+      "description": "Quản trị người dùng & Phân quyền (Admin)"
+    },
+    {
+      "name": "Tag Controller",
+      "description": "Quản lý nhãn (Tags) dùng để phân loại chủ đề của các bộ thẻ (ví dụ: TOEIC, JLPT, IT...)"
+    },
+    {
+      "name": "Admin Game Controller",
+      "description": "Quản lý Lịch sử Game & Điểm số (Admin)"
+    },
+    {
+      "name": "Profile Controller",
+      "description": "Quản lý thông tin hồ sơ cá nhân của người dùng"
+    },
+    {
+      "name": "Admin Deck Controller",
+      "description": "Quản lý & Kiểm duyệt Bộ bài (Admin)"
+    },
+    {
+      "name": "Space Striker Multiplayer Room",
+      "description": "Quản lý phòng chơi game Space Striker nhiều người"
+    },
+    {
       "name": "Auth Controller",
       "description": "Quản lý đăng ký, đăng nhập, bảo mật và xác thực người dùng (JWT)"
     },
@@ -42,24 +66,28 @@
       "description": "Quản lý dữ liệu Thẻ ghi nhớ (Flashcards) trong các Bộ thẻ (Decks)"
     },
     {
-      "name": "Tag Controller",
-      "description": "Quản lý nhãn (Tags) dùng để phân loại chủ đề của các bộ thẻ (ví dụ: TOEIC, JLPT, IT...)"
-    },
-    {
       "name": "AI Integration Controller",
       "description": "Các API ứng dụng Trí tuệ nhân tạo (AI) giúp tối ưu hóa việc học tập của người dùng"
+    },
+    {
+      "name": "Audio Reflex Multiplayer Room",
+      "description": "Quản lý phòng chơi game phản xạ nghe nhiều người"
+    },
+    {
+      "name": "Admin Dashboard Controller",
+      "description": "Thống kê tổng quan hệ thống Admin Dashboard"
     },
     {
       "name": "Internal Card Controller",
       "description": "Các API dùng riêng cho hệ thống phân tán nội bộ để đồng bộ và phân tích dữ liệu"
     },
     {
-      "name": "Profile Controller",
-      "description": "Quản lý thông tin hồ sơ cá nhân của người dùng"
-    },
-    {
       "name": "Card SRS Controller",
       "description": "Quản lý hệ thống học lặp lại ngắt quãng (Spaced Repetition System) cho thẻ học"
+    },
+    {
+      "name": "Card Star Controller",
+      "description": "Quản lý đánh dấu từ khó / từ yêu thích (Favorite / Starred Cards)"
     }
   ],
   "paths": {
@@ -211,6 +239,7 @@
     "/games/space-striker/rooms/{code}/select-deck": {
       "put": {
         "tags": ["Space Striker Multiplayer Room"],
+        "summary": "Chọn bộ thẻ đóng góp cho phòng chơi",
         "operationId": "selectDeck",
         "parameters": [
           {
@@ -243,6 +272,7 @@
     "/games/audio-reflex/rooms/{code}/select-deck": {
       "put": {
         "tags": ["Audio Reflex Multiplayer Room"],
+        "summary": "Chọn bộ thẻ đóng góp cho phòng chơi",
         "operationId": "selectDeck_1",
         "parameters": [
           {
@@ -614,6 +644,43 @@
         }
       }
     },
+    "/admin/users/{userId}/roles": {
+      "put": {
+        "tags": ["Admin User Controller"],
+        "summary": "Cập nhật danh sách Role/Phân quyền cho người dùng",
+        "operationId": "updateUserRoles",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminUpdateUserRolesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAdminUserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/tags": {
       "get": {
         "tags": ["Tag Controller"],
@@ -720,6 +787,7 @@
     "/games/space-striker/rooms": {
       "post": {
         "tags": ["Space Striker Multiplayer Room"],
+        "summary": "Tạo phòng chơi mới",
         "operationId": "createRoom",
         "parameters": [
           {
@@ -752,6 +820,7 @@
     "/games/space-striker/rooms/{code}/start": {
       "post": {
         "tags": ["Space Striker Multiplayer Room"],
+        "summary": "Bắt đầu ván chơi",
         "operationId": "start",
         "parameters": [
           {
@@ -759,6 +828,12 @@
             "in": "path",
             "required": true,
             "schema": { "type": "string" }
+          },
+          {
+            "name": "questionCount",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32" }
           }
         ],
         "responses": {
@@ -778,6 +853,7 @@
     "/games/space-striker/rooms/{code}/join": {
       "post": {
         "tags": ["Space Striker Multiplayer Room"],
+        "summary": "Tham gia vào phòng bằng mã code",
         "operationId": "join",
         "parameters": [
           {
@@ -804,6 +880,7 @@
     "/games/space-striker/rooms/{code}/answer": {
       "post": {
         "tags": ["Space Striker Multiplayer Room"],
+        "summary": "Nộp câu trả lời/phát bắn",
         "operationId": "submitAnswer",
         "parameters": [
           {
@@ -867,6 +944,7 @@
     "/games/audio-reflex/rooms": {
       "post": {
         "tags": ["Audio Reflex Multiplayer Room"],
+        "summary": "Tạo phòng chơi mới",
         "operationId": "createRoom_1",
         "parameters": [
           {
@@ -899,6 +977,7 @@
     "/games/audio-reflex/rooms/{code}/start": {
       "post": {
         "tags": ["Audio Reflex Multiplayer Room"],
+        "summary": "Bắt đầu ván chơi",
         "operationId": "start_1",
         "parameters": [
           {
@@ -906,6 +985,12 @@
             "in": "path",
             "required": true,
             "schema": { "type": "string" }
+          },
+          {
+            "name": "questionCount",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32" }
           }
         ],
         "responses": {
@@ -925,6 +1010,7 @@
     "/games/audio-reflex/rooms/{code}/join": {
       "post": {
         "tags": ["Audio Reflex Multiplayer Room"],
+        "summary": "Tham gia vào phòng bằng mã code",
         "operationId": "join_1",
         "parameters": [
           {
@@ -951,6 +1037,7 @@
     "/games/audio-reflex/rooms/{code}/answer": {
       "post": {
         "tags": ["Audio Reflex Multiplayer Room"],
+        "summary": "Nộp câu trả lời trong phòng",
         "operationId": "submitAnswer_1",
         "parameters": [
           {
@@ -1160,6 +1247,35 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseChatMessageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cards/{cardId}/toggle-star": {
+      "post": {
+        "tags": ["Card Star Controller"],
+        "summary": "Bật/Tắt đánh dấu từ khó (Toggle Star)",
+        "description": "Bấm nút để lưu thẻ vào danh sách từ khó ôn riêng, hoặc bấm lại lần nữa để bỏ lưu. Trả về trạng thái isStarred mới (true/false).",
+        "operationId": "toggleStar",
+        "parameters": [
+          {
+            "name": "cardId",
+            "in": "path",
+            "description": "ID của thẻ ghi nhớ cần bật/tắt gắn sao",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCardStarToggleResponse"
                 }
               }
             }
@@ -1599,26 +1715,148 @@
         }
       }
     },
+    "/admin/decks": {
+      "get": {
+        "tags": ["Admin Deck Controller"],
+        "summary": "Lấy danh sách tất cả bộ bài trong CSDL (Có phân trang & lọc)",
+        "operationId": "getAllDecks",
+        "parameters": [
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "isOfficial",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean" }
+          },
+          {
+            "name": "visibility",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "enum": ["PUBLIC", "PRIVATE"] }
+          },
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": { "$ref": "#/components/schemas/Pageable" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseDeckResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Admin Deck Controller"],
+        "summary": "Tạo mới Bộ bài chuẩn Hệ thống (Official System Deck)",
+        "operationId": "createOfficialDeck",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "$ref": "#/components/schemas/DeckCreateRequest"
+                  },
+                  "coverImage": { "type": "string", "format": "binary" }
+                },
+                "required": ["request"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseDeckResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/decks/{deckId}/official": {
+      "patch": {
+        "tags": ["Admin Deck Controller"],
+        "summary": "Đánh dấu hoặc Hủy đánh dấu Bộ bài chuẩn Hệ Thống (isOfficial)",
+        "operationId": "updateDeckOfficial",
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminUpdateDeckOfficialRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseDeckResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/srs/study-queue": {
       "get": {
         "tags": ["Card SRS Controller"],
-        "summary": "Lấy danh sách thẻ cần học/ôn tập",
-        "description": "Truy xuất danh sách các thẻ bài đang nằm trong hàng đợi SRS (đã đến hạn ôn tập hoặc thẻ bài mới học). Có thể lọc theo một bộ thẻ cụ thể.",
+        "summary": "Lấy danh sách thẻ cần học/ôn tập theo cụm thời gian FSRS",
+        "description": "Truy xuất danh sách toàn bộ thẻ bài trong cụm thời gian FSRS gần nhất của người dùng. Có thể lọc theo 1 bộ thẻ cụ thể hoặc tất cả bộ thẻ.",
         "operationId": "getStudyQueue",
         "parameters": [
           {
             "name": "deckId",
             "in": "query",
-            "description": "Lọc thẻ theo bộ thẻ (bỏ trống nếu muốn lấy tất cả)",
+            "description": "Lọc thẻ theo bộ thẻ (bỏ trống nếu muốn lấy tất cả bộ bài)",
             "required": false,
             "schema": { "type": "integer", "format": "int64" }
           },
           {
-            "name": "limit",
+            "name": "earlyBufferMinutes",
             "in": "query",
-            "description": "Số lượng thẻ tối đa trả về",
+            "description": "Khoảng thời gian tối đa cho phép xem trước cụm tương lai (phút)",
             "required": false,
-            "schema": { "type": "integer", "format": "int32", "default": 20 }
+            "schema": { "type": "integer", "format": "int32", "default": 120 }
+          },
+          {
+            "name": "clusterMinutes",
+            "in": "query",
+            "description": "Phạm vi cửa sổ thời gian để gom cụm thẻ bài (phút)",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 30 }
           }
         ],
         "responses": {
@@ -1628,6 +1866,35 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListReviewCardResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/srs/mastery": {
+      "get": {
+        "tags": ["Card SRS Controller"],
+        "summary": "Biểu đồ thống kê tiến độ thuộc từ (SRS Mastery Dashboard)",
+        "description": "\tTrả về thống kê tổng quan tiến độ học SRS của học viên:\n\t- Tổng thẻ đã học, thẻ thuộc lòng (interval >= 30), đang học, hay quên.\n\t- Tỷ lệ % thuộc lòng (masteryRate).\n\t- Số thẻ cần ôn hôm nay (bao gồm thẻ quá hạn từ hôm trước).\n\t- Số thẻ chưa bắt đầu học (chỉ khi truyền deckId).\n\t- Dự báo số thẻ scheduled trong 7 ngày tới.\n",
+        "operationId": "getMasteryDashboard",
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "query",
+            "description": "ID bộ thẻ (bỏ trống để xem thống kê toàn bộ)",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSrsMasteryResponse"
                 }
               }
             }
@@ -1775,6 +2042,7 @@
     "/games/space-striker/rooms/{code}": {
       "get": {
         "tags": ["Space Striker Multiplayer Room"],
+        "summary": "Lấy trạng thái thông tin phòng chơi",
         "operationId": "get",
         "parameters": [
           {
@@ -1801,6 +2069,7 @@
     "/games/audio-reflex/rooms/{code}": {
       "get": {
         "tags": ["Audio Reflex Multiplayer Room"],
+        "summary": "Lấy trạng thái thông tin phòng chơi",
         "operationId": "get_1",
         "parameters": [
           {
@@ -1924,6 +2193,56 @@
         }
       }
     },
+    "/decks/{deckId}/cram-cards": {
+      "get": {
+        "tags": ["Deck Controller"],
+        "summary": "Lấy danh sách thẻ bài ôn tập cấp tốc (Cramming Mode) trước kỳ thi",
+        "description": "Lấy toàn bộ từ vựng trong bộ bài để lướt xem nhanh trước kỳ thi. HOÀN TOÀN KHÔNG làm thay đổi tiến trình SRS/FSRS.",
+        "operationId": "getCramCards",
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "description": "ID của bộ thẻ cần ôn cấp tốc",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "shuffle",
+            "in": "query",
+            "description": "Có tráo đổi thứ tự thẻ ngẫu nhiên hay không (default: false)",
+            "required": false,
+            "schema": { "type": "boolean", "default": false }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "description": "Bộ lọc từ vựng: ALL, LEARNED, UNLEARNED (default: ALL)",
+            "required": false,
+            "schema": { "type": "string", "default": "ALL" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Số lượng thẻ tối đa lấy ra (0 = lấy tất cả)",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCrammingQueueResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/decks/status": {
       "get": {
         "tags": ["Deck Controller"],
@@ -1999,7 +2318,7 @@
     "/decks/shared-with-me": {
       "get": {
         "tags": ["Deck Controller"],
-        "summary": "Lấy các bộ thẻ mà người khác chia sẻ cho tôi",
+        "summary": "Lấy danh sách các bộ thẻ mà người khác chia sẻ cho tôi",
         "description": "Liệt kê danh sách các bộ bài mà tài khoản hiện tại được người khác cấp quyền truy cập.",
         "operationId": "getSharedWithMeDecks",
         "parameters": [
@@ -2141,6 +2460,41 @@
         }
       }
     },
+    "/cards/starred": {
+      "get": {
+        "tags": ["Card Star Controller"],
+        "summary": "Lấy danh sách các từ khó đã gắn sao",
+        "description": "Lấy danh sách toàn bộ các thẻ bài người dùng đã bấm lưu để phục vụ việc ôn tập riêng. Hỗ trợ lọc theo bộ thẻ (deckId) và phân trang.",
+        "operationId": "getStarredCards",
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "query",
+            "description": "Lọc danh sách từ khó theo bộ thẻ cụ thể (tuỳ chọn)",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": { "$ref": "#/components/schemas/Pageable" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseCardResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/dictionary/lookup": {
       "get": {
         "tags": ["dictionary-controller"],
@@ -2217,6 +2571,130 @@
         }
       }
     },
+    "/admin/users": {
+      "get": {
+        "tags": ["Admin User Controller"],
+        "summary": "Lấy danh sách tất cả người dùng (Có phân trang & tìm kiếm)",
+        "operationId": "getAllUsers",
+        "parameters": [
+          {
+            "name": "keyword",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": { "$ref": "#/components/schemas/Pageable" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseAdminUserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users/{userId}": {
+      "get": {
+        "tags": ["Admin User Controller"],
+        "summary": "Xem chi tiết thông tin người dùng theo ID",
+        "operationId": "getUserById",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAdminUserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/games/records": {
+      "get": {
+        "tags": ["Admin Game Controller"],
+        "summary": "Lấy danh sách tất cả các ván game đã diễn ra (Space Striker & Audio Reflex)",
+        "operationId": "getAllGameRecords",
+        "parameters": [
+          {
+            "name": "gameType",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "deckId",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": { "$ref": "#/components/schemas/Pageable" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseAdminGameRecordResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/dashboard/stats": {
+      "get": {
+        "tags": ["Admin Dashboard Controller"],
+        "summary": "Lấy các chỉ số KPI thống kê tổng quan hệ thống",
+        "operationId": "getDashboardStats",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAdminDashboardStatsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/srs/deck/{deckId}/reset": {
       "delete": {
         "tags": ["Card SRS Controller"],
@@ -2247,6 +2725,7 @@
     "/games/space-striker/rooms/{code}/leave": {
       "delete": {
         "tags": ["Space Striker Multiplayer Room"],
+        "summary": "Rời khỏi phòng chơi",
         "operationId": "leave",
         "parameters": [
           {
@@ -2271,6 +2750,7 @@
     "/games/audio-reflex/rooms/{code}/leave": {
       "delete": {
         "tags": ["Audio Reflex Multiplayer Room"],
+        "summary": "Rời khỏi phòng chơi",
         "operationId": "leave_1",
         "parameters": [
           {
@@ -2278,6 +2758,56 @@
             "in": "path",
             "required": true,
             "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/games/records/{recordId}": {
+      "delete": {
+        "tags": ["Admin Game Controller"],
+        "summary": "Xóa kỷ lục điểm số gian lận khỏi Bảng Xếp Hạng",
+        "operationId": "deleteGameRecord",
+        "parameters": [
+          {
+            "name": "recordId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/decks/{deckId}": {
+      "delete": {
+        "tags": ["Admin Deck Controller"],
+        "summary": "Xóa hoặc gỡ bỏ bộ bài vi phạm tiêu chuẩn cộng đồng",
+        "operationId": "deleteDeck_1",
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
           }
         ],
         "responses": {
@@ -2584,6 +3114,42 @@
           "newPosition": { "type": "integer", "format": "int32" }
         }
       },
+      "AdminUpdateUserRolesRequest": {
+        "type": "object",
+        "properties": {
+          "roleNames": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true
+          }
+        },
+        "required": ["roleNames"]
+      },
+      "AdminUserResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "email": { "type": "string" },
+          "phone": { "type": "string" },
+          "fullName": { "type": "string" },
+          "avatar": { "type": "string" },
+          "roles": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true
+          },
+          "createTime": { "type": "string", "format": "date-time" },
+          "updateTime": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiResponseAdminUserResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/AdminUserResponse" }
+        }
+      },
       "SrsReviewRequest": {
         "type": "object",
         "description": "Dữ liệu đánh giá (ID thẻ bài và mức độ đánh giá)",
@@ -2769,6 +3335,21 @@
           "id": { "type": "string" },
           "senderName": { "type": "string" },
           "content": { "type": "string" }
+        }
+      },
+      "ApiResponseCardStarToggleResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/CardStarToggleResponse" }
+        }
+      },
+      "CardStarToggleResponse": {
+        "type": "object",
+        "properties": {
+          "cardId": { "type": "integer", "format": "int64" },
+          "isStarred": { "type": "boolean" }
         }
       },
       "CardCreationRequest": {
@@ -3044,6 +3625,11 @@
           "data": { "$ref": "#/components/schemas/AiChatResponse" }
         }
       },
+      "AdminUpdateDeckOfficialRequest": {
+        "type": "object",
+        "properties": { "isOfficial": { "type": "boolean" } },
+        "required": ["isOfficial"]
+      },
       "ApiResponseListTagResponse": {
         "type": "object",
         "properties": {
@@ -3063,6 +3649,37 @@
           "data": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/ReviewCardResponse" }
+          }
+        }
+      },
+      "ApiResponseSrsMasteryResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/SrsMasteryResponse" }
+        }
+      },
+      "SrsForecastDayResponse": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "count": { "type": "integer", "format": "int64" }
+        }
+      },
+      "SrsMasteryResponse": {
+        "type": "object",
+        "properties": {
+          "totalLearnedCards": { "type": "integer", "format": "int64" },
+          "newCardsCount": { "type": "integer", "format": "int64" },
+          "masteredCards": { "type": "integer", "format": "int64" },
+          "learningCards": { "type": "integer", "format": "int64" },
+          "lapsedCards": { "type": "integer", "format": "int64" },
+          "masteryRate": { "type": "number", "format": "double" },
+          "dueToday": { "type": "integer", "format": "int64" },
+          "forecastNext7Days": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SrsForecastDayResponse" }
           }
         }
       },
@@ -3241,6 +3858,36 @@
           "last": { "type": "boolean" }
         }
       },
+      "ApiResponseCrammingQueueResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/CrammingQueueResponse" }
+        }
+      },
+      "CrammingCardResponse": {
+        "type": "object",
+        "properties": {
+          "card": { "$ref": "#/components/schemas/CardResponse" },
+          "srsStatus": {
+            "type": "string",
+            "enum": ["NEW", "LEARNING", "REVIEW", "LAPSED"]
+          }
+        }
+      },
+      "CrammingQueueResponse": {
+        "type": "object",
+        "properties": {
+          "deckId": { "type": "integer", "format": "int64" },
+          "deckTitle": { "type": "string" },
+          "totalCards": { "type": "integer", "format": "int32" },
+          "cards": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/CrammingCardResponse" }
+          }
+        }
+      },
       "ApiResponsePageResponseDeckResponse": {
         "type": "object",
         "properties": {
@@ -3357,6 +4004,90 @@
           "status": { "type": "integer", "format": "int32" },
           "message": { "type": "string" },
           "data": { "$ref": "#/components/schemas/AiSearchResponse" }
+        }
+      },
+      "ApiResponsePageResponseAdminUserResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": {
+            "$ref": "#/components/schemas/PageResponseAdminUserResponse"
+          }
+        }
+      },
+      "PageResponseAdminUserResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AdminUserResponse" }
+          },
+          "pageNo": { "type": "integer", "format": "int32" },
+          "pageSize": { "type": "integer", "format": "int32" },
+          "totalElements": { "type": "integer", "format": "int64" },
+          "totalPages": { "type": "integer", "format": "int32" },
+          "last": { "type": "boolean" }
+        }
+      },
+      "AdminGameRecordResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "gameType": { "type": "string" },
+          "score": { "type": "integer", "format": "int32" },
+          "totalCards": { "type": "integer", "format": "int32" },
+          "correctCount": { "type": "integer", "format": "int32" },
+          "timeInSeconds": { "type": "integer", "format": "int32" },
+          "accuracyRate": { "type": "number", "format": "double" },
+          "deckId": { "type": "integer", "format": "int64" },
+          "deckTitle": { "type": "string" },
+          "userEmail": { "type": "string" },
+          "userFullName": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiResponsePageResponseAdminGameRecordResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": {
+            "$ref": "#/components/schemas/PageResponseAdminGameRecordResponse"
+          }
+        }
+      },
+      "PageResponseAdminGameRecordResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AdminGameRecordResponse" }
+          },
+          "pageNo": { "type": "integer", "format": "int32" },
+          "pageSize": { "type": "integer", "format": "int32" },
+          "totalElements": { "type": "integer", "format": "int64" },
+          "totalPages": { "type": "integer", "format": "int32" },
+          "last": { "type": "boolean" }
+        }
+      },
+      "AdminDashboardStatsResponse": {
+        "type": "object",
+        "properties": {
+          "totalUsers": { "type": "integer", "format": "int64" },
+          "totalDecks": { "type": "integer", "format": "int64" },
+          "totalCards": { "type": "integer", "format": "int64" },
+          "totalGameRecords": { "type": "integer", "format": "int64" },
+          "totalOfficialDecks": { "type": "integer", "format": "int64" },
+          "totalPublicDecks": { "type": "integer", "format": "int64" }
+        }
+      },
+      "ApiResponseAdminDashboardStatsResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/AdminDashboardStatsResponse" }
         }
       }
     },

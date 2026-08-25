@@ -1,5 +1,5 @@
-/** Artwork for the auth pages. Same Popsy source as the landing page. */
-const art = (name: string) => `https://illustrations.popsy.co/orange/${name}.svg`;
+/** Artwork for the auth pages. Same self-hosted set as the landing page. */
+const art = (name: string) => `/illustrations/${name}.svg`;
 
 export const authArt = {
   login: {

@@ -9,6 +9,7 @@ import { ArrowLeft } from "@phosphor-icons/react/ArrowLeft";
 import { ArrowUp } from "@phosphor-icons/react/ArrowUp";
 import { PencilSimple } from "@phosphor-icons/react/PencilSimple";
 import { Plus } from "@phosphor-icons/react/Plus";
+import { MagicWand } from "@phosphor-icons/react/MagicWand";
 import { Trash } from "@phosphor-icons/react/Trash";
 import { Cards as CardsIcon } from "@phosphor-icons/react/Cards";
 import { List } from "@phosphor-icons/react/List";
@@ -29,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Modal } from "@/components/ui/modal";
 import { CardForm } from "@/components/app/card-form";
+import { CardImportPanel } from "@/components/app/card-import-panel";
 import { DeckForm } from "@/components/app/deck-form";
 import { SingleCardView } from "@/components/app/single-card-view";
 import { CardContextBlock } from "@/components/app/card-context-block";
@@ -123,6 +125,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
   const [addingCard, setAddingCard] = useState(false);
   const [editingCardId, setEditingCardId] = useState<number | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<DeckViewMode>("single");
   const [gameSubMode, setGameSubMode] = useState<null | "solo" | "multiplayer">(null);
@@ -352,10 +355,20 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
             </Button>
 
             {viewMode === "list" && !addingCard ? (
-              <Button onClick={() => setAddingCard(true)} disabled={busy}>
-                <Plus aria-hidden size={15} weight="bold" />
-                Add card
-              </Button>
+              <>
+                <Button
+                  variant="secondary"
+                  onClick={() => setIsImportModalOpen(true)}
+                  disabled={busy}
+                >
+                  <MagicWand aria-hidden size={15} weight="bold" />
+                  Import with AI
+                </Button>
+                <Button onClick={() => setAddingCard(true)} disabled={busy}>
+                  <Plus aria-hidden size={15} weight="bold" />
+                  Add card
+                </Button>
+              </>
             ) : null}
           </div>
         </div>
@@ -631,6 +644,22 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
         </div>
       )}
     </section>
+
+    {/* Draft cards from text, a link or a file. Opened from Quan ly card. */}
+    <Modal
+      isOpen={isImportModalOpen}
+      onClose={() => setIsImportModalOpen(false)}
+      title="Import card bang AI"
+    >
+      <CardImportPanel
+        deckId={deckId}
+        nextPosition={
+          cards.status === "success" ? cards.data.content.length + 1 : 1
+        }
+        onImported={() => cards.reload()}
+        onClose={() => setIsImportModalOpen(false)}
+      />
+    </Modal>
 
     {/* Share Card Modal */}
     <Modal

@@ -27,12 +27,14 @@ const nextConfig: NextConfig = {
     "127.0.0.1:3000",
     "192.168.1.7:3000",
   ],
-  images: {
-    // Popsy illustrations are SVG line art, served through next/image with
-    // `unoptimized` (nothing for the optimizer to do). Listed here so the host
-    // is documented in one place if we ever switch them to raster assets.
-    remotePatterns: [new URL("https://illustrations.popsy.co/**")],
-  },
+  /*
+   * No `images.remotePatterns` on purpose. Every illustration now lives in
+   * public/illustrations/ and is referenced by an absolute path, so nothing
+   * next/image loads comes from another origin. The previous entry existed
+   * for illustrations.popsy.co, whose CDN zone was suspended and took every
+   * illustration on the landing and auth pages down with it. Adding a remote
+   * host back means accepting that failure mode again.
+   */
 };
 
 export default nextConfig;

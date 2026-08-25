@@ -3,13 +3,21 @@
  * layout only. Icon choices live with the components that render them,
  * which keeps this file serializable and usable from client leaves too.
  *
- * Artwork comes from Popsy (illustrations.popsy.co), hand-drawn SVG in the
- * orange colorway that matches the accent token. Every file is 960x960 line
- * art, which is why illustrations always sit on the light --art-bg panel.
+ * Artwork is unDraw (undraw.co), served from our own origin out of
+ * public/illustrations/. Its licence permits commercial use and asks for no
+ * attribution. The files are recoloured onto our palette at install time,
+ * chiefly unDraw's #6c63ff accent to --accent and its cool blue-slate
+ * linework to a warm equivalent of the same luminance; skin tones are left
+ * alone. Illustrations always sit on the light --art-bg panel, which is why
+ * the light accent is baked in for both themes.
+ *
+ * These were hotlinked from Popsy until its CDN zone was suspended and every
+ * panel went blank for anyone without a warm cache. Nothing here should ever
+ * point at a host we do not control again.
  */
 
-/** Popsy illustration in the accent colorway. */
-const art = (name: string) => `https://illustrations.popsy.co/orange/${name}.svg`;
+/** Illustration served from our own public/ directory. */
+const art = (name: string) => `/illustrations/${name}.svg`;
 
 export const hero = {
   titleLead: "Master English.",

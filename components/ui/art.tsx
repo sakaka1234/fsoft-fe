@@ -19,9 +19,14 @@ type ArtProps = {
 };
 
 /**
- * Illustration panel. The artwork is 960x960 line-art SVG, so it is served
- * unoptimized (nothing for the image optimizer to do) and always sits on the
- * light --art-bg surface, in both themes, so the black linework stays visible.
+ * Illustration panel. The artwork is SVG from public/illustrations/, so it is
+ * served unoptimized (Next skips the optimizer for .svg anyway) and always
+ * sits on the light --art-bg surface in both themes, which is why the accent
+ * baked into the files is the light-theme one.
+ *
+ * width/height are a layout hint only. The panel carries its own aspect class
+ * at each call site and object-contain fits the file inside it, so the source
+ * files do not need to share one aspect ratio.
  */
 export function Art({
   src,

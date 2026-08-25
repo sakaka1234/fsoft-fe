@@ -6,10 +6,28 @@ import { Button } from "@/components/ui/button";
 import { Field, TextArea, TextInput } from "@/components/ui/field";
 import { FormMessage } from "@/components/auth/form-message";
 import { ApiError } from "@/lib/api/client";
+import {
+  entryPhonetic,
+  isWordNotFound,
+  lookupWord,
+} from "@/lib/api/dictionary";
 import type { CardResponse, CardWriteRequest } from "@/lib/api/types";
 import { Trash } from "@phosphor-icons/react/Trash";
+import { BookOpen } from "@phosphor-icons/react/BookOpen";
 
 type CardFiles = { imageFile?: File | null; audioFile?: File | null };
+
+/**
+ * Outcome of a dictionary lookup, as a state rather than a pile of booleans,
+ * so the four results that need different wording cannot be rendered at once.
+ */
+type LookupState =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "filled"; fields: string[]; entry: string }
+  | { kind: "nothing-to-fill"; entry: string }
+  | { kind: "empty" }
+  | { kind: "error"; message: string };
 
 type CardFormProps = {
   card?: CardResponse;
@@ -64,6 +82,81 @@ export function CardForm({
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  const [lookupState, setLookupState] = useState<LookupState>({ kind: "idle" });
+
+  /**
+   * Fill the optional fields from the dictionary, without overwriting anything
+   * already typed. Someone who wrote their own meaning should keep it; the
+   * point of this button is to save typing, not to correct the reader.
+   *
+   * Not an effect on purpose. It runs when asked, because each call is a live
+   * round trip to a third party and costs about half a second.
+   */
+  function handleLookup() {
+    const term = word.trim();
+    if (!term || lookupState.kind === "loading") return;
+
+    setLookupState({ kind: "loading" });
+    lookupWord(term)
+      .then((entries) => {
+        const entry = entries[0];
+        if (!entry) {
+          setLookupState({ kind: "empty" });
+          return;
+        }
+
+        const filled: string[] = [];
+        const ipa = entryPhonetic(entry);
+        if (ipa && !phonetic.trim()) {
+          setPhonetic(ipa);
+          filled.push("phonetic");
+        }
+
+        const meaningBlock = entry.meanings[0];
+        if (meaningBlock) {
+          if (!partOfSpeech.trim()) {
+            setPartOfSpeech(meaningBlock.partOfSpeech);
+            filled.push("part of speech");
+          }
+          const first = meaningBlock.definitions[0];
+          if (first) {
+            if (!definitionEn.trim()) {
+              setDefinitionEn(first.definition);
+              filled.push("definition");
+            }
+            if (first.example && !exampleSentence.trim()) {
+              setExampleSentence(first.example);
+              filled.push("example");
+            }
+          }
+        }
+
+        setLookupState(
+          filled.length > 0
+            ? { kind: "filled", fields: filled, entry: entry.word }
+            : { kind: "nothing-to-fill", entry: entry.word },
+        );
+      })
+      .catch((error) => {
+        /*
+          A word that is not in the dictionary comes back as an HTTP 500, not a
+          404, so this has to be classified rather than shown raw. See
+          isWordNotFound in lib/api/dictionary.ts.
+        */
+        if (isWordNotFound(error)) {
+          setLookupState({ kind: "empty" });
+          return;
+        }
+        setLookupState({
+          kind: "error",
+          message:
+            error instanceof ApiError
+              ? error.message
+              : "Could not reach the dictionary.",
+        });
+      });
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
@@ -114,14 +207,39 @@ export function CardForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field id="card-word" label="Word" error={fieldErrors.word}>
-          <TextInput
-            id="card-word"
-            value={word}
-            onChange={(event) => setWord(event.target.value)}
-            invalid={Boolean(fieldErrors.word)}
-            disabled={pending}
-            required
-          />
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <TextInput
+                id="card-word"
+                value={word}
+                onChange={(event) => {
+                  setWord(event.target.value);
+                  if (lookupState.kind !== "idle") {
+                    setLookupState({ kind: "idle" });
+                  }
+                }}
+                invalid={Boolean(fieldErrors.word)}
+                disabled={pending}
+                required
+                className="flex-1"
+              />
+              <button
+                type="button"
+                onClick={handleLookup}
+                disabled={
+                  pending || !word.trim() || lookupState.kind === "loading"
+                }
+                title="Fill phonetic, part of speech and definition from the dictionary"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-field border border-line px-3 py-2 text-sm text-muted transition-colors hover:border-accent hover:text-accent-text disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <BookOpen size={18} />
+                <span className="hidden sm:inline">
+                  {lookupState.kind === "loading" ? "Looking up" : "Look up"}
+                </span>
+              </button>
+            </div>
+            <LookupNote state={lookupState} />
+          </div>
         </Field>
 
         <Field id="card-meaning" label="Meaning" error={fieldErrors.meaning}>
@@ -292,4 +410,48 @@ export function CardForm({
       </div>
     </form>
   );
+}
+
+/**
+ * One line of feedback under the word field.
+ *
+ * "Not found" is worded as a fact about the dictionary rather than a failure,
+ * because the reader may well have typed a perfectly good word that Wiktionary
+ * does not carry, and because an upstream outage arrives here looking exactly
+ * the same. Neither case is the reader's mistake.
+ */
+function LookupNote({ state }: { state: LookupState }) {
+  if (state.kind === "idle") return null;
+
+  if (state.kind === "loading") {
+    return <p className="text-sm text-muted">Checking the dictionary…</p>;
+  }
+
+  if (state.kind === "filled") {
+    return (
+      <p className="text-sm text-ok">
+        Filled {state.fields.join(", ")} from “{state.entry}”. Edit anything
+        that does not fit.
+      </p>
+    );
+  }
+
+  if (state.kind === "nothing-to-fill") {
+    return (
+      <p className="text-sm text-muted">
+        Found “{state.entry}”, but every field it could fill already has
+        something in it.
+      </p>
+    );
+  }
+
+  if (state.kind === "empty") {
+    return (
+      <p className="text-sm text-muted">
+        No dictionary entry for that word. Fill the fields in yourself.
+      </p>
+    );
+  }
+
+  return <p className="text-sm text-danger">{state.message}</p>;
 }
