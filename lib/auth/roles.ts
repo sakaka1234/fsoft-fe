@@ -10,14 +10,16 @@ import type { Session } from "@/lib/auth/session-store";
   - The JWT carries the same information as a space separated `scope` claim
     with a ROLE_ prefix: "ROLE_USER CREATE_USER". So the two representations of
     the same role differ by that prefix.
-  - AdminUserResponse, on the admin endpoints, declares roles as string[]
-    instead. That is the OpenAPI document's claim and it has never been seen,
-    since no admin token was available.
+  - AdminUserResponse, on the admin endpoints, really does use string[]
+    instead. Confirmed live: /admin/users answers roles:["ADMIN"] for the same
+    account whose login answers roles:[{"name":"ADMIN"}]. Two shapes, one
+    concept, both current.
 
-  The admin role's exact spelling is therefore NOT confirmed. Both "ADMIN" and
-  "ROLE_ADMIN" are accepted below rather than betting on one, because the cost
-  of guessing wrong is an admin who cannot see the admin screens and has no way
-  to tell why.
+  The admin role is spelled "ADMIN" on the session user and "ROLE_ADMIN" in the
+  JWT scope. Confirmed live: signing in as an admin answers
+  roles:[{"name":"ADMIN"}] with scope "ROLE_ADMIN CREATE_PERMISSION ...".
+  Both spellings stay accepted below, because the two representations really do
+  coexist and matching only one would be a coin flip on which reaches here.
 
   This gate is cosmetic. It decides what to render, never what is allowed: the
   server refuses unauthorised calls regardless, and a reader who edits their

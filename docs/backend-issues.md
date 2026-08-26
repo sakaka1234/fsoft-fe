@@ -28,13 +28,14 @@ Token dùng để kiểm là tài khoản thường, scope `ROLE_USER CREATE_USE
 | 11 | `/api/ai/search` không index card của chính người gọi | **P1** | Tìm kiếm vô dụng với dữ liệu người dùng |
 | 12 | Nhóm extraction dùng camelCase, ngược với nhóm AI còn lại | **P2** | Sai kiểu chữ bị **bỏ qua âm thầm** |
 | 13 | `isOfficial` khi ghi / `official` khi đọc | **P2** | Round-trip phải dịch tên field |
-| 14 | `AdminUserResponse.roles` khai `string[]`, thực tế là object | **P2** | CHƯA KIỂM |
+| 14 | API có **hai shape** cho `roles`: `string[]` và `[{name}]` | **P2** | Đã kiểm bằng token admin |
 | 15 | Spec ghi optional nhưng thực tế bắt buộc | **P2** | Sinh code từ spec sẽ sai |
 | 16 | `status` trong body không khớp HTTP status | **P3** | Client buộc phải bỏ qua `status` |
 | 17 | Tiền tố route không nhất quán (`/api` vs không) | **P3** | Dễ gọi nhầm |
 | 18 | Bug `phone IS NULL` khi đăng ký | **P2** | Đã báo, chưa sửa |
 | 19 | Validation chạy trước phân quyền | **P3** | Lộ tên field cho người không có quyền |
 | 20 | `/oauth2/callback` trả envelope của Google, không phải của API | **P2** | Client mất thông tin lỗi đăng nhập Google |
+| 21 | `PATCH /admin/decks/{id}/official` trả 200 nhưng không đổi cờ | **P1** | Không đặt được bộ thẻ chính thức |
 
 ---
 
@@ -273,20 +274,23 @@ curl -X PATCH "$BASE/admin/decks/1/official" -H "Authorization: Bearer $TOKEN" \
 
 ---
 
-### 14. `AdminUserResponse.roles` khai `string[]`, mọi payload khác lại là object — **CHƯA KIỂM**
+### 14. API có hai shape khác nhau cho `roles`
 
-Spec khai:
-```
-AdminUserResponse.roles: string[]
-```
+Đã kiểm bằng token admin thật. **Cả hai đều đang tồn tại song song**, cho cùng một tài khoản:
 
-Nhưng thực tế mọi chỗ khác trả về object:
 ```bash
-curl -X POST "$BASE/auth/register" ... 
-# "roles":[{"name":"USER"}]        <- object, không phải string
+# đăng nhập -> object
+POST /auth/login   ->  "roles":[{"name":"ADMIN"}]
+
+# danh sách admin -> string
+GET  /admin/users  ->  "roles":["ADMIN"]
 ```
 
-Không có token admin nên **chưa xác nhận được** phía admin trả gì. Nếu spec đúng thì cùng một khái niệm đang có hai shape khác nhau trong một API — nên thống nhất.
+Spec không sai. Chính API đang không nhất quán với chính nó. FE buộc phải giữ hai kiểu dữ liệu cho cùng một khái niệm và không được nhầm lẫn giữa chúng.
+
+Ghi chú thêm: quyền admin viết là `ADMIN` ở phía payload, nhưng trong JWT `scope` lại là `ROLE_ADMIN`. Đây là quy ước bình thường của Spring Security, nêu ra để tài liệu đầy đủ.
+
+**Mong đợi:** thống nhất một shape.
 
 ---
 
@@ -407,6 +411,33 @@ curl -X POST "$BASE/auth/login" -H 'Content-Type: application/json'   -d '{"emai
 FE đã tạm xử lý bằng cách đọc thêm `error_description`, nhưng đúng ra nên sửa ở BE cho nhất quán.
 
 **Mong đợi:** bọc lại thành `{status, message, data}` như các endpoint khác, giữ `error_description` của Google trong `message`.
+
+---
+
+### 21. `PATCH /admin/decks/{id}/official` trả 200 nhưng cờ không đổi
+
+Cùng loại bug với mục 9 (`share-link/toggle`). Kiểm bằng token admin thật, trên một deck tạo ra rồi xoá đi ngay, không đụng dữ liệu thật:
+
+```bash
+# 1. tạo deck, official = false
+POST /admin/decks   (multipart, request.isOfficial = false)   -> 200, id = 14
+
+# 2. đọc trước khi sửa
+GET  /decks/14      -> official = false
+
+# 3. bật cờ
+PATCH /admin/decks/14/official  -d '{"isOfficial":true}'
+     -> HTTP 200, nhưng body trả về official = false
+
+# 4. đọc lại để chắc chắn
+GET  /decks/14      -> official = false      <- KHÔNG ĐỔI
+```
+
+Lưu ý bước 4: không thể chỉ tin response của chính lệnh ghi, phải đọc lại. Đó cũng là cách mục 9 lộ ra trước đây.
+
+**Hệ quả:** admin không có cách nào đặt một bộ thẻ thành chính thức. Bộ lọc `isOfficial` ở `GET /admin/decks` vì thế cũng vô dụng, vì không bao giờ có bộ thẻ nào được đánh dấu.
+
+**Mong đợi:** cờ được lưu, và response trả về trạng thái **sau** khi cập nhật.
 
 ---
 

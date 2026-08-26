@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -13,6 +13,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { site } from "@/content/site";
 import { logout } from "@/lib/api/auth";
 import { endSession, getSession } from "@/lib/auth/session-store";
+import { isAdmin } from "@/lib/auth/roles";
 import { useSession } from "@/lib/auth/use-session";
 import { EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/cn";
@@ -75,6 +76,19 @@ function isActive(pathname: string, href: string) {
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const session = useSession();
+
+  /*
+    The console link only exists for an admin. This hides a door that would
+    open onto four failing panels for everyone else; it is not access control,
+    which lives on the server.
+  */
+  const nav = useMemo(
+    () =>
+      isAdmin(session)
+        ? [...APP_NAV, { label: "Quản trị", href: "/admin" as const }]
+        : APP_NAV,
+    [session],
+  );
   const router = useRouter();
   const pathname = usePathname();
   const reduce = useReducedMotion();
@@ -173,7 +187,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 aria-label="Workspace"
                 className="hidden items-center gap-6 lg:flex"
               >
-                {APP_NAV.map((item) => {
+                {nav.map((item) => {
                   const active = isActive(pathname, item.href);
                   return (
                     <Link
@@ -243,7 +257,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                      Cap it against the bar height and scroll inside. */
                   className="flex max-h-[calc(100dvh-4rem)] flex-col overflow-y-auto py-4 md:max-h-[calc(100dvh-4.25rem)]"
                 >
-                  {APP_NAV.map((item) => {
+                  {nav.map((item) => {
                     const active = isActive(pathname, item.href);
                     return (
                       <Link

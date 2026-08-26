@@ -14,10 +14,10 @@ import type {
 /*
   Admin endpoints.
 
-  Everything here was probed live with an ordinary ROLE_USER token. No admin
-  token was available, so the request side (paths, parameter names, casing,
-  binding) is verified and the response side is the OpenAPI document's word.
-  Anything below marked "unverified" has never been seen.
+  Every endpoint here has been called live with a real admin token. The four
+  read routes answer 200 and their payloads match the types in
+  lib/api/types.ts. The write routes were exercised against a throwaway deck
+  that was created and deleted for the purpose, never against real data.
 
   TWO FACTS THAT SHAPE THIS WHOLE FILE:
 
@@ -51,11 +51,21 @@ import type {
  * that check here and every caller keeps working unchanged.
  */
 export function isAccessDenied(error: unknown): boolean {
-  return (
-    error instanceof ApiError &&
-    (error.httpStatus === 403 ||
-      (error.httpStatus === 500 && error.message.includes("Access Denied")))
-  );
+  if (!(error instanceof ApiError)) return false;
+  if (error.httpStatus === 403) return true;
+  return error.httpStatus === 500 && isAccessDeniedMessage(error.message);
+}
+
+/**
+ * The same test against a bare message.
+ *
+ * useAsync hands components the message rather than the ApiError, so screens
+ * cannot use isAccessDenied. Without this they would each hard code the magic
+ * string, and the string is the only signal there is, so it should live in one
+ * place.
+ */
+export function isAccessDeniedMessage(message: string): boolean {
+  return message.includes("Access Denied");
 }
 
 /**
@@ -84,10 +94,8 @@ export function isMissingRoute(error: unknown): boolean {
   tolerance of a non-numeric page is the signature of
   PageableHandlerMethodArgumentResolver, which is zero based by default.
 
-  Caveat worth keeping: the base index was inferred from the binding mechanism,
-  not observed in a payload, because authorization never let a body through. If
-  an admin ever sees page 1 repeated at the start of a list, this is the first
-  place to look.
+  Since confirmed directly with an admin token: page=0 answers pageNo=0 and
+  page=1 answers pageNo=1 with a different slice of users. Zero based, settled.
 */
 
 /* --------------------------------- users --------------------------------- */
@@ -126,9 +134,10 @@ export function getAdminUser(userId: string, signal?: AbortSignal) {
  * `roleNames` is camelCase, confirmed: role_names is accepted and silently
  * dropped, which would clear every role rather than erroring.
  *
- * The valid role strings are not discoverable without admin access. The only
- * one ever observed is "USER", from the register response. Sending an unknown
- * name has not been tested.
+ * Role strings seen live: "USER" and "ADMIN", both bare, with no ROLE_ prefix
+ * on this side. Sending an unknown name has not been tested, and the server
+ * does not validate the role filter elsewhere, so assume it will not validate
+ * here either.
  */
 export function updateAdminUserRoles(
   userId: string,
@@ -204,6 +213,13 @@ export function createAdminDeck(
  * PATCH with {"official":true} answers 400 "isOfficial flag is required",
  * while decks read back carrying `official` and never `isOfficial`. So a
  * round trip has to translate the name in both directions.
+ *
+ * BROKEN SERVER SIDE. This answers 200 and does not change anything. Verified
+ * on a throwaway deck: read official=false, PATCH {"isOfficial":true} answers
+ * 200 whose own body still says official=false, and re-reading the deck still
+ * says false. Same shape of bug as share-link/toggle. Callers should compare
+ * the returned flag against what they sent and tell the reader the truth
+ * rather than showing an optimistic success; admin-view.tsx does that.
  */
 export function setDeckOfficial(
   deckId: number,

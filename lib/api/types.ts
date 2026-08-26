@@ -575,10 +575,11 @@ export type DictionaryEntry = {
  * RoleResponse[] ({ name: string }). Both shapes are real and they describe
  * the same thing; do not feed one to code expecting the other.
  *
- * Unverified: no admin token was available, so this is the spec's shape. The
- * string[] claim in particular disagrees with every other roles payload in
- * this API, and /auth/register answers roles:[{"name":"USER"}]. Check it
- * against a real response before relying on it.
+ * Verified live with an admin token: /admin/users really does answer
+ * roles:["USER"] and roles:["ADMIN"], plain strings, while /auth/login answers
+ * roles:[{"name":"ADMIN"}] for the same account. Both shapes are live at once.
+ * The spec is right and the API is inconsistent with itself, so this is a real
+ * hazard rather than a documentation slip.
  */
 export type AdminUserResponse = {
   id: string;
