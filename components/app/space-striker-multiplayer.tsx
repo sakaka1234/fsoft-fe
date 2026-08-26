@@ -55,13 +55,15 @@ function speak(text: string) {
 
 const QUESTION_TIME_LIMIT = 15;
 const MAX_LIVES = 3;
-const LANE_POSITIONS = ["14%", "38%", "62%", "86%"]; // vị trí ngang cho tối đa 4 quái
+/** Vị trí xuất phát rải đều cho tối đa 4 quái — sau đó mỗi con tự di chuyển độc lập, không cố định cột nữa. */
+const SPAWN_POSITIONS = [16, 40, 60, 84];
 
 type LaserShot = {
   id: string;
   fromX: number;
-  toX: string;
-  toY: string;
+  fromY: number;
+  toX: number;
+  toY: number;
   hit: boolean;
 };
 
@@ -70,6 +72,118 @@ type FloatingText = {
   label: string;
   tone: "good" | "bad";
 };
+
+/**
+ * Quái tự di chuyển ngang độc lập, dội lại khi chạm biên trái/phải, đồng thời rơi dần
+ * xuống theo thời gian câu hỏi. Vị trí thật (x,y) được cập nhật ra ngoài qua onPositionUpdate
+ * để phi thuyền luôn nhắm bắn đúng chỗ con quái đang đứng, không phải cột cố định.
+ */
+function FallingEnemy({
+  optionId,
+  text,
+  spawnX,
+  running,
+  exploding,
+  disabled,
+  timeLimitSeconds,
+  onClick,
+  onPositionUpdate,
+}: {
+  optionId: number;
+  text: string;
+  spawnX: number;
+  running: boolean;
+  exploding: boolean;
+  disabled: boolean;
+  timeLimitSeconds: number;
+  onClick: (optionId: number, x: number, y: number) => void;
+  onPositionUpdate: (optionId: number, x: number, y: number) => void;
+}) {
+  const elRef = useRef<HTMLDivElement | null>(null);
+  const posRef = useRef({
+    x: spawnX,
+    y: -8,
+    vx: (Math.random() < 0.5 ? -1 : 1) * (9 + Math.random() * 7), // %/giây ngang
+  });
+  const runningRef = useRef(running);
+  const rafRef = useRef<number | null>(null);
+  const lastTsRef = useRef(0);
+  const onPositionUpdateRef = useRef(onPositionUpdate);
+
+  useEffect(() => {
+    runningRef.current = running;
+  }, [running]);
+
+  useEffect(() => {
+    onPositionUpdateRef.current = onPositionUpdate;
+  }, [onPositionUpdate]);
+
+  useEffect(() => {
+    const fallSpeedPerSec = 82 / timeLimitSeconds; // rơi tới gần đáy đúng lúc hết giờ
+
+    function applyPosition() {
+      if (elRef.current) {
+        elRef.current.style.left = `${posRef.current.x}%`;
+        elRef.current.style.top = `${posRef.current.y}%`;
+      }
+      onPositionUpdateRef.current(optionId, posRef.current.x, posRef.current.y);
+    }
+
+    applyPosition();
+    lastTsRef.current = performance.now();
+
+    function tick(now: number) {
+      const dt = Math.min(0.05, (now - lastTsRef.current) / 1000);
+      lastTsRef.current = now;
+
+      if (runningRef.current) {
+        const p = posRef.current;
+        p.x += p.vx * dt;
+        if (p.x <= 7) {
+          p.x = 7;
+          p.vx = Math.abs(p.vx); // dội sang phải
+        } else if (p.x >= 93) {
+          p.x = 93;
+          p.vx = -Math.abs(p.vx); // dội sang trái
+        }
+        p.y = Math.min(78, p.y + fallSpeedPerSec * dt);
+        applyPosition();
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    }
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div ref={elRef} className="absolute -translate-x-1/2" style={{ left: `${spawnX}%`, top: "-8%" }}>
+      <motion.button
+        type="button"
+        disabled={disabled}
+        onClick={() => onClick(optionId, posRef.current.x, posRef.current.y)}
+        animate={
+          exploding
+            ? { scale: [1, 1.35, 0], opacity: [1, 1, 0], rotate: [0, 12, -10] }
+            : { scale: 1, opacity: 1 }
+        }
+        transition={exploding ? { duration: 0.45, ease: "easeOut" } : { duration: 0.15 }}
+        className={cn(
+          "flex flex-col items-center gap-1 rounded-2xl border px-3 py-2.5 text-xs font-bold shadow-lg transition-colors cursor-pointer select-none",
+          "border-violet-400/40 bg-violet-950/80 text-violet-100 hover:border-cyan-300 hover:bg-violet-900/90",
+          disabled && "cursor-not-allowed opacity-70",
+        )}
+        style={{ maxWidth: "150px" }}
+      >
+        <span className="text-lg">👾</span>
+        <span className="leading-snug text-center">{text}</span>
+      </motion.button>
+    </div>
+  );
+}
 
 interface Props {
   deckId: number;
@@ -108,6 +222,12 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
   const trackRef = useRef<HTMLDivElement | null>(null);
   const keysDown = useRef<Set<string>>(new Set());
   const moveLoopRef = useRef<number | null>(null);
+  /** Vị trí sống (x,y %) của từng quái theo optionId — cập nhật liên tục bởi FallingEnemy, dùng để nhắm laser đúng chỗ. */
+  const enemyPositionsRef = useRef<Record<number, { x: number; y: number }>>({});
+
+  const handleEnemyPositionUpdate = useCallback((optionId: number, x: number, y: number) => {
+    enemyPositionsRef.current[optionId] = { x, y };
+  }, []);
 
   /* --- Load my decks --- */
   const loadMyDecks = useCallback(async () => {
@@ -353,7 +473,7 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
   }
 
   /** Bắn vào 1 con quái — luật first-hit-wins, chỉ hiệu ứng local, kết quả thật do server quyết định qua sự kiện. */
-  function handleFire(optionId: number, laneX: number) {
+  function handleFire(optionId: number, atX: number, atY: number) {
     if (!room || room.status !== "PLAYING" || locked) return;
     const myLives = room.players[currentUserId]?.lives ?? MAX_LIVES;
     if (myLives <= 0) return;
@@ -364,11 +484,11 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
     const laserId = `${Date.now()}-${Math.random()}`;
     setLasers((prev) => [
       ...prev,
-      { id: laserId, fromX: shipX, toX: `${laneX}%`, toY: "18%", hit: !!isCorrectGuess },
+      { id: laserId, fromX: shipX, fromY: 92, toX: atX, toY: atY, hit: !!isCorrectGuess },
     ]);
     setTimeout(() => {
       setLasers((prev) => prev.filter((l) => l.id !== laserId));
-    }, 260);
+    }, 220);
 
     if (isCorrectGuess) {
       setLocked(true);
@@ -846,21 +966,61 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
               "radial-gradient(ellipse at top, rgba(124,58,237,0.35), transparent 55%), radial-gradient(ellipse at bottom, rgba(6,182,212,0.25), transparent 55%), #0a0a14",
           }}
         >
-          {/* Starfield nền */}
-          <div className="pointer-events-none absolute inset-0 opacity-70">
-            {Array.from({ length: 60 }).map((_, i) => (
-              <span
-                key={i}
-                className="absolute rounded-full bg-white"
-                style={{
-                  top: `${(i * 37) % 100}%`,
-                  left: `${(i * 53) % 100}%`,
-                  width: i % 5 === 0 ? 2 : 1,
-                  height: i % 5 === 0 ? 2 : 1,
-                  opacity: 0.3 + (i % 4) * 0.15,
-                }}
-              />
-            ))}
+          {/* Nền vũ trụ nhiều lớp: tinh vân trôi + hành tinh xa + sao lấp lánh */}
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            {/* Tinh vân trôi chậm */}
+            <motion.div
+              animate={{ x: [0, 40, -20, 0], y: [0, -20, 15, 0] }}
+              transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute -top-1/4 -left-1/4 h-[70%] w-[70%] rounded-full opacity-40 blur-3xl"
+              style={{ background: "radial-gradient(circle, rgba(168,85,247,0.5), transparent 65%)", mixBlendMode: "screen" }}
+            />
+            <motion.div
+              animate={{ x: [0, -30, 25, 0], y: [0, 25, -15, 0] }}
+              transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute -bottom-1/4 -right-1/4 h-[65%] w-[65%] rounded-full opacity-35 blur-3xl"
+              style={{ background: "radial-gradient(circle, rgba(6,182,212,0.5), transparent 65%)", mixBlendMode: "screen" }}
+            />
+            <motion.div
+              animate={{ x: [0, 15, -25, 0], y: [0, -10, 10, 0] }}
+              transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute top-1/3 right-1/4 h-[40%] w-[40%] rounded-full opacity-25 blur-3xl"
+              style={{ background: "radial-gradient(circle, rgba(236,72,153,0.45), transparent 65%)", mixBlendMode: "screen" }}
+            />
+
+            {/* Hành tinh xa */}
+            <div
+              className="absolute top-6 right-8 size-10 rounded-full opacity-70"
+              style={{ background: "radial-gradient(circle at 32% 32%, #fbbf24, #b45309 70%)", boxShadow: "0 0 18px 2px rgba(251,191,36,0.35)" }}
+            />
+            <div
+              className="absolute bottom-10 left-10 size-6 rounded-full opacity-50"
+              style={{ background: "radial-gradient(circle at 35% 35%, #a5b4fc, #4338ca 70%)", boxShadow: "0 0 12px 1px rgba(129,140,248,0.35)" }}
+            />
+
+            {/* Sao lấp lánh */}
+            {Array.from({ length: 90 }).map((_, i) => {
+              const size = i % 7 === 0 ? 2.4 : i % 3 === 0 ? 1.6 : 1;
+              return (
+                <motion.span
+                  key={i}
+                  className="absolute rounded-full bg-white"
+                  style={{
+                    top: `${(i * 29 + (i % 5) * 13) % 100}%`,
+                    left: `${(i * 47 + (i % 7) * 11) % 100}%`,
+                    width: size,
+                    height: size,
+                  }}
+                  animate={{ opacity: [0.15, 0.9, 0.15] }}
+                  transition={{
+                    duration: 2 + (i % 5),
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: (i % 10) * 0.3,
+                  }}
+                />
+              );
+            })}
           </div>
 
           {/* HUD trên cùng: máu, combo, điểm, đồng hồ */}
@@ -944,59 +1104,55 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
             </div>
           )}
 
-          {/* Vùng chiến đấu: quái rơi + tia laser */}
+          {/* Vùng chiến đấu: quái tự dội tường + tia laser đúng góc */}
           <div className="relative z-10 h-[300px] sm:h-[360px] mt-3">
             {currentQ?.options.map((opt, idx) => {
-              const laneX = LANE_POSITIONS[idx] ?? "50%";
               const isExploding = explodingOptionId === opt.optionId;
               return (
-                <motion.button
+                <FallingEnemy
                   key={`${room.currentQuestionIndex}-${opt.optionId}`}
-                  type="button"
+                  optionId={opt.optionId}
+                  text={opt.text}
+                  spawnX={SPAWN_POSITIONS[idx] ?? 50}
+                  running={!locked && myLives > 0}
+                  exploding={isExploding}
                   disabled={locked || myLives <= 0}
-                  onClick={() => handleFire(opt.optionId, parseFloat(laneX))}
-                  initial={{ top: "-8%" }}
-                  animate={
-                    isExploding
-                      ? { top: "62%", scale: [1, 1.3, 0], opacity: [1, 1, 0] }
-                      : { top: locked ? "62%" : "78%" }
-                  }
-                  transition={
-                    isExploding
-                      ? { duration: 0.45, ease: "easeOut" }
-                      : { duration: locked ? 0.3 : QUESTION_TIME_LIMIT, ease: "linear" }
-                  }
-                  className={cn(
-                    "absolute -translate-x-1/2 flex flex-col items-center gap-1 rounded-2xl border px-3 py-2.5 text-xs font-bold shadow-lg transition-colors cursor-pointer select-none",
-                    "border-violet-400/40 bg-violet-950/80 text-violet-100 hover:border-cyan-300 hover:bg-violet-900/90",
-                    (locked || myLives <= 0) && "cursor-not-allowed opacity-70",
-                  )}
-                  style={{ left: laneX, maxWidth: "150px" }}
-                >
-                  <span className="text-lg">👾</span>
-                  <span className="leading-snug text-center">{opt.text}</span>
-                </motion.button>
+                  timeLimitSeconds={QUESTION_TIME_LIMIT}
+                  onClick={handleFire}
+                  onPositionUpdate={handleEnemyPositionUpdate}
+                />
               );
             })}
 
-            {/* Tia laser bắn ra */}
-            <AnimatePresence>
-              {lasers.map((laser) => (
-                <motion.div
-                  key={laser.id}
-                  initial={{ left: `${laser.fromX}%`, bottom: "10%", height: 0, opacity: 1 }}
-                  animate={{ left: laser.toX, height: "70%", opacity: 0.9 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.18, ease: "easeOut" }}
-                  className={cn(
-                    "absolute w-[3px] -translate-x-1/2 origin-bottom rounded-full",
-                    laser.hit
-                      ? "bg-cyan-300 shadow-[0_0_10px_3px_rgba(34,211,238,0.8)]"
-                      : "bg-rose-400 shadow-[0_0_8px_2px_rgba(251,113,133,0.6)]",
-                  )}
-                />
-              ))}
-            </AnimatePresence>
+            {/* Tia laser bắn ra — vẽ đúng đường thẳng thật từ nòng súng tới đúng chỗ quái đang đứng */}
+            <svg
+              className="absolute inset-0 h-full w-full pointer-events-none z-20"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+            >
+              <AnimatePresence>
+                {lasers.map((laser) => (
+                  <motion.line
+                    key={laser.id}
+                    x1={laser.fromX}
+                    y1={laser.fromY}
+                    initial={{ x2: laser.fromX, y2: laser.fromY, opacity: 1 }}
+                    animate={{ x2: laser.toX, y2: laser.toY, opacity: [1, 1, 0] }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    stroke={laser.hit ? "#22d3ee" : "#fb7185"}
+                    strokeWidth={1.6}
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                    style={{
+                      filter: laser.hit
+                        ? "drop-shadow(0 0 4px #22d3ee)"
+                        : "drop-shadow(0 0 3px #fb7185)",
+                    }}
+                  />
+                ))}
+              </AnimatePresence>
+            </svg>
 
             {/* Floating text: Trúng đích / Trượt / Bị loại */}
             <AnimatePresence>
