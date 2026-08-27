@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Client } from "@stomp/stompjs";
 import { Trophy } from "@phosphor-icons/react/Trophy";
@@ -73,6 +73,13 @@ type FloatingText = {
   tone: "good" | "bad";
 };
 
+type ImpactBurst = {
+  id: string;
+  x: number;
+  y: number;
+  hit: boolean;
+};
+
 /**
  * Quái tự di chuyển ngang độc lập, dội lại khi chạm biên trái/phải, đồng thời rơi dần
  * xuống theo thời gian câu hỏi. Vị trí thật (x,y) được cập nhật ra ngoài qua onPositionUpdate
@@ -118,18 +125,19 @@ function FallingEnemy({
     onPositionUpdateRef.current = onPositionUpdate;
   }, [onPositionUpdate]);
 
+  // Áp vị trí ban đầu TRƯỚC khi trình duyệt vẽ khung hình đầu tiên, tránh giật hình.
+  // Đây là lần DUY NHẤT set qua style — sau đó vòng lặp bên dưới làm chủ hoàn toàn,
+  // KHÔNG khai báo left/top trong JSX nữa để React không bao giờ ghi đè lại (đây chính
+  // là nguyên nhân gây cảm giác "giật/lag" khi bấm bắn ở bản trước).
+  useLayoutEffect(() => {
+    if (elRef.current) {
+      elRef.current.style.left = `${posRef.current.x}%`;
+      elRef.current.style.top = `${posRef.current.y}%`;
+    }
+  }, []);
+
   useEffect(() => {
     const fallSpeedPerSec = 82 / timeLimitSeconds; // rơi tới gần đáy đúng lúc hết giờ
-
-    function applyPosition() {
-      if (elRef.current) {
-        elRef.current.style.left = `${posRef.current.x}%`;
-        elRef.current.style.top = `${posRef.current.y}%`;
-      }
-      onPositionUpdateRef.current(optionId, posRef.current.x, posRef.current.y);
-    }
-
-    applyPosition();
     lastTsRef.current = performance.now();
 
     function tick(now: number) {
@@ -147,7 +155,12 @@ function FallingEnemy({
           p.vx = -Math.abs(p.vx); // dội sang trái
         }
         p.y = Math.min(78, p.y + fallSpeedPerSec * dt);
-        applyPosition();
+
+        if (elRef.current) {
+          elRef.current.style.left = `${p.x}%`;
+          elRef.current.style.top = `${p.y}%`;
+        }
+        onPositionUpdateRef.current(optionId, p.x, p.y);
       }
       rafRef.current = requestAnimationFrame(tick);
     }
@@ -160,27 +173,40 @@ function FallingEnemy({
   }, []);
 
   return (
-    <div ref={elRef} className="absolute -translate-x-1/2" style={{ left: `${spawnX}%`, top: "-8%" }}>
-      <motion.button
-        type="button"
-        disabled={disabled}
-        onClick={() => onClick(optionId, posRef.current.x, posRef.current.y)}
+    <div ref={elRef} className="absolute -translate-x-1/2 will-change-transform">
+      <motion.div
         animate={
           exploding
-            ? { scale: [1, 1.35, 0], opacity: [1, 1, 0], rotate: [0, 12, -10] }
-            : { scale: 1, opacity: 1 }
+            ? { scale: 1 }
+            : { scale: [1, 1.06, 1], filter: ["brightness(1)", "brightness(1.25)", "brightness(1)"] }
         }
-        transition={exploding ? { duration: 0.45, ease: "easeOut" } : { duration: 0.15 }}
-        className={cn(
-          "flex flex-col items-center gap-1 rounded-2xl border px-3 py-2.5 text-xs font-bold shadow-lg transition-colors cursor-pointer select-none",
-          "border-violet-400/40 bg-violet-950/80 text-violet-100 hover:border-cyan-300 hover:bg-violet-900/90",
-          disabled && "cursor-not-allowed opacity-70",
-        )}
-        style={{ maxWidth: "150px" }}
+        transition={
+          exploding
+            ? { duration: 0 }
+            : { duration: 1.6 + (optionId % 5) * 0.15, repeat: Infinity, ease: "easeInOut" }
+        }
       >
-        <span className="text-lg">👾</span>
-        <span className="leading-snug text-center">{text}</span>
-      </motion.button>
+        <motion.button
+          type="button"
+          disabled={disabled}
+          onClick={() => onClick(optionId, posRef.current.x, posRef.current.y)}
+          animate={
+            exploding
+              ? { scale: [1, 1.35, 0], opacity: [1, 1, 0], rotate: [0, 12, -10] }
+              : { scale: 1, opacity: 1 }
+          }
+          transition={exploding ? { duration: 0.4, ease: "easeOut" } : { duration: 0.1 }}
+          className={cn(
+            "flex flex-col items-center gap-1 rounded-2xl border px-3 py-2.5 text-xs font-bold shadow-lg transition-colors cursor-pointer select-none",
+            "border-violet-400/40 bg-violet-950/80 text-violet-100 shadow-[0_0_16px_-4px_rgba(168,85,247,0.7)] hover:border-cyan-300 hover:bg-violet-900/90 hover:shadow-[0_0_20px_-2px_rgba(34,211,238,0.8)]",
+            disabled && "cursor-not-allowed opacity-70",
+          )}
+          style={{ maxWidth: "150px" }}
+        >
+          <span className="text-lg">👾</span>
+          <span className="leading-snug text-center">{text}</span>
+        </motion.button>
+      </motion.div>
     </div>
   );
 }
@@ -212,6 +238,7 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
   const [shipX, setShipX] = useState(50); // vị trí phi thuyền theo % chiều ngang
   const [lasers, setLasers] = useState<LaserShot[]>([]);
   const [floatingTexts, setFloatingTexts] = useState<FloatingText[]>([]);
+  const [impactBursts, setImpactBursts] = useState<ImpactBurst[]>([]);
   const [combo, setCombo] = useState(0);
   const [screenShake, setScreenShake] = useState(false);
   const [explodingOptionId, setExplodingOptionId] = useState<number | null>(null);
@@ -248,6 +275,14 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
     setTimeout(() => {
       setFloatingTexts((prev) => prev.filter((t) => t.id !== id));
     }, 1400);
+  }, []);
+
+  const pushImpactBurst = useCallback((x: number, y: number, hit: boolean) => {
+    const id = `${Date.now()}-${Math.random()}`;
+    setImpactBursts((prev) => [...prev, { id, x, y, hit }]);
+    setTimeout(() => {
+      setImpactBursts((prev) => prev.filter((b) => b.id !== id));
+    }, 600);
   }, []);
 
   /* --- WebSocket setup --- */
@@ -488,6 +523,7 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
     ]);
     setTimeout(() => {
       setLasers((prev) => prev.filter((l) => l.id !== laserId));
+      pushImpactBurst(atX, atY, !!isCorrectGuess);
     }, 220);
 
     if (isCorrectGuess) {
@@ -1086,21 +1122,20 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
             </div>
           </div>
 
-          {/* Câu hỏi / câu ví dụ khuyết từ */}
+          {/* Chỉ nghe âm thanh, không hiện chữ của từ/câu để giữ đúng tính "phản xạ nghe" */}
           {currentQ && (
-            <div className="relative z-20 mx-5 mt-3 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm px-4 py-3 text-center">
-              <button
+            <div className="relative z-20 mx-5 mt-3 flex justify-center">
+              <motion.button
                 type="button"
                 onClick={() => speak(currentQ.word)}
-                className="inline-flex items-center gap-2 text-white/90 hover:text-cyan-300 transition-colors cursor-pointer"
+                whileTap={{ scale: 0.9 }}
+                animate={{ boxShadow: ["0 0 0px rgba(34,211,238,0.4)", "0 0 18px rgba(34,211,238,0.55)", "0 0 0px rgba(34,211,238,0.4)"] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+                className="flex items-center gap-2 rounded-full border border-cyan-400/30 bg-white/5 backdrop-blur-sm px-5 py-2 text-cyan-200 hover:text-cyan-300 hover:border-cyan-300/60 transition-colors cursor-pointer"
               >
                 <SpeakerHigh size={18} weight="fill" />
-                <span className="text-sm font-semibold">
-                  {currentQ.exampleSentence
-                    ? currentQ.exampleSentence.replace(currentQ.word, "[ ? ]")
-                    : "Nghe phát âm và bắn trúng đáp án"}
-                </span>
-              </button>
+                <span className="text-xs font-bold uppercase tracking-wide">Nghe lại</span>
+              </motion.button>
             </div>
           )}
 
@@ -1154,6 +1189,50 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
               </AnimatePresence>
             </svg>
 
+            {/* Vụ nổ hạt bắn tung tóe tại điểm chạm — hiệu ứng "ảo" khi trúng/trượt */}
+            <AnimatePresence>
+              {impactBursts.map((burst) => (
+                <div
+                  key={burst.id}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ left: `${burst.x}%`, top: `${burst.y}%` }}
+                >
+                  {/* Vòng sáng bung ra */}
+                  <motion.span
+                    initial={{ scale: 0.2, opacity: 0.9 }}
+                    animate={{ scale: burst.hit ? 2.4 : 1.6, opacity: 0 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    className={cn(
+                      "absolute -left-1/2 -top-1/2 rounded-full",
+                      burst.hit ? "size-10 bg-cyan-400/40" : "size-7 bg-rose-400/40",
+                    )}
+                  />
+                  {/* Mảnh vỡ bắn ra nhiều hướng */}
+                  {Array.from({ length: burst.hit ? 10 : 6 }).map((_, i) => {
+                    const angle = (i / (burst.hit ? 10 : 6)) * Math.PI * 2;
+                    const dist = burst.hit ? 4.5 + (i % 3) : 3 + (i % 2);
+                    return (
+                      <motion.span
+                        key={i}
+                        initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+                        animate={{
+                          x: Math.cos(angle) * dist * 10,
+                          y: Math.sin(angle) * dist * 10,
+                          opacity: 0,
+                          scale: 0.3,
+                        }}
+                        transition={{ duration: 0.5, ease: "easeOut" }}
+                        className={cn(
+                          "absolute rounded-full",
+                          burst.hit ? "size-1.5 bg-cyan-300" : "size-1 bg-rose-300",
+                        )}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+            </AnimatePresence>
+
             {/* Floating text: Trúng đích / Trượt / Bị loại */}
             <AnimatePresence>
               {floatingTexts.map((t) => (
@@ -1195,6 +1274,17 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
                     myLives <= 0 && "text-white/20 grayscale",
                   )}
                 />
+                {myLives > 0 && (
+                  <motion.div
+                    animate={{ scaleY: [0.7, 1.3, 0.7], opacity: [0.5, 0.9, 0.5] }}
+                    transition={{ duration: 0.35, repeat: Infinity, ease: "easeInOut" }}
+                    className="-mt-1 h-3 w-1.5 rounded-full origin-top"
+                    style={{
+                      background: "linear-gradient(to bottom, #67e8f9, #0ea5e9 60%, transparent)",
+                      filter: "blur(0.5px) drop-shadow(0 0 6px rgba(34,211,238,0.8))",
+                    }}
+                  />
+                )}
               </motion.div>
             </div>
           </div>
