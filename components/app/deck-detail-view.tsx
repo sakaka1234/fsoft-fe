@@ -20,11 +20,13 @@ import { Sparkle } from "@phosphor-icons/react/Sparkle";
 import { ChatCircleDots } from "@phosphor-icons/react/ChatCircleDots";
 import { CaretRight } from "@phosphor-icons/react/CaretRight";
 import { UserPlus } from "@phosphor-icons/react/UserPlus";
+import { Rocket } from "@phosphor-icons/react/Rocket";
 
 
 import { AudioReflexGame } from "@/components/app/audio-reflex-game";
 import { AudioReflexMultiplayer } from "@/components/app/audio-reflex-multiplayer";
 import { FsrsStudyMode } from "@/components/app/fsrs-study-mode";
+import { SpaceStrikerMultiplayer } from "@/components/app/space-striker-multiplayer";
 
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
@@ -106,6 +108,12 @@ const GAME_MODES = [
     body: "Tạo phòng sáu ký tự hoặc nhập mã để đấu trực tiếp.",
     Icon: Users,
   },
+  {
+    key: "space-striker" as const,
+    title: "Space Striker",
+    body: "Lái phi thuyền bắn từ vựng, ai bắn trúng trước thì ghi điểm.",
+    Icon: Rocket,
+  },
 ];
 
 /** One row per mode. The switcher renders from this and nothing else. */
@@ -128,7 +136,9 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<DeckViewMode>("single");
-  const [gameSubMode, setGameSubMode] = useState<null | "solo" | "multiplayer">(null);
+  const [gameSubMode, setGameSubMode] = useState<
+    null | "solo" | "multiplayer" | "space-striker"
+  >(null);
   const [singleCardIndex, setSingleCardIndex] = useState(0);
   const [rowError, setRowError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -502,6 +512,22 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                     Đổi chế độ chơi
                   </button>
                   <AudioReflexMultiplayer
+                    deckId={deckId}
+                    deckTitle={deck.data?.title ?? ""}
+                    onBackToSolo={() => setGameSubMode(null)}
+                  />
+                </div>
+              ) : gameSubMode === "space-striker" ? (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setGameSubMode(null)}
+                    className="mb-4 inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+                  >
+                    <ArrowLeft aria-hidden size={15} />
+                    Đổi chế độ chơi
+                  </button>
+                  <SpaceStrikerMultiplayer
                     deckId={deckId}
                     deckTitle={deck.data?.title ?? ""}
                     onBackToSolo={() => setGameSubMode(null)}
