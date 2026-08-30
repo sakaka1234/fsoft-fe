@@ -596,6 +596,16 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
         stompClientRef.current = null;
       }
       setRoom(null);
+      /* Dọn sạch trạng thái ván: không dọn thì phòng sau kế thừa
+         explodingOptionId của phòng trước và một đáp án bị vẽ như đang nổ,
+         tức là tàng hình ngay từ câu đầu. */
+      setFiredThisQuestion(false);
+      setExplodingOptionId(null);
+      setLasers([]);
+      setFloatingTexts([]);
+      setImpactBursts([]);
+      setCombo(0);
+      setTimeLeft(QUESTION_TIME_LIMIT);
     }
   }
 
@@ -621,12 +631,12 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
         className="max-w-xl mx-auto flex flex-col gap-6"
       >
         <div className="flex flex-col items-center gap-4 text-center py-6">
-          <div className="relative flex size-20 items-center justify-center rounded-3xl bg-gradient-to-tr from-violet-500/20 via-accent/20 to-cyan-500/20 text-accent shadow-xl border border-accent/20 backdrop-blur-md">
+          <div className="relative flex size-20 items-center justify-center rounded-card bg-accent-soft text-accent-text shadow-card border border-accent">
             <Rocket size={40} weight="fill" className="text-accent drop-shadow-md -rotate-45" />
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-              className="absolute -top-1 -right-1 text-cyan-400"
+              className="absolute -top-1 -right-1 text-accent-text"
             >
               <Sparkle size={20} weight="fill" />
             </motion.div>
@@ -652,9 +662,9 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 w-full mt-4">
-            <div className="group relative flex flex-col items-center justify-between gap-5 p-7 rounded-3xl border border-cyan-500/30 bg-gradient-to-b from-surface via-surface to-cyan-500/5 shadow-xl hover:shadow-2xl hover:border-cyan-500/60 transition-all duration-300 text-center">
+            <div className="group relative flex flex-col items-center justify-between gap-5 p-7 rounded-card border border-accent bg-surface shadow-card hover:border-accent transition-all duration-300 text-center">
               <div className="flex flex-col items-center gap-3">
-                <div className="flex size-14 items-center justify-center rounded-2xl bg-cyan-500/15 text-cyan-500 shadow-inner group-hover:scale-110 transition-transform">
+                <div className="flex size-14 items-center justify-center rounded-card bg-accent-soft text-accent-text shadow-inner transition-transform">
                   <Crown size={32} weight="fill" />
                 </div>
                 <div>
@@ -666,15 +676,15 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
                 type="button"
                 onClick={handleCreateRoom}
                 disabled={loading}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-cyan-500/25 hover:from-cyan-600 hover:to-cyan-700 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-sm font-bold text-accent-fg shadow-card hover:bg-accent-hover active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
               >
                 {loading ? "Đang khởi tạo..." : "Tạo Phòng Mới"}
               </button>
             </div>
 
-            <div className="group relative flex flex-col items-center justify-between gap-5 p-7 rounded-3xl border border-violet-500/30 bg-gradient-to-b from-surface via-surface to-violet-500/5 shadow-xl hover:shadow-2xl hover:border-violet-500/60 transition-all duration-300 text-center">
+            <div className="group relative flex flex-col items-center justify-between gap-5 p-7 rounded-card border border-accent bg-surface shadow-card hover:border-accent transition-all duration-300 text-center">
               <div className="flex flex-col items-center gap-3 w-full">
-                <div className="flex size-14 items-center justify-center rounded-2xl bg-violet-500/15 text-violet-500 shadow-inner group-hover:scale-110 transition-transform">
+                <div className="flex size-14 items-center justify-center rounded-card bg-accent-soft text-accent-text shadow-inner transition-transform">
                   <GameController size={32} weight="fill" />
                 </div>
                 <div>
@@ -687,14 +697,14 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
                   value={joinCodeInput}
                   onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
                   placeholder="X7K9A2"
-                  className="w-full text-center tracking-[0.25em] uppercase font-mono font-extrabold text-lg rounded-2xl border border-line bg-surface-2 px-4 py-2.5 text-ink focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 focus:outline-none transition-all"
+                  className="w-full text-center tracking-[0.25em] uppercase font-mono font-extrabold text-lg rounded-card border border-line bg-surface-2 px-4 py-2.5 text-ink focus:border-accent focus:ring-2 focus:ring-accent focus:outline-none transition-all"
                 />
               </div>
               <button
                 type="button"
                 onClick={() => handleJoinRoom()}
                 disabled={loading || !joinCodeInput.trim()}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-violet-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-violet-600/25 hover:bg-violet-700 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-sm font-bold text-accent-fg shadow-card hover:bg-accent-hover active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
               >
                 {loading ? "Đang vào..." : "Vào Phòng"}
               </button>
@@ -745,7 +755,7 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
               className="flex size-10 items-center justify-center rounded-xl bg-surface border border-line text-muted hover:text-accent hover:border-accent transition-all active:scale-95 shadow-sm cursor-pointer"
               title="Copy mã phòng"
             >
-              {copied ? <Check size={20} className="text-emerald-500" /> : <Copy size={20} />}
+              {copied ? <Check size={20} className="text-ok" /> : <Copy size={20} />}
             </button>
           </div>
           <p className="text-xs text-muted font-medium">Chia sẻ mã 6 ký tự cho bạn bè để cùng xuất kích</p>
@@ -794,7 +804,7 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
               <Users size={16} className="text-accent" /> Phi đội ({playersList.length}/20)
             </span>
             {isHost && (
-              <span className="text-xs font-bold text-amber-500 bg-amber-500/10 px-2.5 py-1 rounded-full flex items-center gap-1 border border-amber-500/20">
+              <span className="text-xs font-bold text-accent-text bg-accent-soft px-2.5 py-1 rounded-full flex items-center gap-1 border border-accent">
                 <Crown size={14} weight="fill" /> Bạn là Host
               </span>
             )}
@@ -822,7 +832,7 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-ink text-base">{p.displayName}</span>
                       {p.host && (
-                        <span className="flex items-center gap-0.5 text-[0.65rem] font-black uppercase bg-amber-500/15 text-amber-600 px-2 py-0.5 rounded-full border border-amber-500/30">
+                        <span className="flex items-center gap-0.5 text-[0.65rem] font-black uppercase bg-accent-soft text-accent-text px-2 py-0.5 rounded-full border border-accent">
                           <Crown size={10} weight="fill" /> Host
                         </span>
                       )}
@@ -843,7 +853,7 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
                   className={cn(
                     "text-xs font-bold px-3 py-1 rounded-full border",
                     p.connected
-                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                      ? "bg-ok-soft border-ok text-ok"
                       : "bg-danger/10 border-danger/30 text-danger",
                   )}
                 >
@@ -1002,7 +1012,7 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
                 </div>
                 <div className="flex flex-col leading-tight">
                   <span className="text-[0.7rem] font-bold text-ink flex items-center gap-1">
-                    {p.host && <Crown size={10} weight="fill" className="text-amber-500 shrink-0" />}
+                    {p.host && <Crown size={10} weight="fill" className="text-accent-text shrink-0" />}
                     {p.displayName}
                     {isMe && <span className="text-accent">(Bạn)</span>}
                   </span>
