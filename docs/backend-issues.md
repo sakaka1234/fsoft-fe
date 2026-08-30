@@ -1,443 +1,412 @@
 # Báo cáo vấn đề Backend
 
-**Ngày:** 2026-08-26
+**Ngày:** 2026-08-28 (thay thế bản 2026-08-26)
 **Người báo:** team Frontend
 **Môi trường:** `https://fsoft-project-production.up.railway.app/fsoft`
-**Đối chiếu với:** `docs/swagger.json` (75 path, 117 schema)
+**Đối chiếu với:** `docs/swagger.json` (93 path / 106 operation / 142 schema) và `docs/ai-testing-guide.md`
 
-Mọi mục trong tài liệu này đều được **gọi thật lên môi trường production**, không suy diễn từ spec. Chỗ nào chưa kiểm chứng được đều ghi rõ là **CHƯA KIỂM**.
+Mọi mục đều **gọi thật lên production** với hai tài khoản: một `ROLE_USER` và một `ROLE_ADMIN`. Không suy diễn từ spec. Chỗ nào chưa kiểm được đều ghi rõ **CHƯA KIỂM**.
 
-Token dùng để kiểm là tài khoản thường, scope `ROLE_USER CREATE_USER`. Không có token admin, nên phần admin chỉ kiểm được phía request.
+---
+
+## Đã sửa từ bản báo cáo trước
+
+Ba lỗi P0 của bản trước **nay đã hết**. Ghi lại để không ai đuổi theo vấn đề cũ:
+
+| Vấn đề cũ | Trạng thái hiện tại |
+|---|---|
+| `POST /api/ai/chat` luôn 500 | **Chạy.** Trả lời có trích dẫn trong ~6s |
+| `POST /api/ai/quiz` luôn 500 | **Chạy.** Nhánh tất định trả 10 câu trong 0,47s, tốn 0 token LLM |
+| 3 endpoint `extract/*` luôn trả mảng rỗng | **Chạy.** Trả về thẻ thật |
+
+Ba lỗi cũ vẫn **chưa sửa**: `share-link/toggle` không lật cờ, `PATCH /admin/decks/{id}/official` không lật cờ, và bug `phone IS NULL` khi đăng ký.
 
 ---
 
 ## Tóm tắt
 
-| # | Vấn đề | Mức | Ảnh hưởng |
-|---|---|---|---|
-| 1 | `POST /api/ai/chat` luôn 500 | **P0** | Tính năng hỏi đáp AI không dùng được |
-| 2 | `POST /api/ai/quiz` luôn 500 | **P0** | Quiz AI không dùng được |
-| 3 | 3 endpoint `extract/*` luôn trả mảng rỗng | **P0** | Import thẻ bằng AI không ra kết quả |
-| 4 | Thiếu quyền trả HTTP 500 chứ không phải 403 | **P1** | Client không phân biệt được "thiếu quyền" với "server lỗi" |
-| 5 | Route không tồn tại trả 500 chứ không phải 404 | **P1** | Nt |
-| 6 | Tra từ điển không thấy trả HTTP 500 | **P1** | Gõ sai chính tả bị báo thành "server sập" |
-| 7 | Thiếu field bắt buộc gây NPE 500 thay vì 400 | **P1** | Không phân biệt được lỗi nhập liệu với lỗi server |
-| 8 | `extract/file` văng stack trace Java ra response | **P1** | Lộ nội bộ + sập với file PDF hợp lệ |
-| 9 | `share-link/toggle` không lật cờ | **P1** | Tính năng chia sẻ link hỏng |
-| 10 | `/api/ai/search` trả card của deck người gọi không có quyền | **P1** | Rò rỉ dữ liệu |
-| 11 | `/api/ai/search` không index card của chính người gọi | **P1** | Tìm kiếm vô dụng với dữ liệu người dùng |
-| 12 | Nhóm extraction dùng camelCase, ngược với nhóm AI còn lại | **P2** | Sai kiểu chữ bị **bỏ qua âm thầm** |
-| 13 | `isOfficial` khi ghi / `official` khi đọc | **P2** | Round-trip phải dịch tên field |
-| 14 | API có **hai shape** cho `roles`: `string[]` và `[{name}]` | **P2** | Đã kiểm bằng token admin |
-| 15 | Spec ghi optional nhưng thực tế bắt buộc | **P2** | Sinh code từ spec sẽ sai |
-| 16 | `status` trong body không khớp HTTP status | **P3** | Client buộc phải bỏ qua `status` |
-| 17 | Tiền tố route không nhất quán (`/api` vs không) | **P3** | Dễ gọi nhầm |
-| 18 | Bug `phone IS NULL` khi đăng ký | **P2** | Đã báo, chưa sửa |
-| 19 | Validation chạy trước phân quyền | **P3** | Lộ tên field cho người không có quyền |
-| 20 | `/oauth2/callback` trả envelope của Google, không phải của API | **P2** | Client mất thông tin lỗi đăng nhập Google |
-| 21 | `PATCH /admin/decks/{id}/official` trả 200 nhưng không đổi cờ | **P1** | Không đặt được bộ thẻ chính thức |
+| # | Vấn đề | Mức |
+|---|---|---|
+| 1 | `POST /notifications` cho phép ghi thông báo vào hộp thư **bất kỳ ai** | **P0 bảo mật** |
+| 2 | Lịch sử `/api/ai/roleplay/history` **không giới hạn theo người dùng** | **P0 bảo mật** |
+| 3 | `PUT` và `DELETE /tags/{id}` **đã bị xoá** mà không báo | **P1** |
+| 4 | `GET /api/ai/extract/suggestions` hỏng hoàn toàn, 9/9 lần 500 | **P1** |
+| 5 | `export/excel` sập vì lỗi font JVM headless | **P1** |
+| 6 | `POST /api/ai/auto-deck` báo "tạo thành công" nhưng **không lưu gì** | **P1** |
+| 7 | Trường `read` của notification **luôn false** | **P1** |
+| 8 | `GET /cards/starred?sort=...` trả 500 và **lộ nguyên câu JPQL** | **P1** |
+| 9 | `PATCH /admin/decks/{id}/official` không lật cờ (đã báo, chưa sửa) | **P1** |
+| 10 | `share-link/toggle` không lật cờ (đã báo, chưa sửa) | **P1** |
+| 11 | `DeckResponse.totalCards` sai lệch tới một bậc độ lớn | **P1** |
+| 12 | Một endpoint AI có **ba kiểu envelope lỗi** khác nhau | **P2** |
+| 13 | `docs/ai-testing-guide.md` sai đường dẫn và sai shape ở nhiều mục | **P2** |
+| 14 | Trường bắt buộc bị spec đánh dấu optional (nhiều chỗ) | **P2** |
+| 15 | Sinh nội dung AI trả về `imageUrl`/`audioUrl` **bịa** | **P2** |
+| 16 | `conversationId` bị cắt còn 36 ký tự **âm thầm** | **P2** |
+| 17 | `/srs/mastery?deckId` không kiểm quyền sở hữu | **P2** |
+| 18 | `last` trong `PageResponse` **luôn false** | **P2** |
+| 19 | Phân trang giờ có **ba** quy ước khác nhau | **P2** |
+| 20 | `/notifications` trả mảng phẳng, không có tổng số | **P3** |
+| 21 | `POST /api/ai/story` với danh sách rỗng trả `status 403 "Invalid key"` | **P3** |
+| 22 | Bug `phone IS NULL` khi đăng ký (đã báo, chưa sửa) | **P2** |
+| 23 | Thiếu quyền trả 500 chứ không phải 403 (đã báo, chưa sửa) | **P1** |
+| 24 | `export/pdf` **mất toàn bộ dấu tiếng Việt** vì font Helvetica + WinAnsi | **P1** |
+| 25 | `space-striker/rooms/{code}/answer` **không idempotent**, nộp lại là trừ máu tiếp | **P1** |
 
 ---
 
-## P0 — Chặn tính năng
+## P0 — Bảo mật
 
-### 1. `POST /api/ai/chat` luôn trả 500
+### 1. Bất kỳ ai cũng ghi được thông báo vào hộp thư người khác
 
-Mọi body đều lỗi, **kể cả body rỗng và body rác**. Vì lỗi xảy ra **trước cả bước validate**, nguyên nhân nằm ở phía provider (hết quota hoặc sai API key), không phải ở request.
+`POST /notifications` **không kiểm tra** `recipientId` có phải chính người gọi hay không.
 
 ```bash
-curl -X POST "$BASE/api/ai/chat" -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' -d '{}'
-# HTTP 500, body status 429, message "Lỗi hỏi đáp AI"
+curl -X POST "$BASE/notifications" -H "Authorization: Bearer $USER_TOKEN" \
+  -H 'Content-Type: application/json' -d '{
+    "recipientId":"<uuid của người khác>",
+    "title":"...","content":"...","type":"SYSTEM"}'
+# HTTP 200 — thông báo nằm trong hộp thư của người đó
 ```
 
-**Mong đợi:** 200 với câu trả lời, hoặc 429 thật kèm thông tin quota nếu hết hạn mức.
+Một tài khoản `ROLE_USER` bình thường có thể spam thông báo vào bất kỳ ai. FE **cố ý không đưa endpoint này lên giao diện** vì làm vậy là dựng sẵn công cụ spam trên một lỗi backend.
+
+**Mong đợi:** chỉ cho tự gửi cho chính mình, hoặc giới hạn ở `ROLE_ADMIN`.
 
 ---
 
-### 2. `POST /api/ai/quiz` luôn trả 500
+### 2. Lịch sử hội thoại roleplay đọc được bởi bất kỳ ai biết id
 
-Kể cả khi gửi `use_ai_context: false`, tức là đường đi lẽ ra **không cần gọi LLM**.
+`GET /api/ai/roleplay/history?conversationId=...` **không lọc theo người gọi**. Bất kỳ tài khoản đã đăng nhập nào đoán hoặc biết được `conversationId` đều đọc được toàn bộ nội dung hội thoại.
+
+Nguy hiểm hơn vì `conversationId` là chuỗi tự do do client đặt, nên các id dễ đoán (`session-interview-01`, tên người dùng, ngày tháng) là chuyện đương nhiên xảy ra.
+
+FE hiện **không gửi `conversationId`**, để server tự khoá theo id tài khoản — nhưng đó chỉ là né, không phải sửa.
+
+**Mong đợi:** lọc theo chủ sở hữu, và kiểm tương tự cho `DELETE`.
+
+---
+
+## P1 — Hỏng hoặc gây bug nghiêm trọng
+
+### 3. `PUT` và `DELETE /tags/{id}` đã bị xoá
 
 ```bash
-curl -X POST "$BASE/api/ai/quiz" -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"deck_id":2,"question_count":5,"use_ai_context":false}'
-# HTTP 500 (đã thấy cả body status 430 và 422)
+curl -X PUT "$BASE/tags/999999" -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"name":"x"}'
+# HTTP 500 "Something went wrong: No static resource tags/999999"
 ```
 
-**Mong đợi:** nhánh `use_ai_context:false` phải sinh câu hỏi tất định từ dữ liệu thẻ mà không phụ thuộc provider.
+Đây là cách backend này báo 404. Hai route đó biến mất khỏi swagger giữa hai lần cập nhật, và **màn Tags của FE đã hỏng** cho tới khi chúng tôi phát hiện: bấm sửa tên hay xoá tag đều ra lỗi 500 khó hiểu.
+
+Chức năng đã chuyển sang `/admin/tags/{id}`, tức chỉ admin làm được. FE đã sửa theo hướng đó.
+
+**Đề nghị:** khi xoá route công khai, báo trước. Nếu là cố ý thì nói rõ để FE gỡ đúng chỗ thay vì để người dùng gặp 500.
 
 ---
 
-### 3. Cả 3 endpoint `extract/*` trả 200 nhưng mảng luôn rỗng
-
-Đây là vấn đề **lớn nhất** trong đợt này: endpoint sống, trả đúng envelope, nhưng `data` luôn là `[]`.
-
-Đã thử **11 lần** với: văn xuôi thường, câu nhiều từ vựng, danh sách từ ngăn cách bởi dấu phẩy, một từ đơn (`apple`), chuỗi rỗng, giá trị số, các category khác nhau (`VOCABULARY`, `vocabulary`, `Technology`), không truyền `deckId`, `deckId` không tồn tại, và **deck thật đang có 5 thẻ** (deck 2 — "Từ vựng Du lịch"). **Không lần nào ra được dù một thẻ.**
+### 4. `GET /api/ai/extract/suggestions` hỏng hoàn toàn
 
 ```bash
-curl -X POST "$BASE/api/ai/extract/text" -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"text":"The deadline is tomorrow. Please review the document.","category":"VOCABULARY"}'
-# HTTP 200 -> {"status":200,"message":"...","data":[]}
+curl "$BASE/api/ai/extract/suggestions?query=meet" -H "Authorization: Bearer $TOKEN"
+# HTTP 500 "Something went wrong: Failed to read resource"   (~0,4s)
 ```
 
-**Hệ quả:** không có mẫu response nào để FE xác nhận shape của `CardCreationRequest`. Toàn bộ type phía FE hiện đang theo spec, **chưa từng được đối chiếu với dữ liệu thật**.
+**9/9 lần thất bại**, với cả token user lẫn admin, năm truy vấn khác nhau. Chưa lần nào trả về body thành công, nên **shape response chưa từng được nhìn thấy**.
 
-**Thêm hai điểm về hiệu năng:**
+Thông báo "Failed to read resource" và độ trễ 0,4s cho thấy lỗi khi nạp file prompt template, không phải lỗi gọi model.
 
-- **Thời gian phản hồi 1,5s đến 49,7s**, trung vị khoảng 13–20s (13 lần đo).
-- **Khoảng 15% số lần thất bại** ở mốc ~47,5s với `HTTP 500` / body status **434** `"Lỗi trích xuất AI"` — trông giống timeout của provider.
-
-**Đề xuất:** đặt timeout rõ ràng phía server và trả mã lỗi riêng cho trường hợp timeout, thay vì để client tự đoán qua thời gian chờ.
+**FE bỏ qua endpoint này.** Đây đúng ra là tính năng gợi ý gõ-tới-đâu-hiện-tới-đó cho form thêm thẻ, rất đáng làm, nhưng không thể viết client cho thứ chưa bao giờ trả về gì.
 
 ---
 
-## P1 — Sai nghiêm trọng, gây bug phía client
-
-### 4. Thiếu quyền trả HTTP 500 thay vì 403
-
-`AccessDeniedException` của Spring Security đang bị global exception handler gói thành **HTTP 500**.
+### 5. `export/excel` sập vì lỗi font JVM
 
 ```bash
-curl "$BASE/admin/dashboard/stats" -H "Authorization: Bearer $USER_TOKEN"
-# HTTP 500
-# {"status":500,"message":"Something went wrong: Access Denied",
-#  "data":{"path":"/fsoft/admin/dashboard/stats","timestamp":"2026-08-25T23:54:06"}}
+curl "$BASE/cards/deck/11/export/excel" -H "Authorization: Bearer $TOKEN"
+# HTTP 500 "Handler dispatch failed:
+#   java.lang.NoClassDefFoundError: Could not initialize class sun.awt.X11FontManager"
 ```
 
-**Vì sao nghiêm trọng:** client không thể phân biệt "bạn không có quyền" với "server đang lỗi". Màn admin nào kiểm `httpStatus === 403` sẽ **không bao giờ chạy đúng**. Hiện FE buộc phải **so khớp chuỗi** `"Access Denied"` trong message — rất dễ vỡ nếu backend đổi câu chữ hoặc dịch sang tiếng Việt.
+JVM chạy headless nhưng thư viện Excel vẫn cố khởi tạo font system. **Cách sửa thường là thêm `-Djava.awt.headless=true`** vào tham số khởi động.
 
-**Mong đợi:** HTTP **403**.
+Bản PDF cùng nhóm (`export/pdf`) trả về file PDF hợp lệ kèm `Content-Disposition`, nên FE đã ghép PDF và bỏ Excel. Nhưng nội dung bên trong file thì **mất hết dấu tiếng Việt** — xem mục 24.
 
 ---
 
-### 5. Route không tồn tại trả HTTP 500 thay vì 404
+### 6. `POST /api/ai/auto-deck` báo tạo thành công nhưng không lưu gì
+
+Response trả `message: "Tạo bộ thẻ thành công"` và `status: 201`, nhưng **không có `deckId`, không có `cardId`**, và không có bộ thẻ nào được tạo ra.
+
+Kiểm chứng: danh sách deck của tài khoản **không đổi** trước và sau ba lần sinh.
+
+Nó thực chất là **API xem trước**, không phải API tạo. Câu chữ trong response nói ngược lại và sẽ khiến người tích hợp tưởng đã lưu xong.
+
+**Mong đợi:** hoặc đổi message thành "sinh nội dung thành công", hoặc lưu thật và trả `deckId`. FE hiện phải tự tạo deck rồi `POST` từng thẻ một.
+
+---
+
+### 7. Trường `read` của notification luôn false
+
+Đánh dấu đã đọc **có lưu thật** (số đếm chưa đọc giảm đúng), nhưng mọi response từ **mọi endpoint** trong nhóm đều trả `read: false`, kể cả ngay sau khi vừa đánh dấu.
+
+**Hệ quả:** không thể vẽ trạng thái đã đọc/chưa đọc cho từng dòng — làm vậy thì mọi thứ sẽ hiện "chưa đọc" vĩnh viễn. FE vì thế chỉ dùng **số đếm** (chính xác) cho badge chuông, và không tô màu từng dòng.
+
+---
+
+### 8. `GET /cards/starred?sort=...` trả 500 và lộ nguyên câu truy vấn
 
 ```bash
-curl "$BASE/admin/totally-not-a-route" -H "Authorization: Bearer $TOKEN"
-# HTTP 500, message "No static resource admin/totally-not-a-route for request '/fsoft/...'"
+curl "$BASE/cards/starred?sort=word" -H "Authorization: Bearer $TOKEN"
+# HTTP 500, message chứa nguyên văn:
+#   SELECT ucs.card FROM UserCardStar ucs WHERE ucs.profile.id = :profileId
+#   AND (:deckId IS NULL OR ucs.card.deck.id = :deckId)
+#   ORDER BY ucs.createdAt DESC, ucs.word asc
 ```
 
-Cộng với mục 4, **HTTP 500 hiện mang ba ý nghĩa khác nhau**: thiếu quyền, sai đường dẫn, và lỗi server thật. Đây là lý do FE phải viết hai hàm phân loại dựa trên chuỗi message.
+Hai vấn đề: khoá sắp xếp phân giải vào entity join `UserCardStar` chứ không vào `Card`, nên mọi khoá hữu ích (`word`, `meaning`, `position`) đều 500. Và **thông báo lỗi trả nguyên câu JPQL ra ngoài** — không nên lộ cấu trúc CSDL cho client.
 
-Trường hợp đặc biệt — **thêm dấu `/` ở cuối cũng làm vỡ route**:
+FE **không expose tham số `sort`** cho endpoint này.
+
+---
+
+### 9, 10. Hai toggle vẫn không lật cờ (đã báo, chưa sửa)
+
+`PATCH /admin/decks/{id}/official` và `POST /decks/{id}/share-link/toggle` đều trả **200** nhưng cờ không đổi. Kiểm bằng cách **đọc lại** đối tượng sau khi ghi, chứ không tin response của chính lệnh ghi.
+
+Riêng `official` khiến bộ lọc `isOfficial` ở `GET /admin/decks` cũng vô dụng, vì không bao giờ có bộ thẻ nào được đánh dấu.
+
+---
+
+### 11. `DeckResponse.totalCards` sai lệch một bậc độ lớn
+
+Deck 9 báo `totalCards: 6` từ cả `/decks/public` và `/decks/9`, nhưng:
+
+- `GET /cards/deck/9` trả `totalElements: 68`
+- `GET /srs/mastery?deckId=9` trả `newCardsCount: 68`
+
+Sai gấp hơn 11 lần. FE không dùng trường này làm số liệu, chỉ dùng làm nhãn ước lượng.
+
+---
+
+### 23. Thiếu quyền trả HTTP 500 thay vì 403 (đã báo, chưa sửa)
+
+`AccessDeniedException` bị gói thành **HTTP 500** `"Something went wrong: Access Denied"`, còn route không tồn tại thành **HTTP 500** `"No static resource ..."`. Mã trạng thái vô dụng; chỉ chuỗi message phân biệt được. FE phải so khớp chuỗi, rất dễ vỡ nếu backend đổi câu chữ.
+
+---
+
+### 24. `export/pdf` mất toàn bộ dấu tiếng Việt
+
+File PDF tải về đọc được, nhưng mọi chữ cái riêng của tiếng Việt **biến mất không dấu vết**: `BỘ BÀI` in ra thành `B BÀI`, `TỔNG SỐ THẺ` thành `TNG S TH`, `quê hương, nơi sinh ra` thành `quê hng, ni sinh ra`, `trung tâm thành phố` thành `trung tâm thành ph`.
+
+Nguyên nhân nằm ngay trong file PDF:
 
 ```bash
-curl "$BASE/api/dictionary/lookup/?word=run" -H "Authorization: Bearer $TOKEN"
-# HTTP 500 "No static resource api/dictionary/lookup"   (mong đợi: 404 hoặc redirect)
+curl -s "$BASE/cards/deck/19/export/pdf" -H "Authorization: Bearer $TOKEN" -o deck.pdf
+strings deck.pdf | grep -i "BaseFont\|Producer\|FontFile"
+# /Subtype/Type1 /Type/Font /BaseFont/Helvetica /Encoding/WinAnsiEncoding
+# /Producer(OpenPDF 1.3.39)
+# (khong co /FontFile => khong font nao duoc nhung)
 ```
 
-**Mong đợi:** HTTP **404**.
+`WinAnsiEncoding` là Windows-1252, một bảng **256 ký tự**. Nó có `ê â à ô í ì ú ó` nên các chữ đó sống sót, nhưng **không có** `ă ơ ư đ` và toàn bộ tổ hợp thanh điệu `ộ ổ ố ẻ ế ệ ị ạ ấ ậ ụ …`. OpenPDF gặp ký tự ngoài bảng thì **bỏ qua trong im lặng**, không ném lỗi — nên response vẫn là HTTP 200 và file vẫn mở được.
+
+Đối chiếu từng ký tự trong bản in thử: **mọi** chữ còn hiện đều nằm trong Windows-1252, **mọi** chữ bị mất đều nằm ngoài. Tương quan 1:1, không ngoại lệ.
+
+**Cách sửa:** nhúng một font Unicode có bộ chữ Việt (DejaVu Sans, Noto Sans, Arial Unicode) và tạo `BaseFont` với `IDENTITY_H` cùng `EMBEDDED`:
+
+```java
+BaseFont bf = BaseFont.createFont(
+    "fonts/DejaVuSans.ttf", BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+Font font = new Font(bf, 10);
+```
+
+`IDENTITY_H` bỏ giới hạn 256 ký tự, `EMBEDDED` đảm bảo máy người đọc không cần cài font. Nhớ đóng gói file `.ttf` vào resources của image, vì container không có sẵn font nào — đây cũng chính là gốc rễ của mục 5.
+
+Trong lúc chờ, chức năng xuất PDF trên FE vẫn để nguyên: file tải về được, và với deck toàn tiếng Anh thì không sao. FE không thể tự vá, vì nó chỉ nhận `response.blob()` rồi lưu xuống, không hề đụng vào bytes.
 
 ---
 
-### 6. Tra từ điển không thấy từ trả HTTP 500
+### 25. `POST /games/space-striker/rooms/{code}/answer` không idempotent
+
+Nộp **cùng một đáp án sai, cho cùng một câu, từ cùng một người** hai lần thì bị trừ máu hai lần. Server không ghi nhận rằng người đó đã trả lời câu này rồi.
+
+Kiểm chứng trên server thật, phòng `KVDQYD`, hai tài khoản:
 
 ```bash
-curl "$BASE/api/dictionary/lookup?word=zzqqxxvv" -H "Authorization: Bearer $TOKEN"
-# HTTP 500 -> {"status":431,"message":"Lỗi tra từ điển"}      (KHÔNG có key "data")
+# tạo phòng, người thứ hai join, host start -> cả hai đều lives = 3
+curl -X POST "$BASE/games/space-striker/rooms/$CODE/answer"   -H "Authorization: Bearer $T2" -H 'Content-Type: application/json'   -d '{"cardId":271}'      # 271 là đáp án SAI
+# -> Admin lives = 2, questionResolved = false
+
+curl -X POST "$BASE/games/space-striker/rooms/$CODE/answer"   -H "Authorization: Bearer $T2" -H 'Content-Type: application/json'   -d '{"cardId":271}'      # y hệt lần trên
+# -> Admin lives = 1
 ```
 
-**Vì sao nghiêm trọng:** người dùng gõ sai một chữ cái là app báo "server sập". Tệ hơn, **provider từ điển chết cũng trả y hệt**, nên không thể giám sát được sự cố thật.
+Hai lần gọi, HTTP 200 cả hai, máu tụt **3 -> 2 -> 1**.
 
-Ngoài ra **không có bất kỳ validation nào** trên giá trị `word`. Tất cả các trường hợp sau đều trả 500 giống nhau:
+Hệ quả trực tiếp: client hiện gửi mỗi phát bắn **hai lần** — một qua STOMP `/app/space-room/{code}/answer`, một qua REST ngay sau đó. Nên trong game thật, bắn trượt một lần mất **hai mạng**, người chơi bị loại sau một lần rưỡi thay vì ba lần. Khuôn gửi hai lần này có ở cả `audio-reflex-multiplayer` lẫn `space-striker`.
 
-| Giá trị | Kết quả |
-|---|---|
-| `word=` (rỗng) | HTTP 500 / 431 |
-| `word=%20` (khoảng trắng) | HTTP 500 / 431 |
-| `word=123` | HTTP 500 / 431 |
-| `word=chạy` (tiếng Việt) | HTTP 500 / 431 |
-| chuỗi rác 80 ký tự | HTTP 500 / 431 |
-| **bỏ hẳn tham số** | HTTP 400 `"Miss argument require: word"` ← trường hợp duy nhất đúng |
+FE có thể vá bằng cách chỉ gửi một đường, nhưng chỗ sửa đúng là ở server: một người chơi chỉ được tính một lần cho mỗi `currentQuestionIndex`. Nếu không, chỉ cần bấm nhanh hai lần là tự trừ máu mình, và ngược lại có thể spam đáp án đúng để ăn điểm nhiều lần.
 
-**Mong đợi:** HTTP **404** khi không tìm thấy từ, HTTP **400** khi giá trị không hợp lệ, và HTTP **502/503** khi provider phía trên chết. Ba trường hợp này cần phân biệt được.
-
----
-
-### 7. Thiếu field bắt buộc gây NPE trần, trả 500 thay vì 400
-
-Spec khai **tất cả** field của `TextExtractionRequest` và `UrlExtractionRequest` là optional. Thực tế không phải vậy, và khi thiếu thì server ném NPE chưa bắt:
-
-```bash
-# thiếu category
-curl -X POST "$BASE/api/ai/extract/text" -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' -d '{"text":"hello world"}'
-# HTTP 500 "Something went wrong: null"        <- trả về trong ~0.36s, chưa hề gọi model
-
-# thiếu text
-curl -X POST "$BASE/api/ai/extract/text" -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' -d '{"category":"VOCABULARY"}'
-# HTTP 500 'Cannot invoke "String.length()" because "text" is null'
-
-# extract/url thiếu category
-curl -X POST "$BASE/api/ai/extract/url" -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' -d '{"url":"https://example.com"}'
-# HTTP 500 / body status 433 "Lỗi đọc URL"     <- 3/3 lần, và sai nhãn:
-#                                                 lỗi là thiếu category, không phải đọc URL
-```
-
-**Mong đợi:** đánh dấu `@NotBlank` và trả **400** kèm tên field. Đồng thời sửa spec cho khớp.
-
----
-
-### 8. `extract/file` phân loại theo Content-Type và văng stack trace Java
-
-Endpoint quyết định cách xử lý file dựa trên **Content-Type khai trong phần multipart**, hoàn toàn **không đọc tên file**. Cùng một file PDF hợp lệ:
-
-| Khai Content-Type | Kết quả |
-|---|---|
-| `application/pdf` | HTTP 200 |
-| `application/octet-stream` | **`java.lang.NoSuchMethodError`** — stack trace Java thô trong response |
-| `text/plain` | **`java.lang.NoSuchMethodError`** — nt |
-
-Lỗi cụ thể: `PDDocument.load(InputStream, String, MemoryUsageSetting)` không tồn tại — nghĩa là **phiên bản PDFBox trong classpath không khớp với code**. Đây là bug thật sự, không chỉ là vấn đề định tuyến.
-
-**Vì sao ảnh hưởng trực tiếp tới FE:** đối tượng `File` của trình duyệt **thường có `.type` rỗng**, và khi đó nó được serialize thành `application/octet-stream`. Nghĩa là **người dùng chọn file PDF theo cách bình thường nhất sẽ làm sập endpoint**. FE hiện phải tự gán MIME theo đuôi file để né.
-
-**Hai đề nghị:**
-1. Nâng/sửa phiên bản PDFBox cho khớp.
-2. Nhận diện loại file theo **magic bytes** hoặc đuôi file, đừng tin Content-Type do client khai.
-3. Bọc mọi lỗi xử lý file lại — **không bao giờ trả stack trace Java ra response**.
-
-**Giới hạn dung lượng chưa được ghi ở đâu cả:** đo được **1.048.000 B được nhận**, **1.100.000 B bị từ chối**, và có lần **đứt kết nối giữa chừng** thay vì trả lỗi. Đề nghị ghi rõ giới hạn vào spec và trả 413 đàng hoàng.
-
----
-
-### 9. `share-link/toggle` không lật cờ `shareLinkEnabled`
-
-Đã báo từ trước, **chưa sửa**. Endpoint trả về thành công, nhưng đọc lại deck thì cờ không đổi. Phát hiện được nhờ đọc lại deck chứ không tin response của chính lệnh toggle.
-
----
-
-### 10. `/api/ai/search` trả card thuộc deck mà người gọi không có quyền xem
-
-Cùng một token: search trả về một card, nhưng `GET /decks/2` và `GET /cards/201` đều trả **404** cho token đó.
-
-**Đây là rò rỉ dữ liệu.** Kết quả search cần được lọc theo quyền của người gọi.
-
----
-
-### 11. `/api/ai/search` không index card của chính người gọi
-
-Bốn card vừa tạo vài giây trước **không tìm thấy**. Chỉ số dường như chỉ phủ dữ liệu seed sẵn.
-
-Ngoài ra tên gọi "search" gây hiểu nhầm: nó **không phải tìm kiếm ngữ nghĩa**. `deadline` khớp với `match_type: EXACT`, còn `work schedule` và `talking to coworkers` không khớp gì, dù trong deck có sẵn `commute` và `colleague`.
+Cũng nên kiểm luôn `audio-reflex` cùng nhóm, nhiều khả năng dính y hệt.
 
 ---
 
 ## P2 — Spec lệch thực tế
 
-### 12. Nhóm extraction dùng camelCase, ngược với nhóm AI còn lại
+### 12. Một endpoint AI có ba kiểu envelope lỗi khác nhau
 
-Cùng tiền tố `/api/ai`, nhưng:
+`POST /api/ai/quiz` trả về **ba shape body khác nhau** tuỳ tình huống:
 
-| Endpoint | Kiểu chữ |
+| Tình huống | HTTP | Body |
+|---|---|---|
+| Thành công | 200 | `{status, message, data}` — envelope Java |
+| Thiếu field | 422 | `{"detail":[{"type":"missing","loc":["body","deck_id"]}]}` — FastAPI/Pydantic |
+| Lỗi nghiệp vụ | 400 | `{"error":{"code":"INVALID_REQUEST","message":"..."}}` |
+
+Nguyên nhân: nhóm chat/quiz được proxy sang một service Python riêng, còn phần còn lại do Spring xử lý. Client không thể parse lỗi một cách nhất quán.
+
+**Đề nghị:** gateway Java bọc lại lỗi của service Python về đúng envelope chung.
+
+---
+
+### 13. `docs/ai-testing-guide.md` sai ở nhiều chỗ quan trọng
+
+Tài liệu hướng dẫn tích hợp đang **sai đường dẫn và sai shape**. Người đọc nó sẽ viết code không chạy:
+
+| Guide nói | Thực tế |
 |---|---|
-| `/api/ai/chat`, `/api/ai/quiz`, `/api/ai/search` | **snake_case** (`scope_deck_id`, `max_output_tokens`, `card_id`) |
-| `/api/ai/extract/text`, `/url`, `/file` | **camelCase** (`deckId`) |
+| `/api/ai-extraction/text`, `/url`, `/file`, `/magic-sort`, `/suggestions` | **Cả 5 đều không tồn tại.** Đường thật là `/api/ai/extract/*` |
+| `/api/ai/situational-learning` | Không tồn tại. Đường thật: `/api/v1/ai/situational-learning/text` |
+| Response situational có `scenarioDescription`, `dialogue`, `vocabulary`, `quizOptions` | **Không trường nào tồn tại.** Thật là `mainActions`, `interactions`, `emotions`, `shortCaptions`, `vocabularies` — và **không có quiz** |
+| `MagicSortRequest` = `{cardIds, deckIds}` | Thật là `{words: string[], decks?: {id: name}}` |
+| `TextExtractionRequest` = `{text, targetLanguage, topic}` | Thật là `{text, category}` |
+| `ExtractedCardResponse` có 4 trường | Schema này không có trong swagger; response thật có 11 trường |
+| Situational request không nhắc `cefrLevel` | `cefrLevel` **bắt buộc** |
+| auto-deck xong trong 3s, AI text dưới 1,5s | Đo thực tế: từ 2s đến hơn 78s |
 
-**Nguy hiểm ở chỗ sai thì không báo lỗi.** Controller bỏ qua field lạ (`FAIL_ON_UNKNOWN_PROPERTIES` đang tắt), nên gửi `deck_id` thì được nhận, bị vứt đi, và `deckId` vào tới service là `null` — **không có bất kỳ cảnh báo nào**.
-
-Cách duy nhất chứng minh được tên field thật là gửi **sai kiểu dữ liệu**:
-
-```bash
--d '{"text":"x","category":"y","deckId":"abc"}'
-# HTTP 400 "Cannot deserialize ... TextExtractionRequest[\"deckId\"]"   <- lộ tên thật
-
--d '{"text":"x","category":"y","deck_id":"abc"}'
-# HTTP 200                                                             <- bị bỏ qua âm thầm
-```
-
-**Đề nghị:** thống nhất một kiểu chữ cho toàn bộ API, hoặc ít nhất trong cùng một nhóm controller. Và bật `FAIL_ON_UNKNOWN_PROPERTIES` để lỗi lộ ra sớm.
+**Đề nghị:** sinh tài liệu từ swagger thay vì viết tay, hoặc ghi rõ ngày cập nhật cuối.
 
 ---
 
-### 13. `isOfficial` khi ghi, `official` khi đọc
+### 14. Trường bắt buộc bị spec đánh dấu optional
 
-Bất đối xứng này đã tồn tại từ lâu và **vẫn còn**, giờ lan sang cả DTO admin:
-
-```bash
-# ĐỌC: GET /decks/public -> deck object có "official", KHÔNG BAO GIỜ có "isOfficial"
-
-# GHI:
-curl -X PATCH "$BASE/admin/decks/1/official" -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' -d '{"official":true}'
-# HTTP 400 "isOfficial flag is required"      <- bắt buộc phải là isOfficial
-```
-
-Điều tương tự với `DeckCreateRequest`: `isOfficial` là **primitive boolean**, nên bỏ trống không phải là "dùng mặc định" mà là **500** `"Cannot map null into type boolean"`.
-
-**Đề nghị:** thống nhất một tên. Nếu đọc là `official` thì ghi cũng nên là `official`.
-
----
-
-### 14. API có hai shape khác nhau cho `roles`
-
-Đã kiểm bằng token admin thật. **Cả hai đều đang tồn tại song song**, cho cùng một tài khoản:
-
-```bash
-# đăng nhập -> object
-POST /auth/login   ->  "roles":[{"name":"ADMIN"}]
-
-# danh sách admin -> string
-GET  /admin/users  ->  "roles":["ADMIN"]
-```
-
-Spec không sai. Chính API đang không nhất quán với chính nó. FE buộc phải giữ hai kiểu dữ liệu cho cùng một khái niệm và không được nhầm lẫn giữa chúng.
-
-Ghi chú thêm: quyền admin viết là `ADMIN` ở phía payload, nhưng trong JWT `scope` lại là `ROLE_ADMIN`. Đây là quy ước bình thường của Spring Security, nêu ra để tài liệu đầy đủ.
-
-**Mong đợi:** thống nhất một shape.
-
----
-
-### 15. Nhiều field spec ghi optional nhưng thực tế bắt buộc
-
-Tổng hợp:
-
-| Endpoint | Field | Spec | Thực tế |
+| Endpoint | Trường | Spec | Thực tế |
 |---|---|---|---|
-| `/api/ai/extract/text` | `text` | optional | **bắt buộc** (NPE nếu thiếu) |
-| `/api/ai/extract/text` | `category` | optional | **bắt buộc** (NPE nếu thiếu) |
-| `/api/ai/extract/url` | `url` | optional | **bắt buộc** |
-| `/api/ai/extract/url` | `category` | optional | **bắt buộc** |
-| `/api/ai/extract/file` | `deckId` | — | **bắt buộc** (400 "Miss argument require: deckId") |
-| `/auth/register` | `phone` | optional | **bắt buộc trên thực tế** (xem mục 18) |
+| `/api/ai/auto-deck` | `cardCount` | optional, mặc định 15 | **Bắt buộc.** Kiểu `int` nguyên thuỷ, thiếu là 400 |
+| `/api/v1/ai/situational-learning/text` | `cefrLevel` | guide không nhắc | **Bắt buộc** |
+| `/api/ai/extract/text` | `category` | optional | **Bắt buộc**, thiếu là NPE 500 |
+| `/api/ai/extract/url` | `category` | optional | **Bắt buộc** |
+| `/api/ai/extract/file` | `category` | — | **Bắt buộc** (query param) |
+| `/cards/starred` | `pageable` | required | Thực ra optional |
 
-Ngược lại, `deckId` ở `extract/text` và `extract/url` được **nhận rồi bỏ qua hoàn toàn**: truyền id không tồn tại, id của người khác, hay không truyền gì — kết quả **giống hệt nhau**. Nếu chưa dùng tới thì nên bỏ khỏi spec, hoặc hiện thực nốt.
-
----
-
-### 18. Bug `phone IS NULL` khi đăng ký
-
-Đã báo từ trước, **chưa sửa**. Email hoàn toàn mới nhưng không gửi `phone` vẫn trả:
-
-```
-HTTP 400 "Email or Phone already exists"
-```
-
-Nguyên nhân: câu kiểm trùng biến `phone` null thành `phone IS NULL`, và khớp với **mọi bản ghi cũ không có số điện thoại**. FE hiện phải bắt buộc người dùng nhập số điện thoại để né bug này.
-
-Liên quan: `/auth/register` dùng field `passWord` (chữ **W** hoa), trong khi `/auth/login` dùng `password`. Nên thống nhất.
+Ngoài ra `cardCount` **vượt 30 là hỏng**: `cardCount: 31` trả 500 sau 9 giây. Spec ghi max 30 nhưng không có validation, nên vượt là chờ lâu rồi lỗi thay vì bị từ chối ngay.
 
 ---
 
-## P3 — Nhất quán và đề xuất
+### 15. Sinh nội dung AI trả về `imageUrl` và `audioUrl` bịa đặt
 
-### 16. `status` trong body không khớp HTTP status
+Cả `auto-deck` lẫn `extract/*` đều trả về đường dẫn kiểu:
 
-| HTTP | `status` trong body |
+```
+https://example.com/images/engineer.jpg
+https://example.com/audio/velocity.mp3
+```
+
+Đây là model tự bịa, không phải file có thật. FE **không render và không lưu** hai trường này.
+
+**Đề nghị:** trả `null` thay vì bịa, hoặc lọc ở server trước khi trả.
+
+---
+
+### 16. `conversationId` bị cắt còn 36 ký tự âm thầm
+
+Server cắt chuỗi mà không báo. Hệ quả: hai id khác nhau nhưng **trùng 36 ký tự đầu** sẽ gộp thành một hội thoại, và người dùng thấy tin nhắn của phiên khác lẫn vào.
+
+FE tự cắt trước khi gửi để id nó giữ khớp id server giữ.
+
+**Đề nghị:** trả 400 khi vượt độ dài, thay vì cắt im lặng.
+
+---
+
+### 17. `/srs/mastery?deckId` không kiểm quyền sở hữu
+
+Truyền `deckId` của bộ thẻ **thuộc người khác** vẫn trả 200 kèm số liệu của bộ đó, thay vì 404. Deck đem thử là PUBLIC nên mức rò rỉ thực tế chỉ là số lượng thẻ, nhưng **chưa kiểm với deck PRIVATE** — cần backend tự xác nhận.
+
+---
+
+### 18. `last` trong `PageResponse` luôn false
+
+Kể cả khi `totalPages` là 1 và đang ở trang 0. Quan sát trên nhiều endpoint.
+
+**Hệ quả:** cuộn vô hạn dựa trên `last` sẽ lặp mãi. Phải dùng `pageNo + 1 >= totalPages`.
+
+---
+
+### 19. Phân trang giờ có ba quy ước khác nhau
+
+| Nhóm | Quy ước |
 |---|---|
-| 200 | 200 ✔ |
-| 400 | 400 ✔ |
-| **401** | **207** ✘ |
-| **500** (tra từ điển hụt) | **431** ✘ |
-| **500** (extract lỗi) | **434** ✘ |
-| **500** (đọc URL lỗi) | **433** ✘ |
-| **500** (quiz lỗi) | **430 / 422** ✘ |
-| 200 (đăng ký) | **201** ✘ |
+| `/cards/*`, `/admin/users`, `/admin/decks`, `/admin/games`, `/notifications`, `/cards/starred` | **0-based**, `pageNo` khớp giá trị gửi |
+| `/decks/*` | **1-based**, server tự kẹp giá trị dưới 1 |
+| `/admin/decks/pending-public` | Gửi `page=N` → trả **`pageNo=N+1`** |
 
-Hệ quả: **client buộc phải bỏ qua `status` và chỉ tin HTTP status**, khiến trường này gần như vô dụng.
+Cái thứ ba là mới. Kiểm ba giá trị liên tiếp đều lệch đúng 1. Hiển thị thẳng `pageNo` sẽ lệch một trang so với mọi danh sách admin khác.
 
-Ngoài ra, envelope lỗi **không có key `data`** (không phải `null`, mà là không tồn tại), trong khi envelope thành công luôn có. FE phải khai `data?: T`.
-
-**Đề nghị:** hoặc cho `status` khớp HTTP status, hoặc tách hẳn thành một trường mã lỗi nghiệp vụ có tên khác (ví dụ `errorCode`) và **ghi bảng mã đó vào tài liệu** — hiện các mã 207/430/431/433/434 không có ở đâu cả.
+**Đề nghị:** thống nhất một quy ước.
 
 ---
 
-### 17. Tiền tố route không nhất quán
+### 22. Bug `phone IS NULL` khi đăng ký (đã báo, chưa sửa)
 
-| Nhóm | Đường dẫn |
+Email hoàn toàn mới nhưng không gửi `phone` vẫn trả `400 "Email or Phone already exists"`, vì câu kiểm trùng biến `phone` null thành `phone IS NULL` và khớp mọi bản ghi cũ không có số.
+
+---
+
+## P3 — Nhỏ hơn
+
+### 20. `/notifications` trả mảng phẳng, không có metadata phân trang
+
+Endpoint nhận `page` và `size` nhưng response là **mảng thuần**, không có `totalElements`, `totalPages`, `hasNext`, và không có header đếm.
+
+**Hệ quả:** không dựng được phân trang đánh số. Chỉ làm được "tải thêm", dừng khi nhận về một trang ngắn. Tham số `sort` cũng bị bỏ qua, danh sách luôn mới-nhất-trước.
+
+---
+
+### 21. `POST /api/ai/story` với danh sách rỗng trả `status 403 "Invalid key"`
+
+```bash
+curl -X POST "$BASE/api/ai/story" -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"words":[]}'
+# HTTP 400, body {"status":403,"message":"Invalid key"}   (không có key "data")
+```
+
+Thông báo đọc như lỗi phân quyền nhưng thực ra là lỗi đầu vào. Client nào branch theo `body.status` sẽ hiểu nhầm thành hết phiên đăng nhập và đá người dùng ra màn hình đăng nhập.
+
+---
+
+## Điểm làm tốt
+
+Không phải mục nào cũng là lỗi, nên ghi lại vài chỗ **làm đúng**:
+
+- **`/internal/cards/*` được bảo vệ đúng cách.** Cần header bí mật `X-Internal-Token`; token user, token admin, và không token đều bị chặn 401 như nhau, bởi một filter chạy **trước** cả bearer auth. Đã thử 5 kiểu, không rò rỉ. FE **không ghép** hai route này vì đưa secret xuống trình duyệt là sai nguyên tắc.
+- **`/cards/starred` scope đúng theo người dùng.** Token admin thấy danh sách rỗng trong khi token user thấy đúng thẻ của mình.
+- **`POST /cards/{id}/toggle-star` lật cờ thật**, khác hai toggle hỏng ở mục 9 và 10.
+- **Nhánh quiz tất định không tốn token LLM**: trả 10 câu trong 0,47s với `deterministic_count: 10, llm_count: 0`.
+
+---
+
+## Endpoint FE cố ý không ghép
+
+| Endpoint | Lý do |
 |---|---|
-| Decks, cards, tags, srs, auth, profiles | `/decks`, `/cards`, … (không tiền tố) |
-| AI | **`/api`**`/ai/...` |
-| Dictionary | **`/api`**`/dictionary/...` |
-| Admin | `/admin/...` (**không** có `/api`) |
-
-Đã kiểm: `/api/admin/dashboard/stats` trả "No static resource", còn `/admin/dashboard/stats` trả "Access Denied". Nghĩa là admin **không** nằm dưới `/api`, dù AI thì có.
-
-**Đề nghị:** gom về một quy ước.
-
----
-
-### 19. Validation chạy trước phân quyền
-
-Một tài khoản **không có quyền admin** vẫn có thể suy ra cấu trúc DTO của admin, bằng cách gửi body sai và đọc thông báo 400 — vì validation chạy trước, phân quyền chạy sau.
-
-Thực tế điều này **giúp ích cho FE** trong lần này (nhờ nó mà xác nhận được `isOfficial`, `roleNames` mà không cần token admin). Nhưng về nguyên tắc, người không có quyền **không nên nhận được thông tin gì về endpoint đó**, kể cả tên field.
-
-**Đề nghị:** đưa filter phân quyền chạy trước bước bind/validate.
-
----
-
-### Vài ghi chú nhỏ khác
-
-**Phân trang có hai quy ước.** Route card dùng Spring `Pageable` (**0-based**), route deck dùng `page`/`size` phẳng (**1-based**, server tự kẹp về 1 nếu nhỏ hơn). Nhóm admin khai `pageable`, và dò gián tiếp cho thấy đang bind `Pageable` (0-based) — nhưng **CHƯA KIỂM trực tiếp** vì 403 không cho payload nào lọt qua. Nếu được, xin xác nhận giúp.
-
-**`/admin/games/records`:** `deckId` là `Long` chứ không phải UUID. Còn `role` (ở `/admin/users`) và `gameType` là **String không validate** — giá trị vô nghĩa vẫn qua được bind.
-
-**Tra từ điển bắt buộc đăng nhập** dù đây là dữ liệu tra cứu công khai. Không có header thì trả 401. Nếu cố ý thì bỏ qua mục này.
-
-**Tra từ điển là passthrough nguyên văn** của Free Dictionary API (dữ liệu Wiktionary): URL audio trỏ thẳng về `api.dictionaryapi.dev`, `sourceUrls` trỏ về `en.wiktionary.org`, và mỗi entry mang khối license **CC BY-SA**. Hai hệ quả: (a) shape có thể đổi mà không cần deploy backend, (b) **nghĩa vụ ghi nguồn CC BY-SA** cần được xác nhận là ai chịu trách nhiệm hiển thị.
-
-**`totalCards` trên deck không được backfill.** Deck tạo trước khi sửa vẫn báo 0 dù đang có thẻ.
-
-**Enum trạng thái SRS:** spec ghi `NEW | LEARNING | REVIEW | LAPSED`, nhưng có nhánh code phía backend dùng `RELEARNING`. Xin xác nhận giá trị đúng.
-
----
-
-### 20. `/oauth2/callback` trả envelope của Google thay vì envelope chuẩn
-
-Đây là endpoint **duy nhất** trong API không dùng envelope `{status, message, data}`. Nó truyền thẳng body lỗi của Google token endpoint ra ngoài:
-
-```bash
-curl -X POST "$BASE/oauth2/callback?code=fake_code_probe"
-# HTTP 400
-# {"error":"invalid_grant","error_description":"Malformed auth code."}
-```
-
-So với mọi endpoint khác:
-
-```bash
-curl -X POST "$BASE/auth/login" -H 'Content-Type: application/json'   -d '{"email":"nobody@example.com","password":"wrong"}'
-# {"status":400,"message":"Validation error","data":{...}}
-```
-
-**Hệ quả:** client đọc `payload.message` để dựng thông báo lỗi. Với endpoint này `message` không tồn tại, nên người dùng thấy **"Request failed with status 400"** thay vì lý do thật (`"Malformed auth code."`). Mọi lỗi đăng nhập Google — code hết hạn, code dùng lại, sai client secret — đều hiện ra như nhau và không debug được.
-
-FE đã tạm xử lý bằng cách đọc thêm `error_description`, nhưng đúng ra nên sửa ở BE cho nhất quán.
-
-**Mong đợi:** bọc lại thành `{status, message, data}` như các endpoint khác, giữ `error_description` của Google trong `message`.
-
----
-
-### 21. `PATCH /admin/decks/{id}/official` trả 200 nhưng cờ không đổi
-
-Cùng loại bug với mục 9 (`share-link/toggle`). Kiểm bằng token admin thật, trên một deck tạo ra rồi xoá đi ngay, không đụng dữ liệu thật:
-
-```bash
-# 1. tạo deck, official = false
-POST /admin/decks   (multipart, request.isOfficial = false)   -> 200, id = 14
-
-# 2. đọc trước khi sửa
-GET  /decks/14      -> official = false
-
-# 3. bật cờ
-PATCH /admin/decks/14/official  -d '{"isOfficial":true}'
-     -> HTTP 200, nhưng body trả về official = false
-
-# 4. đọc lại để chắc chắn
-GET  /decks/14      -> official = false      <- KHÔNG ĐỔI
-```
-
-Lưu ý bước 4: không thể chỉ tin response của chính lệnh ghi, phải đọc lại. Đó cũng là cách mục 9 lộ ra trước đây.
-
-**Hệ quả:** admin không có cách nào đặt một bộ thẻ thành chính thức. Bộ lọc `isOfficial` ở `GET /admin/decks` vì thế cũng vô dụng, vì không bao giờ có bộ thẻ nào được đánh dấu.
-
-**Mong đợi:** cờ được lưu, và response trả về trạng thái **sau** khi cập nhật.
+| `GET /api/ai/extract/suggestions` | Hỏng hoàn toàn, xem mục 4 |
+| `GET /cards/deck/{id}/export/excel` | Sập vì lỗi font JVM, xem mục 5 |
+| `POST /notifications` | Đã viết hàm nhưng **không đưa lên UI**: lỗi bảo mật mục 1 |
+| `GET /internal/cards/ids` | Cần secret dùng chung, không được đưa xuống trình duyệt |
+| `GET /internal/cards/changed-since` | Nt |
+| `POST /auth/introspect` | Chỉ trả `{result: boolean}`, không có exp/subject/scope. Giá trị mỏng, và câu trả lời "false" bị chia làm hai shape khác nhau |
+| `GET /api/chat-ai/test` | Endpoint smoke-test, trả `void` |
 
 ---
 
@@ -446,19 +415,12 @@ Lưu ý bước 4: không thể chỉ tin response của chính lệnh ghi, ph�
 ```bash
 BASE="https://fsoft-project-production.up.railway.app/fsoft"
 
-# Tạo tài khoản. Lưu ý: phải gửi phone duy nhất, xem mục 18.
-# Và field là passWord, chữ W hoa.
-curl -X POST "$BASE/auth/register" -H 'Content-Type: application/json' -d '{
-  "fullName":"Probe","email":"probe1@example.com",
-  "phone":"0900000001","passWord":"ProbePass123!"
-}'
+# Lưu ý: field là passWord (chữ W hoa) khi đăng ký, password (thường) khi đăng nhập.
+# Và phải gửi phone duy nhất, xem mục 22.
 
-# Lấy token. Ở đây field lại là password, chữ thường.
 TOKEN=$(curl -s -X POST "$BASE/auth/login" -H 'Content-Type: application/json' \
-  -d '{"email":"probe1@example.com","password":"ProbePass123!"}' \
+  -d '{"email":"<email>","password":"<mật khẩu>"}' \
   | python -c "import sys,json;print(json.load(sys.stdin)['data']['token']['accessToken'])")
-
-# Từ đây dùng: -H "Authorization: Bearer $TOKEN"
 ```
 
-Mọi lệnh `curl` trong tài liệu này chạy được trực tiếp sau bước trên.
+Mọi lệnh `curl` trong tài liệu chạy được trực tiếp sau bước trên.

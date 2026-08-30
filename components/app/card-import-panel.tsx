@@ -15,7 +15,7 @@ import {
   extractCardsFromUrl,
 } from "@/lib/api/ai";
 import { createCard } from "@/lib/api/cards";
-import type { CardCreationRequest } from "@/lib/api/types";
+import type { ExtractedCard } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { TextT } from "@phosphor-icons/react/TextT";
 import { Link as LinkIcon } from "@phosphor-icons/react/Link";
@@ -33,10 +33,11 @@ import { FileArrowUp } from "@phosphor-icons/react/FileArrowUp";
   - Extraction takes anywhere from 1.5 to 50 seconds, median about 15. That is
     a skeleton, not a spinner, and the copy says so rather than leaving someone
     wondering whether it hung.
-  - Every probe so far answered success with an empty list. So "it worked and
-    found nothing" is a first class outcome here, worded as a fact about the
-    material rather than as an error, because it is not the reader's fault and
-    is currently the norm.
+  - "It worked and found nothing" stays a first class outcome, worded as a fact
+    about the material rather than an error. Extraction returned empty for days
+    and now returns real cards, so both paths are live.
+  - imageUrl and audioUrl on a draft are model-fabricated and do not resolve,
+    so they are never rendered and never saved.
 */
 
 type Source = "text" | "url" | "file";
@@ -50,7 +51,7 @@ const SOURCES: { key: Source; label: string; Icon: typeof TextT }[] = [
 type Phase =
   | { kind: "idle" }
   | { kind: "extracting" }
-  | { kind: "drafts"; cards: CardCreationRequest[] }
+  | { kind: "drafts"; cards: ExtractedCard[] }
   | { kind: "none" }
   | { kind: "error"; message: string }
   | { kind: "saving"; done: number; total: number };
@@ -84,11 +85,11 @@ export function CardImportPanel({
 
     const request =
       source === "text"
-        ? extractCardsFromText({ text, category, deckId })
+        ? extractCardsFromText({ text, category })
         : source === "url"
-          ? extractCardsFromUrl({ url, category, deckId })
+          ? extractCardsFromUrl({ url, category })
           : file
-            ? extractCardsFromFile(file, { category, deckId })
+            ? extractCardsFromFile(file, { category })
             : Promise.reject(new ApiError("Choose a file first.", 400));
 
     request

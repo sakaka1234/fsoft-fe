@@ -9,6 +9,8 @@ import type {
   DeckVisibility,
   DeckWriteRequest,
   PageResponse,
+  TagRequest,
+  TagResponse,
 } from "@/lib/api/types";
 
 /*
@@ -281,4 +283,88 @@ export function getAdminDashboardStats(signal?: AbortSignal) {
     auth: true,
     signal,
   });
+}
+
+/* ---------------------------------------------------------------------------
+   Tags.
+
+   These MOVED here. The ordinary /tags controller lost its update and delete
+   routes: PUT /tags/{id} and DELETE /tags/{id} now answer the "No static
+   resource" flavour of 500, i.e. they are gone. Only GET /tags and POST /tags
+   remain for ordinary users, so renaming and deleting a tag is now an admin
+   action. lib/api/tags.ts documents the same thing from the other side.
+   ------------------------------------------------------------------------- */
+
+/** Every tag. Takes no pagination at all, unlike most admin lists. */
+export function listAdminTags(signal?: AbortSignal) {
+  return apiFetch<TagResponse[]>("/admin/tags", { auth: true, signal });
+}
+
+export function createAdminTag(body: TagRequest, signal?: AbortSignal) {
+  return apiFetch<TagResponse>("/admin/tags", {
+    method: "POST",
+    body,
+    auth: true,
+    signal,
+  });
+}
+
+export function renameAdminTag(
+  id: number,
+  body: TagRequest,
+  signal?: AbortSignal,
+) {
+  return apiFetch<TagResponse>(`/admin/tags/${id}`, {
+    method: "PUT",
+    body,
+    auth: true,
+    signal,
+  });
+}
+
+/** Answers an envelope with no data key on success. */
+export function deleteAdminTag(id: number, signal?: AbortSignal) {
+  return apiFetch<void>(`/admin/tags/${id}`, {
+    method: "DELETE",
+    auth: true,
+    signal,
+  });
+}
+
+/* ------------------------- public deck moderation ------------------------- */
+
+/**
+ * Decks waiting to be approved as public.
+ *
+ * Paging here does NOT behave like the other admin lists. Sending page=N
+ * answers pageNo=N+1, checked across three consecutive values, so the number
+ * in the response is one ahead of the number sent. Send zero based, and never
+ * render pageNo directly.
+ */
+export function listPendingPublicDecks(
+  page = 0,
+  size = 20,
+  signal?: AbortSignal,
+) {
+  return apiFetch<PageResponse<DeckResponse>>(
+    `/admin/decks/pending-public?page=${page}&size=${size}`,
+    { auth: true, signal },
+  );
+}
+
+/**
+ * Approve or reject a deck's public listing.
+ *
+ * `approved` is a REQUIRED query parameter, not a body field, which is unlike
+ * every other write in this file.
+ */
+export function approvePublicDeck(
+  deckId: number,
+  approved: boolean,
+  signal?: AbortSignal,
+) {
+  return apiFetch<DeckResponse>(
+    `/admin/decks/${deckId}/approve-public?approved=${approved}`,
+    { method: "PATCH", auth: true, signal },
+  );
 }

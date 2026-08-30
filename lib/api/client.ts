@@ -179,6 +179,49 @@ export function apiUpload<T>(
   return send<T>(path, { method, body: form, signal }, auth);
 }
 
+/**
+ * Binary download, for endpoints that answer a file rather than the envelope.
+ *
+ * send() parses every response as JSON, so it cannot be used here: the PDF
+ * export answers application/pdf with a Content-Disposition filename and no
+ * envelope at all. This is the only shape in the API that does that.
+ *
+ * Returns the blob plus the server's filename when it supplied one, so the
+ * caller does not have to invent a name.
+ */
+export async function apiDownload(
+  path: string,
+  signal?: AbortSignal,
+): Promise<{ blob: Blob; filename: string | null }> {
+  const token = getSession()?.token.accessToken;
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") throw error;
+    throw new ApiError(
+      "Cannot reach the server. Check your connection and try again.",
+      0,
+    );
+  }
+
+  if (!response.ok) {
+    // A failure still comes back as the JSON envelope, so read it as one.
+    const payload = (await response.json().catch(() => null)) as unknown;
+    if (response.status === 401) endSession();
+    throw new ApiError(errorMessage(payload, response.status), response.status);
+  }
+
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const match = disposition.match(/filename="?([^"';]+)"?/i);
+
+  return { blob: await response.blob(), filename: match ? match[1] : null };
+}
+
 /*
   Two pagination conventions live in this API, and mixing them up fails
   silently rather than erroring, so they get one function each:

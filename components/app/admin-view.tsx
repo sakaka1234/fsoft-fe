@@ -9,7 +9,13 @@ import { Field, SelectInput, TextInput } from "@/components/ui/field";
 import { EmptyState, ErrorState, RowSkeleton } from "@/components/app/states";
 import { ApiError } from "@/lib/api/client";
 import {
+  approvePublicDeck,
+  createAdminTag,
   deleteAdminDeck,
+  deleteAdminTag,
+  listAdminTags,
+  listPendingPublicDecks,
+  renameAdminTag,
   deleteAdminGameRecord,
   getAdminDashboardStats,
   isAccessDeniedMessage,
@@ -28,6 +34,7 @@ import { Cards } from "@phosphor-icons/react/Cards";
 import { GameController } from "@phosphor-icons/react/GameController";
 import { Trash } from "@phosphor-icons/react/Trash";
 import { SealCheck } from "@phosphor-icons/react/SealCheck";
+import { Tag } from "@phosphor-icons/react/Tag";
 
 /*
   The admin console.
@@ -42,13 +49,15 @@ import { SealCheck } from "@phosphor-icons/react/SealCheck";
   client check is a courtesy, not security.
 */
 
-type Section = "stats" | "users" | "decks" | "games";
+type Section = "stats" | "users" | "decks" | "games" | "tags" | "moderation";
 
 const SECTIONS: { key: Section; label: string; Icon: typeof ChartBar }[] = [
   { key: "stats", label: "Tổng quan", Icon: ChartBar },
   { key: "users", label: "Người dùng", Icon: Users },
   { key: "decks", label: "Bộ thẻ", Icon: Cards },
   { key: "games", label: "Lịch sử game", Icon: GameController },
+  { key: "tags", label: "Tag", Icon: Tag },
+  { key: "moderation", label: "Chờ duyệt", Icon: SealCheck },
 ];
 
 const PAGE_SIZE = 10;
@@ -90,6 +99,8 @@ export function AdminView() {
       {section === "users" ? <UsersSection /> : null}
       {section === "decks" ? <DecksSection /> : null}
       {section === "games" ? <GamesSection /> : null}
+      {section === "tags" ? <TagsSection /> : null}
+      {section === "moderation" ? <ModerationSection /> : null}
     </Container>
   );
 }
@@ -652,6 +663,264 @@ function Pager({
           Sau
         </Button>
       </div>
+    </div>
+  );
+}
+
+/* --------------------------------- tags ---------------------------------- */
+
+/**
+ * Tag management.
+ *
+ * This lives here rather than on the ordinary Tags page because the backend
+ * moved it: PUT and DELETE /tags/{id} were removed and now answer the "No
+ * static resource" flavour of 500, while /admin/tags/{id} works. The Tags page
+ * still shows the same controls to an admin, calling the same functions.
+ *
+ * Unlike every other admin list this one takes no pagination at all.
+ */
+function TagsSection() {
+  const [busy, setBusy] = useState(false);
+  const [rowError, setRowError] = useState<string | null>(null);
+  const [newName, setNewName] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState("");
+
+  const tags = useAsync(
+    useCallback((signal: AbortSignal) => listAdminTags(signal), []),
+    "admin-tags",
+  );
+
+  async function run(action: () => Promise<unknown>) {
+    setBusy(true);
+    setRowError(null);
+    try {
+      await action();
+      tags.reload();
+    } catch (error) {
+      setRowError(
+        error instanceof ApiError ? error.message : "Thao tác không thành công.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          const name = newName.trim();
+          if (!name) return;
+          run(async () => {
+            await createAdminTag({ name });
+            setNewName("");
+          });
+        }}
+        noValidate
+        className="flex items-end gap-3"
+      >
+        <Field id="admin-tag-new" label="Thêm tag" className="min-w-0 flex-1">
+          <TextInput
+            id="admin-tag-new"
+            value={newName}
+            onChange={(event) => setNewName(event.target.value)}
+            disabled={busy}
+          />
+        </Field>
+        <Button type="submit" disabled={busy || !newName.trim()}>
+          Thêm
+        </Button>
+      </form>
+
+      {rowError ? <ErrorState message={rowError} /> : null}
+
+      {tags.status === "loading" ? <RowSkeleton count={4} /> : null}
+      {tags.status === "error" ? (
+        <SectionError error={tags.error} onRetry={tags.reload} />
+      ) : null}
+
+      {tags.status === "success" ? (
+        tags.data.length === 0 ? (
+          <EmptyState title="Chưa có tag nào" body="Thêm tag đầu tiên ở trên." />
+        ) : (
+          <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+            {tags.data.map((tag) => (
+              <li key={tag.id} className="flex items-center gap-3 p-4">
+                {editingId === tag.id ? (
+                  <>
+                    <TextInput
+                      value={editingName}
+                      onChange={(event) => setEditingName(event.target.value)}
+                      disabled={busy}
+                      className="min-w-0 flex-1"
+                      aria-label={`Đổi tên ${tag.name}`}
+                    />
+                    <Button
+                      disabled={busy || !editingName.trim()}
+                      onClick={() =>
+                        run(async () => {
+                          await renameAdminTag(tag.id, {
+                            name: editingName.trim(),
+                          });
+                          setEditingId(null);
+                        })
+                      }
+                    >
+                      Lưu
+                    </Button>
+                    <Button variant="secondary" onClick={() => setEditingId(null)}>
+                      Huỷ
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1">{tag.name}</span>
+                    <Button
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() => {
+                        setEditingId(tag.id);
+                        setEditingName(tag.name);
+                      }}
+                    >
+                      Đổi tên
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() => {
+                        if (!window.confirm(`Xoá tag "${tag.name}"?`)) return;
+                        run(() => deleteAdminTag(tag.id));
+                      }}
+                    >
+                      <Trash aria-hidden size={15} weight="bold" />
+                    </Button>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        )
+      ) : null}
+    </div>
+  );
+}
+
+/* ------------------------------- moderation ------------------------------ */
+
+/**
+ * Decks waiting for approval to be listed publicly.
+ *
+ * The page number sent and the page number returned do not agree on this
+ * route: sending page=N answers pageNo=N+1, checked across three consecutive
+ * values. So the pager below tracks its own zero based number and never reads
+ * pageNo, which would be off by one against every other admin list.
+ */
+function ModerationSection() {
+  const [page, setPage] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [rowError, setRowError] = useState<string | null>(null);
+
+  const pending = useAsync(
+    useCallback(
+      (signal: AbortSignal) => listPendingPublicDecks(page, PAGE_SIZE, signal),
+      [page],
+    ),
+    `admin-pending-${page}`,
+  );
+
+  async function decide(deckId: number, approved: boolean, title: string) {
+    if (
+      !window.confirm(
+        approved
+          ? `Duyệt "${title}" cho hiển thị công khai?`
+          : `Từ chối "${title}"?`,
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setRowError(null);
+    try {
+      await approvePublicDeck(deckId, approved);
+      pending.reload();
+    } catch (error) {
+      setRowError(
+        error instanceof ApiError ? error.message : "Không xử lý được.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <p className="max-w-prose text-sm text-muted">
+        Bộ thẻ do người dùng gửi lên chờ duyệt hiển thị công khai. Duyệt hoặc từ
+        chối đều áp dụng ngay.
+      </p>
+
+      {rowError ? <ErrorState message={rowError} /> : null}
+
+      {pending.status === "loading" ? <RowSkeleton count={4} /> : null}
+      {pending.status === "error" ? (
+        <SectionError error={pending.error} onRetry={pending.reload} />
+      ) : null}
+
+      {pending.status === "success" ? (
+        pending.data.content.length === 0 ? (
+          <EmptyState
+            title="Không có bộ thẻ nào chờ duyệt"
+            body="Khi có người gửi bộ thẻ xin hiển thị công khai, nó sẽ xuất hiện ở đây."
+          />
+        ) : (
+          <>
+            <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+              {pending.data.content.map((deck) => (
+                <li
+                  key={deck.id}
+                  className="flex flex-wrap items-center justify-between gap-3 p-4"
+                >
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/decks/${deck.id}`}
+                      className="font-medium underline-offset-4 hover:underline"
+                    >
+                      {deck.title}
+                    </Link>
+                    <p className="text-sm text-muted">
+                      {deck.visibility} · {deck.totalCards} thẻ
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      disabled={busy}
+                      onClick={() => decide(deck.id, true, deck.title)}
+                    >
+                      Duyệt
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() => decide(deck.id, false, deck.title)}
+                    >
+                      Từ chối
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <Pager
+              page={page}
+              last={pending.data.content.length < PAGE_SIZE}
+              total={pending.data.totalElements}
+              onChange={setPage}
+            />
+          </>
+        )
+      ) : null}
     </div>
   );
 }

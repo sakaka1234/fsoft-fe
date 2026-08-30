@@ -11,6 +11,7 @@ import { X } from "@phosphor-icons/react/X";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { NotificationBell } from "@/components/app/notification-bell";
 import { site } from "@/content/site";
 import { logout } from "@/lib/api/auth";
 import { endSession, getSession } from "@/lib/auth/session-store";
@@ -27,6 +28,7 @@ const APP_NAV = [
   { label: "Explore", href: "/explore" },
   { label: "Tags", href: "/tags" },
   { label: "Tra từ", href: "/search" },
+  { label: "Công cụ AI", href: "/ai" },
   { label: "Chơi game", href: "/games" },
   { label: "Profile", href: "/profile" },
 ] as const;
@@ -220,6 +222,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
+              <NotificationBell />
               <ThemeToggle />
               {/* Only from xl: at lg the six links plus a name plus a button is
                   already the width of the bar. */}

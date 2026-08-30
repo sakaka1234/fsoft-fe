@@ -1,6 +1,7 @@
 import { apiFetch } from "@/lib/api/client";
 import type {
   ReviewCardResponse,
+  SrsMasteryResponse,
   SrsRating,
   SrsReviewRequest,
 } from "@/lib/api/types";
@@ -54,5 +55,24 @@ export function resetDeckSrs(deckId: number) {
   return apiFetch<void>(`/srs/deck/${deckId}/reset`, {
     method: "DELETE",
     auth: true,
+  });
+}
+
+/**
+ * Learning totals across the account, or within one deck.
+ *
+ * newCardsCount is null unless deckId is given. Every sibling field answers 0
+ * in that case, so this one field genuinely is null rather than zero, and the
+ * type says so.
+ *
+ * The deckId filter is NOT ownership checked: passing a deck belonging to
+ * someone else answers 200 with that deck's counts rather than 404. Only pass
+ * ids the reader can already see.
+ */
+export function getSrsMastery(deckId?: number, signal?: AbortSignal) {
+  const query = deckId === undefined ? "" : `?deckId=${deckId}`;
+  return apiFetch<SrsMasteryResponse>(`/srs/mastery${query}`, {
+    auth: true,
+    signal,
   });
 }

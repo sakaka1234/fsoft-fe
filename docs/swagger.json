@@ -18,12 +18,16 @@
   "security": [{ "bearerAuth": [] }],
   "tags": [
     {
-      "name": "Chat AI Controller",
-      "description": "Công cụ nội bộ để test thử khả năng của mô hình AI Chat"
-    },
-    {
       "name": "Admin User Controller",
       "description": "Quản trị người dùng & Phân quyền (Admin)"
+    },
+    {
+      "name": "Admin Tag Controller",
+      "description": "Quản lý nhãn / tags (Admin)"
+    },
+    {
+      "name": "AI Auto Deck Controller",
+      "description": "Tự động sinh bộ bài Flashcard hoàn chỉnh từ chủ đề bằng AI"
     },
     {
       "name": "Tag Controller",
@@ -36,6 +40,18 @@
     {
       "name": "Profile Controller",
       "description": "Quản lý thông tin hồ sơ cá nhân của người dùng"
+    },
+    {
+      "name": "AI Story Controller",
+      "description": "Tạo đoạn văn/email ngữ cảnh thực tế từ các từ vựng đang học"
+    },
+    {
+      "name": "AI Roleplay Controller",
+      "description": "Gia sư AI đóng vai đối thoại tương tác ép dùng từ vựng vừa học"
+    },
+    {
+      "name": "Notification Controller",
+      "description": "Quản lý thông báo người dùng"
     },
     {
       "name": "Admin Deck Controller",
@@ -52,6 +68,10 @@
     {
       "name": "Deck Controller",
       "description": "Quản lý tạo, sửa, xóa, tìm kiếm và chia sẻ Bộ thẻ (Decks)"
+    },
+    {
+      "name": "AI Situational Learning",
+      "description": "Các API tạo bài học tình huống bằng AI"
     },
     {
       "name": "Progress Controller",
@@ -86,73 +106,15 @@
       "description": "Quản lý hệ thống học lặp lại ngắt quãng (Spaced Repetition System) cho thẻ học"
     },
     {
+      "name": "AI Extraction",
+      "description": "Các API dùng AI để bóc tách từ vựng từ đoạn văn, URL, file và Gợi ý Autocomplete thời gian thực"
+    },
+    {
       "name": "Card Star Controller",
       "description": "Quản lý đánh dấu từ khó / từ yêu thích (Favorite / Starred Cards)"
     }
   ],
   "paths": {
-    "/tags/{id}": {
-      "put": {
-        "tags": ["Tag Controller"],
-        "summary": "Chỉnh sửa thông tin Tag",
-        "description": "Đổi tên hoặc đổi định dạng hiển thị của một Tag đã tồn tại theo ID tương ứng.",
-        "operationId": "updateTag",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "ID của Nhãn chủ đề cần sửa",
-            "required": true,
-            "schema": { "type": "integer", "format": "int64" }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/TagRequest" }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseTagResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": ["Tag Controller"],
-        "summary": "Xóa vĩnh viễn một Tag",
-        "description": "Gỡ bỏ Tag này khỏi hệ thống. Những bộ bài đang sử dụng Tag này sẽ bị xóa liên kết tương ứng với nó.",
-        "operationId": "deleteTag",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "ID của Nhãn chủ đề cần xóa",
-            "required": true,
-            "schema": { "type": "integer", "format": "int64" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
-              }
-            }
-          }
-        }
-      }
-    },
     "/profiles/me": {
       "get": {
         "tags": ["Profile Controller"],
@@ -681,6 +643,101 @@
         }
       }
     },
+    "/admin/tags/{id}": {
+      "put": {
+        "tags": ["Admin Tag Controller"],
+        "summary": "Chỉnh sửa thông tin Tag theo ID (Admin)",
+        "operationId": "updateTag",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID của Tag cần sửa",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TagRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTagResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Admin Tag Controller"],
+        "summary": "Xóa vĩnh viễn một Tag theo ID (Admin)",
+        "operationId": "deleteTag",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID của Tag cần xóa",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/decks/{deckId}/visibility": {
+      "put": {
+        "tags": ["Admin Deck Controller"],
+        "summary": "Chuyển đổi trạng thái hiển thị của Bộ bài (PUBLIC <-> PRIVATE)",
+        "operationId": "convertDeckVisibility_1",
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DeckVisibilityRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseDeckResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/tags": {
       "get": {
         "tags": ["Tag Controller"],
@@ -777,6 +834,62 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseAuthenticatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "tags": ["Notification Controller"],
+        "summary": "Lấy danh sách thông báo của tôi",
+        "description": "Truy xuất danh sách thông báo của người dùng đang đăng nhập (sắp xếp mới nhất).",
+        "operationId": "getMyNotifications",
+        "parameters": [
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": { "$ref": "#/components/schemas/Pageable" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListNotificationResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Notification Controller"],
+        "summary": "Tạo mới thông báo",
+        "description": "Gửi một thông báo mới tới người dùng chỉ định.",
+        "operationId": "createNotification",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationCreationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseNotificationResponse"
                 }
               }
             }
@@ -1562,6 +1675,90 @@
         }
       }
     },
+    "/api/v1/ai/situational-learning/text": {
+      "post": {
+        "tags": ["AI Situational Learning"],
+        "summary": "Tạo bài học qua Text",
+        "description": "Dựa trên mô tả tình huống của người dùng (bằng văn bản), AI sẽ tạo ra một bộ câu giao tiếp song ngữ Anh-Việt và danh sách từ vựng liên quan theo văn phong thực tế.",
+        "operationId": "learnFromText",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SituationalLearningRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseSituationalLearningResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/story": {
+      "post": {
+        "tags": ["AI Story Controller"],
+        "summary": "Tự động lồng ghép các từ vựng cần ôn thành đoạn văn/email thực tế bằng AI",
+        "operationId": "generateStory",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AiStoryRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAiStoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/roleplay": {
+      "post": {
+        "tags": ["AI Roleplay Controller"],
+        "summary": "Đóng vai đối thoại theo kịch bản (Phỏng vấn, Khám bệnh, Khách sạn) và chấm điểm từ vựng",
+        "operationId": "processRoleplay",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AiRoleplayRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAiRoleplayResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ai/quiz": {
       "post": {
         "tags": ["AI Integration Controller"],
@@ -1592,7 +1789,9 @@
     },
     "/api/ai/extract/url": {
       "post": {
-        "tags": ["ai-extraction-controller"],
+        "tags": ["AI Extraction"],
+        "summary": "Bóc tách từ vựng từ URL",
+        "description": "Truyền vào một đường link bài báo/blog. Hệ thống sẽ cào nội dung text và nhờ AI bóc tách ra các từ vựng quan trọng.",
         "operationId": "extractFromUrl",
         "requestBody": {
           "content": {
@@ -1618,7 +1817,9 @@
     },
     "/api/ai/extract/text": {
       "post": {
-        "tags": ["ai-extraction-controller"],
+        "tags": ["AI Extraction"],
+        "summary": "Bóc tách từ vựng từ Text",
+        "description": "AI sẽ đọc một đoạn văn bản và tự động lấy ra danh sách các từ vựng/thuật ngữ quan trọng. Trả về JSON (Không tự động lưu vào Deck).",
         "operationId": "extractFromText",
         "requestBody": {
           "content": {
@@ -1642,22 +1843,47 @@
         }
       }
     },
+    "/api/ai/extract/magic-sort": {
+      "post": {
+        "tags": ["AI Extraction"],
+        "summary": "Magic Sort (Phân loại thông minh)",
+        "description": "Gửi danh sách từ vựng và danh sách Decks của user. AI sẽ tự động phân từng từ vào Deck phù hợp, hoặc gợi ý tên Deck mới nếu từ đó không thuộc Deck nào.",
+        "operationId": "magicSortCards",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/MagicSortRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListMagicSortResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ai/extract/file": {
       "post": {
-        "tags": ["ai-extraction-controller"],
+        "tags": ["AI Extraction"],
+        "summary": "Bóc tách từ vựng từ File (PDF/Ảnh)",
+        "description": "Upload file PDF hoặc Hình ảnh (Gemini Vision). AI sẽ phân tích nội dung file và trích xuất từ vựng.",
         "operationId": "extractFromFile",
         "parameters": [
           {
             "name": "category",
             "in": "query",
+            "description": "Chủ đề gợi ý (vd: Science, Daily Life)",
             "required": true,
             "schema": { "type": "string" }
-          },
-          {
-            "name": "deckId",
-            "in": "query",
-            "required": true,
-            "schema": { "type": "integer", "format": "int64" }
           }
         ],
         "requestBody": {
@@ -1666,7 +1892,11 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "file": { "type": "string", "format": "binary" }
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "File PDF hoặc Hình ảnh"
+                  }
                 },
                 "required": ["file"]
               }
@@ -1708,6 +1938,77 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseAiChatResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/auto-deck": {
+      "post": {
+        "tags": ["AI Auto Deck Controller"],
+        "summary": "Tự động sinh nguyên bộ bài Flashcard chuẩn trong 3 giây từ 1 chủ đề bất kỳ",
+        "operationId": "generateAutoDeck",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AiAutoDeckRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAiAutoDeckResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/tags": {
+      "get": {
+        "tags": ["Admin Tag Controller"],
+        "summary": "Lấy danh sách tất cả các Tag (Admin)",
+        "operationId": "getAllTags_1",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListTagResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Admin Tag Controller"],
+        "summary": "Tạo mới một Tag (Admin)",
+        "operationId": "createTag_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TagRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseTagResponse"
                 }
               }
             }
@@ -1793,6 +2094,53 @@
         }
       }
     },
+    "/notifications/{id}/read": {
+      "patch": {
+        "tags": ["Notification Controller"],
+        "summary": "Đánh dấu thông báo đã đọc",
+        "description": "Cập nhật trạng thái thông báo theo ID thành đã đọc.",
+        "operationId": "markAsRead",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID thông báo",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseNotificationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/read-all": {
+      "patch": {
+        "tags": ["Notification Controller"],
+        "summary": "Đánh dấu tất cả thông báo đã đọc",
+        "description": "Chuyển tất cả thông báo chưa đọc của người dùng hiện tại sang trạng thái đã đọc.",
+        "operationId": "markAllAsRead",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/decks/{deckId}/official": {
       "patch": {
         "tags": ["Admin Deck Controller"],
@@ -1816,6 +2164,39 @@
           },
           "required": true
         },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseDeckResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/decks/{deckId}/approve-public": {
+      "patch": {
+        "tags": ["Admin Deck Controller"],
+        "summary": "Duyệt hoặc Từ chối yêu cầu đưa bộ bài lên Public của Người dùng",
+        "operationId": "approvePublicDeck",
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "approved",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "boolean" }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1952,6 +2333,24 @@
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListUserActivityResponse"
                 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/unread-count": {
+      "get": {
+        "tags": ["Notification Controller"],
+        "summary": "Đếm số thông báo chưa đọc",
+        "description": "Trả về số lượng thông báo chưa đọc của người dùng hiện tại.",
+        "operationId": "getUnreadCount",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseLong" }
               }
             }
           }
@@ -2495,6 +2894,56 @@
         }
       }
     },
+    "/cards/deck/{deckId}/export/pdf": {
+      "get": {
+        "tags": ["Card Controller"],
+        "summary": "Xuất danh sách thẻ bài ra file PDF (.pdf)",
+        "description": "Tải file PDF chứa toàn bộ thẻ bài có trong bộ bài để in ấn hoặc học tập offline.",
+        "operationId": "exportCardsToPdf",
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "description": "ID của bộ thẻ",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": { "schema": { "type": "string", "format": "byte" } }
+            }
+          }
+        }
+      }
+    },
+    "/cards/deck/{deckId}/export/excel": {
+      "get": {
+        "tags": ["Card Controller"],
+        "summary": "Xuất danh sách thẻ bài ra file Excel (.xlsx)",
+        "description": "Tải file Excel .xlsx chứa toàn bộ thẻ bài có trong bộ bài.",
+        "operationId": "exportCardsToExcel",
+        "parameters": [
+          {
+            "name": "deckId",
+            "in": "path",
+            "description": "ID của bộ thẻ",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": { "schema": { "type": "string", "format": "byte" } }
+            }
+          }
+        }
+      }
+    },
     "/api/dictionary/lookup": {
       "get": {
         "tags": ["dictionary-controller"],
@@ -2515,29 +2964,6 @@
                 "schema": { "$ref": "#/components/schemas/ApiResponseObject" }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/chat-ai/test": {
-      "get": {
-        "tags": ["Chat AI Controller"],
-        "summary": "Test gửi tin nhắn trực tiếp đến LLM",
-        "description": "Gửi một tin nhắn văn bản đơn giản đến hệ thống Chat AI (LLM) và nhận về phản hồi thuần túy dạng Text. Chỉ dùng cho mục đích debug và kiểm tra kết nối.",
-        "operationId": "test",
-        "parameters": [
-          {
-            "name": "message",
-            "in": "query",
-            "description": "Nội dung lời nhắn để test (Ví dụ: 'Xin chào, bạn là ai?')",
-            "required": true,
-            "schema": { "type": "string" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": { "*/*": { "schema": { "type": "string" } } }
           }
         }
       }
@@ -2564,6 +2990,64 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseAiSearchResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/roleplay/history": {
+      "get": {
+        "tags": ["AI Roleplay Controller"],
+        "summary": "Lấy toàn bộ lịch sử tin nhắn của phiên nhập vai đối thoại",
+        "operationId": "getRoleplayHistory",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "query",
+            "description": "ID phiên hội thoại (Nếu bỏ trống sẽ lấy theo User ID hiện tại)",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListAiRoleplayHistoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/extract/suggestions": {
+      "get": {
+        "tags": ["AI Extraction"],
+        "summary": "⚡ Real-time Card Autocomplete & Definition Suggestions (Giống Quizlet)",
+        "description": "Khi người dùng vừa gõ từ vựng vào ô TERM (ví dụ: 'meet'), AI sẽ tự động sinh danh sách gợi ý hoàn thiện từ vựng (meet, meeting, meet, met, met) và các gợi ý nghĩa Tiếng Việt (gặp, đáp ứng, gặp gỡ) cùng thông tin auto-fill đầy đủ.",
+        "operationId": "getSuggestions",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "description": "Từ vựng hoặc chuỗi ký tự người dùng đang gõ",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "meet"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCardSuggestionResponse"
                 }
               }
             }
@@ -2676,6 +3160,33 @@
         }
       }
     },
+    "/admin/decks/pending-public": {
+      "get": {
+        "tags": ["Admin Deck Controller"],
+        "summary": "Lấy danh sách các bộ bài đang chờ duyệt lên Public (pendingPublic = true)",
+        "operationId": "getPendingPublicDecks",
+        "parameters": [
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": { "$ref": "#/components/schemas/Pageable" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseDeckResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/dashboard/stats": {
       "get": {
         "tags": ["Admin Dashboard Controller"],
@@ -2706,6 +3217,33 @@
             "name": "deckId",
             "in": "path",
             "description": "ID của bộ thẻ cần reset",
+            "required": true,
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/{id}": {
+      "delete": {
+        "tags": ["Notification Controller"],
+        "summary": "Xóa thông báo",
+        "description": "Xóa một thông báo theo ID.",
+        "operationId": "deleteNotification",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID thông báo",
             "required": true,
             "schema": { "type": "integer", "format": "int64" }
           }
@@ -2756,6 +3294,32 @@
           {
             "name": "code",
             "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/roleplay/{conversationId}": {
+      "delete": {
+        "tags": ["AI Roleplay Controller"],
+        "summary": "Xóa/Reset bộ nhớ của phiên đối thoại nhập vai để bắt đầu lại từ đầu",
+        "operationId": "clearRoleplayHistory",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "description": "ID phiên hội thoại cần xóa",
             "required": true,
             "schema": { "type": "string" }
           }
@@ -2825,27 +3389,6 @@
   },
   "components": {
     "schemas": {
-      "TagRequest": {
-        "type": "object",
-        "description": "Dữ liệu khởi tạo Tag (Tên, màu sắc...)",
-        "properties": { "name": { "type": "string" } },
-        "required": ["name"]
-      },
-      "ApiResponseTagResponse": {
-        "type": "object",
-        "properties": {
-          "status": { "type": "integer", "format": "int32" },
-          "message": { "type": "string" },
-          "data": { "$ref": "#/components/schemas/TagResponse" }
-        }
-      },
-      "TagResponse": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer", "format": "int64" },
-          "name": { "type": "string" }
-        }
-      },
       "ProfileUpdateRequest": {
         "type": "object",
         "description": "JSON Object chứa các thông tin thay đổi",
@@ -3047,6 +3590,13 @@
           "shareLinkEnabled": { "type": "boolean" }
         }
       },
+      "TagResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "name": { "type": "string" }
+        }
+      },
       "DeckVisibilityRequest": {
         "type": "object",
         "properties": {
@@ -3150,6 +3700,20 @@
           "data": { "$ref": "#/components/schemas/AdminUserResponse" }
         }
       },
+      "TagRequest": {
+        "type": "object",
+        "description": "Thông tin Tag mới",
+        "properties": { "name": { "type": "string" } },
+        "required": ["name"]
+      },
+      "ApiResponseTagResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/TagResponse" }
+        }
+      },
       "SrsReviewRequest": {
         "type": "object",
         "description": "Dữ liệu đánh giá (ID thẻ bài và mức độ đánh giá)",
@@ -3235,6 +3799,58 @@
           }
         }
       },
+      "NotificationCreationRequest": {
+        "type": "object",
+        "properties": {
+          "recipientId": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "content": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": [
+              "SYSTEM",
+              "DECK_SHARED",
+              "STREAK_REMINDER",
+              "QUIZ_RESULT",
+              "GAME_INVITE",
+              "ANNOUNCEMENT"
+            ]
+          },
+          "referenceId": { "type": "string" }
+        },
+        "required": ["content", "recipientId", "title", "type"]
+      },
+      "ApiResponseNotificationResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/NotificationResponse" }
+        }
+      },
+      "NotificationResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "recipientId": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "content": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": [
+              "SYSTEM",
+              "DECK_SHARED",
+              "STREAK_REMINDER",
+              "QUIZ_RESULT",
+              "GAME_INVITE",
+              "ANNOUNCEMENT"
+            ]
+          },
+          "referenceId": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "read": { "type": "boolean" }
+        }
+      },
       "SubmitAnswerRequest": {
         "type": "object",
         "properties": { "cardId": { "type": "integer", "format": "int64" } }
@@ -3288,8 +3904,7 @@
             "type": "array",
             "items": { "type": "integer", "format": "int64" },
             "uniqueItems": true
-          },
-          "official": { "type": "boolean" }
+          }
         },
         "required": ["sourceLanguage", "targetLanguage", "title", "visibility"]
       },
@@ -3460,6 +4075,225 @@
         "type": "object",
         "properties": { "email": { "type": "string" } }
       },
+      "SituationalLearningRequest": {
+        "type": "object",
+        "description": "Request tạo bài học tình huống (Situational Learning)",
+        "properties": {
+          "context": {
+            "type": "string",
+            "description": "Mô tả tình huống cần học (Bằng tiếng Anh hoặc tiếng Việt). Ví dụ: 'Trễ chuyến bay ở sân bay', 'Đi phỏng vấn xin việc'",
+            "example": "Sáng nay tôi mới dậy lúc 6h30 và đánh răng rửa mặt..."
+          },
+          "cefrLevel": {
+            "type": "string",
+            "description": "Trình độ người học hiện tại",
+            "example": "A1 - Beginner"
+          },
+          "currentTime": {
+            "type": "string",
+            "description": "Thời gian hiện tại của thiết bị để AI hiểu bối cảnh. Ví dụ: '2026-08-25T11:31:35+07:00'",
+            "example": "2026-08-25T11:31:35+07:00"
+          },
+          "location": {
+            "type": "string",
+            "description": "Vị trí hiện tại của thiết bị (Tùy chọn) để AI cá nhân hóa bài học. Ví dụ: 'Hanoi, Vietnam'",
+            "example": "Hanoi, Vietnam"
+          }
+        },
+        "required": ["cefrLevel", "context"]
+      },
+      "ApiResponseSituationalLearningResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/SituationalLearningResponse" }
+        }
+      },
+      "SentenceOption": {
+        "type": "object",
+        "properties": {
+          "english": { "type": "string" },
+          "vietnamese": { "type": "string" }
+        }
+      },
+      "SituationalLearningResponse": {
+        "type": "object",
+        "description": "Response trả về toàn bộ cấu trúc bài học tình huống (Câu giao tiếp & Từ vựng)",
+        "properties": {
+          "mainActions": {
+            "type": "array",
+            "description": "Các hành động chính",
+            "example": [
+              { "english": "I woke up early", "vietnamese": "Tôi dậy sớm" }
+            ],
+            "items": { "$ref": "#/components/schemas/SentenceOption" }
+          },
+          "interactions": {
+            "type": "array",
+            "description": "Các tương tác giao tiếp",
+            "example": [
+              { "english": "Good morning", "vietnamese": "Chào buổi sáng" }
+            ],
+            "items": { "$ref": "#/components/schemas/SentenceOption" }
+          },
+          "emotions": {
+            "type": "array",
+            "description": "Các câu cảm xúc",
+            "example": [
+              { "english": "I am happy", "vietnamese": "Tôi rất vui" }
+            ],
+            "items": { "$ref": "#/components/schemas/SentenceOption" }
+          },
+          "shortCaptions": {
+            "type": "array",
+            "description": "Các câu cảm thán/caption ngắn gọn",
+            "example": [
+              {
+                "english": "What a day!",
+                "vietnamese": "Thật là một ngày tuyệt vời"
+              }
+            ],
+            "items": { "$ref": "#/components/schemas/SentenceOption" }
+          },
+          "vocabularies": {
+            "type": "array",
+            "description": "Danh sách thẻ từ vựng (Flashcards) rút ra từ bài học, sẵn sàng để Frontend lưu vào Deck",
+            "items": { "$ref": "#/components/schemas/CardCreationRequest" }
+          }
+        }
+      },
+      "AiStoryRequest": {
+        "type": "object",
+        "description": "Yêu cầu tạo đoạn văn / Email thực tế từ từ vựng SRS nợ",
+        "properties": {
+          "cardIds": {
+            "type": "array",
+            "description": "Danh sách ID các thẻ bài nợ FSRS (Tùy chọn)",
+            "example": [101, 102, 103],
+            "items": { "type": "integer", "format": "int64" }
+          },
+          "words": {
+            "type": "array",
+            "description": "Danh sách các từ vựng Tiếng Anh trực tiếp (Tùy chọn)",
+            "example": ["negotiation", "consensus", "deadline"],
+            "items": { "type": "string" }
+          },
+          "contextType": {
+            "type": "string",
+            "description": "Ngữ cảnh tạo văn bản (BUSINESS_EMAIL, DAILY_STORY, NEWS_ARTICLE)",
+            "example": "BUSINESS_EMAIL"
+          }
+        }
+      },
+      "AiStoryResponse": {
+        "type": "object",
+        "description": "Đoạn văn / Email công việc hoàn chỉnh do AI tạo ra từ từ vựng nợ SRS",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Tiêu đề bài đọc / Chủ đề email",
+            "example": "Urgent Project Proposal & Negotiation Timeline"
+          },
+          "storyText": {
+            "type": "string",
+            "description": "Nội dung đoạn văn Tiếng Anh chứa các từ vựng mục tiêu",
+            "example": "Dear Team, We need to reach a consensus regarding the upcoming deadline..."
+          },
+          "translationText": {
+            "type": "string",
+            "description": "Bản dịch Tiếng Việt chuẩn ngữ cảnh",
+            "example": "Thưa Team, Chúng ta cần đạt được sự đồng thuận liên quan đến hạn chót..."
+          },
+          "contextType": {
+            "type": "string",
+            "description": "Ngữ cảnh văn bản",
+            "example": "BUSINESS_EMAIL"
+          },
+          "targetWords": {
+            "type": "array",
+            "description": "Danh sách các từ vựng mục tiêu đã lồng ghép thành công",
+            "example": ["consensus", "deadline", "proposal"],
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "ApiResponseAiStoryResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/AiStoryResponse" }
+        }
+      },
+      "AiRoleplayRequest": {
+        "type": "object",
+        "description": "Yêu cầu lượt đối thoại nhập vai với Gia Sư AI",
+        "properties": {
+          "scenario": {
+            "type": "string",
+            "description": "Kịch bản giao tiếp (JOB_INTERVIEW, DOCTOR_APPOINTMENT, HOTEL_CHECKIN, RESTAURANT)",
+            "example": "JOB_INTERVIEW"
+          },
+          "targetWords": {
+            "type": "array",
+            "description": "Danh sách từ vựng mục tiêu học viên cần luyện tập lồng ghép vào câu nói",
+            "example": ["deadline", "proposal"],
+            "items": { "type": "string" }
+          },
+          "conversationId": {
+            "type": "string",
+            "description": "ID phiên hội thoại để duy trì bộ nhớ đa lượt (Max 36 ký tự). Nếu bỏ trống backend tự dùng User ID",
+            "example": "session-interview-101"
+          },
+          "userMessage": {
+            "type": "string",
+            "description": "Câu trả lời hoặc câu hỏi bằng tiếng Anh của học viên",
+            "example": "In my last project, I reached a consensus with my team to hit the deadline."
+          }
+        },
+        "required": ["userMessage"]
+      },
+      "AiRoleplayResponse": {
+        "type": "object",
+        "description": "Kết quả phản hồi đối thoại nhập vai và đánh giá từ Gia Sư AI",
+        "properties": {
+          "tutorReply": {
+            "type": "string",
+            "description": "Câu đáp lại tiếp theo của Gia sư AI trong kịch bản (Tiếng Anh tự nhiên)",
+            "example": "Great, it sounds like you value teamwork. Can you tell me about a time when you had to adjust the deadline?"
+          },
+          "score": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Điểm số đánh giá lượt nói của học viên (Thang điểm 0 - 100)",
+            "example": 95
+          },
+          "wordsUsed": {
+            "type": "array",
+            "description": "Danh sách các từ vựng mục tiêu mà học viên đã lồng ghép sử dụng thành công",
+            "example": ["deadline", "consensus"],
+            "items": { "type": "string" }
+          },
+          "suggestions": {
+            "type": "array",
+            "description": "Danh sách các lời khuyên, nhận xét và sửa lỗi chính tả/ngữ pháp bằng Tiếng Việt",
+            "example": [
+              "Chú ý dùng dạng danh từ số nhiều cho 'code reviews'",
+              "Có thể thêm liên từ 'by' để câu mạch lạc hơn"
+            ],
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "ApiResponseAiRoleplayResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/AiRoleplayResponse" }
+        }
+      },
       "AiQuizRequest": {
         "type": "object",
         "description": "Yêu cầu tạo quiz (bao gồm số lượng câu hỏi, danh sách thẻ bài cần tạo quiz...)",
@@ -3532,8 +4366,7 @@
         "type": "object",
         "properties": {
           "url": { "type": "string" },
-          "category": { "type": "string" },
-          "deckId": { "type": "integer", "format": "int64" }
+          "category": { "type": "string" }
         }
       },
       "ApiResponseListCardCreationRequest": {
@@ -3551,8 +4384,58 @@
         "type": "object",
         "properties": {
           "text": { "type": "string" },
-          "category": { "type": "string" },
-          "deckId": { "type": "integer", "format": "int64" }
+          "category": { "type": "string" }
+        }
+      },
+      "MagicSortRequest": {
+        "type": "object",
+        "description": "Request để phân loại từ vựng tự động (Magic Sort)",
+        "properties": {
+          "words": {
+            "type": "array",
+            "description": "Danh sách các từ vựng cần phân loại",
+            "example": ["Apple", "Laptop"],
+            "items": { "type": "string" }
+          },
+          "decks": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "description": "Danh sách các Deck hiện có của User dưới dạng Map (ID -> Tên)",
+            "example": { "1": "Trái cây", "2": "Công nghệ" }
+          }
+        }
+      },
+      "ApiResponseListMagicSortResult": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/MagicSortResult" }
+          }
+        }
+      },
+      "MagicSortResult": {
+        "type": "object",
+        "description": "Kết quả phân loại tự động cho từng từ vựng",
+        "properties": {
+          "word": {
+            "type": "string",
+            "description": "Từ vựng được phân loại",
+            "example": "Laptop"
+          },
+          "targetDeckId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ID của Deck có sẵn phù hợp nhất. Sẽ là null nếu AI gợi ý tạo Deck mới.",
+            "example": 2
+          },
+          "suggestedDeckName": {
+            "type": "string",
+            "description": "Tên Deck mới do AI gợi ý (nếu targetDeckId là null)",
+            "example": "Medical Terms"
+          }
         }
       },
       "AiChatRequest": {
@@ -3623,6 +4506,73 @@
           "status": { "type": "integer", "format": "int32" },
           "message": { "type": "string" },
           "data": { "$ref": "#/components/schemas/AiChatResponse" }
+        }
+      },
+      "AiAutoDeckRequest": {
+        "type": "object",
+        "description": "Yêu cầu tạo nguyên bộ bài Flashcard tự động bằng AI trong 3s",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "Chủ đề từ vựng muốn AI biên soạn bộ bài",
+            "example": "Từ vựng phỏng vấn IT ReactJS"
+          },
+          "cardCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Số lượng thẻ bài muốn sinh (Mặc định 15, tối đa 30)",
+            "example": 15
+          },
+          "sourceLanguage": {
+            "type": "string",
+            "description": "Mã ngôn ngữ nguồn (Default: en)",
+            "example": "en"
+          },
+          "targetLanguage": {
+            "type": "string",
+            "description": "Mã ngôn ngữ đích dịch nghĩa (Default: vi)",
+            "example": "vi"
+          }
+        },
+        "required": ["topic"]
+      },
+      "AiAutoDeckResponse": {
+        "type": "object",
+        "description": "Kết quả bộ bài Flashcard hoàn chỉnh do AI tự động biên soạn",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Tên tiêu đề bộ bài chuẩn SEO do AI gợi ý",
+            "example": "Từ vựng phỏng vấn IT ReactJS Core"
+          },
+          "description": {
+            "type": "string",
+            "description": "Mô tả ngắn về nội dung và mục tiêu học tập của bộ bài",
+            "example": "Tổng hợp 15 từ vựng cốt lõi thường xuất hiện nhất trong các buổi phỏng vấn ReactJS."
+          },
+          "sourceLanguage": {
+            "type": "string",
+            "description": "Mã ngôn ngữ nguồn",
+            "example": "en"
+          },
+          "targetLanguage": {
+            "type": "string",
+            "description": "Mã ngôn ngữ đích",
+            "example": "vi"
+          },
+          "cards": {
+            "type": "array",
+            "description": "Danh sách các thẻ từ vựng hoàn chỉnh (Từ, Phiên âm IPA, Nghĩa, Câu ví dụ)",
+            "items": { "$ref": "#/components/schemas/CardCreationRequest" }
+          }
+        }
+      },
+      "ApiResponseAiAutoDeckResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/AiAutoDeckResponse" }
         }
       },
       "AdminUpdateDeckOfficialRequest": {
@@ -3721,6 +4671,33 @@
           "quizzesCompletedCount": { "type": "integer", "format": "int32" }
         }
       },
+      "Pageable": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "integer", "format": "int32", "minimum": 0 },
+          "size": { "type": "integer", "format": "int32", "minimum": 1 },
+          "sort": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "ApiResponseListNotificationResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/NotificationResponse" }
+          }
+        }
+      },
+      "ApiResponseLong": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "type": "integer", "format": "int64" }
+        }
+      },
       "ApiResponsePageResponseLong": {
         "type": "object",
         "properties": {
@@ -3814,14 +4791,6 @@
               "$ref": "#/components/schemas/AudioReflexLeaderboardResponse"
             }
           }
-        }
-      },
-      "Pageable": {
-        "type": "object",
-        "properties": {
-          "page": { "type": "integer", "format": "int32", "minimum": 0 },
-          "size": { "type": "integer", "format": "int32", "minimum": 1 },
-          "sort": { "type": "array", "items": { "type": "string" } }
         }
       },
       "ApiResponsePageResponseDeckShareResponse": {
@@ -4004,6 +4973,76 @@
           "status": { "type": "integer", "format": "int32" },
           "message": { "type": "string" },
           "data": { "$ref": "#/components/schemas/AiSearchResponse" }
+        }
+      },
+      "AiRoleplayHistoryResponse": {
+        "type": "object",
+        "description": "Chi tiết một tin nhắn trong lịch sử hội thoại đối thoại nhập vai",
+        "properties": {
+          "role": {
+            "type": "string",
+            "description": "Vai trò gửi tin nhắn (USER: Học viên, ASSISTANT: Gia sư AI)",
+            "example": "USER"
+          },
+          "content": {
+            "type": "string",
+            "description": "Nội dung câu nói hoặc câu đáp lời",
+            "example": "In my last project, I reached a consensus with my team to hit the deadline."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Mốc thời gian gửi tin nhắn chuẩn CSDL PostgreSQL",
+            "example": "2026-08-27T21:23:41"
+          }
+        }
+      },
+      "ApiResponseListAiRoleplayHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AiRoleplayHistoryResponse"
+            }
+          }
+        }
+      },
+      "ApiResponseCardSuggestionResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/CardSuggestionResponse" }
+        }
+      },
+      "CardSuggestionResponse": {
+        "type": "object",
+        "description": "Gợi ý tự động (Autocomplete Suggestions) khi người dùng vừa gõ từ vựng",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Từ vựng / Cụm từ đang được truy vấn",
+            "example": "meet"
+          },
+          "termSuggestions": {
+            "type": "array",
+            "description": "Danh sách gợi ý hoàn thiện từ vựng Tiếng Anh (Gợi ý dưới ô TERM)",
+            "example": ["meet", "meeting", "meet, met, met"],
+            "items": { "type": "string" }
+          },
+          "definitionSuggestions": {
+            "type": "array",
+            "description": "Danh sách gợi ý nghĩa Tiếng Việt tương ứng (Gợi ý dưới ô DEFINITION)",
+            "example": ["gặp", "đáp ứng", "gặp gỡ"],
+            "items": { "type": "string" }
+          },
+          "autoFillCard": {
+            "$ref": "#/components/schemas/CardCreationRequest",
+            "description": "Thông tin đầy đủ của thẻ bài gợi ý tốt nhất để tự động điền các trường còn lại (IPA, Từ loại, Ví dụ)"
+          }
         }
       },
       "ApiResponsePageResponseAdminUserResponse": {

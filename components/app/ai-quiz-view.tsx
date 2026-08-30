@@ -224,11 +224,11 @@ export function AiQuizView({ deckId }: AiQuizViewProps) {
                     className={cn(
                       "w-full rounded-field border px-4 py-3 text-left transition-colors",
                       !revealed && "border-line hover:bg-surface-2",
-                      revealed && isCorrect && "border-accent bg-accent-soft",
+                      revealed && isCorrect && "border-ok bg-ok-soft",
                       revealed &&
                         isPicked &&
                         !isCorrect &&
-                        "border-danger text-danger",
+                        "border-danger bg-danger-soft",
                       revealed &&
                         !isCorrect &&
                         !isPicked &&

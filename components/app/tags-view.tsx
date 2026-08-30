@@ -11,13 +11,24 @@ import { Container } from "@/components/ui/container";
 import { Field, TextInput } from "@/components/ui/field";
 import { EmptyState, ErrorState, RowSkeleton } from "@/components/app/states";
 import { ApiError } from "@/lib/api/client";
-import { createTag, deleteTag, listTags, renameTag } from "@/lib/api/tags";
+import { createTag, listTags } from "@/lib/api/tags";
+import { deleteAdminTag, renameAdminTag } from "@/lib/api/admin";
+import { isAdmin } from "@/lib/auth/roles";
+import { useSession } from "@/lib/auth/use-session";
 import type { TagResponse } from "@/lib/api/types";
 import { useAsync } from "@/lib/use-async";
 
 export function TagsView() {
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  /*
+    Renaming and deleting a tag moved to the admin controller when the ordinary
+    PUT and DELETE /tags/{id} routes were removed, so those two controls are
+    shown only to an admin. Everyone can still read tags and create one. The
+    gate is presentational; the server refuses the calls either way.
+  */
+  const canEditTags = isAdmin(useSession());
   const [editingName, setEditingName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +72,7 @@ export function TagsView() {
     const name = editingName.trim();
     if (!name) return;
     await run(async () => {
-      await renameTag(tag.id, name);
+      await renameAdminTag(tag.id, { name });
       setEditingId(null);
       tags.reload();
     });
@@ -70,7 +81,7 @@ export function TagsView() {
   async function onDelete(tag: TagResponse) {
     if (!window.confirm(`Delete the tag "${tag.name}"?`)) return;
     await run(async () => {
-      await deleteTag(tag.id);
+      await deleteAdminTag(tag.id);
       tags.reload();
     });
   }
@@ -156,6 +167,8 @@ export function TagsView() {
                 ) : (
                   <>
                     <span className="flex-1 text-base">{tag.name}</span>
+                    {canEditTags ? (
+                    <>
                     <button
                       type="button"
                       onClick={() => {
@@ -177,6 +190,8 @@ export function TagsView() {
                     >
                       <Trash aria-hidden size={15} />
                     </button>
+                    </>
+                    ) : null}
                   </>
                 )}
               </li>

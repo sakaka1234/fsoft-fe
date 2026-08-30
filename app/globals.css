@@ -45,8 +45,11 @@
   containers and media use --radius-card, form controls use --radius-field
   (a pill-shaped text input reads as a search box, which these are not).
 
-  --danger is a semantic state color, not a second accent. It appears only on
-  invalid form controls and their messages.
+  --danger is a semantic state color, not a second accent. It appears on
+  invalid form controls and their messages, and on a wrong answer, where it is
+  the twin of --ok. --danger-soft and --ok-soft are the tinted backgrounds of
+  that pair, deliberately weak: the label on top stays --ink, because --ok on
+  --ok-soft measures 4.33:1 in light, under AA for text this size.
 */
 
 :root {
@@ -63,6 +66,7 @@
   --accent-text: #b23c0a;
   --accent-soft: rgb(235 100 33 / 0.1);
   --danger: #b42318;
+  --danger-soft: rgb(180 35 24 / 0.1);
   /* A quiz has to say right as well as wrong, and this palette had no word for
      right. That gap is why the game screens reached past the tokens and
      invented emerald for themselves. Measured both directions like the accent:
@@ -90,6 +94,7 @@
     --accent-text: #ff9a34;
     --accent-soft: rgb(255 154 52 / 0.13);
     --danger: #fca5a5;
+    --danger-soft: rgb(252 165 165 / 0.15);
     --ok: #4ade80;
     --ok-fg: #1c1917;
     --ok-soft: rgb(74 222 128 / 0.13);
@@ -129,6 +134,7 @@
   --accent-text: #ff9a34;
   --accent-soft: rgb(255 154 52 / 0.13);
   --danger: #fca5a5;
+  --danger-soft: rgb(252 165 165 / 0.15);
   --ok: #4ade80;
   --ok-fg: #1c1917;
   --ok-soft: rgb(74 222 128 / 0.13);
@@ -149,6 +155,7 @@
   --color-accent-text: var(--accent-text);
   --color-accent-soft: var(--accent-soft);
   --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
   --color-ok: var(--ok);
   --color-ok-fg: var(--ok-fg);
   --color-ok-soft: var(--ok-soft);

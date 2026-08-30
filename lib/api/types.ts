@@ -631,3 +631,256 @@ export type AdminGameRecord = {
 export type AdminUpdateDeckOfficialRequest = {
   isOfficial: boolean;
 };
+
+/* ---------------------------------------------------------------------------
+   AI generation, extraction results, roleplay.
+
+   All camelCase, like the extraction group and unlike chat/quiz/search.
+
+   Everything below came from live 200s with a real account. Where the hand
+   written docs/ai-testing-guide.md disagrees with what the server does, the
+   server won, and the disagreement is noted, because someone will read that
+   guide and trust it.
+   ------------------------------------------------------------------------- */
+
+/**
+ * What the extractors actually return.
+ *
+ * NOT CardCreationRequest, which is what the spec claims. Confirmed by
+ * key-diff across /extract/text, /extract/url and /extract/file: all three
+ * return this same eleven key shape.
+ *
+ * imageUrl and audioUrl are poison. The model fabricates them, and live
+ * responses carried values like https://example.com/images/engineer.jpg that
+ * do not resolve. Never render them; drop them, or replace them with a real
+ * upload before saving.
+ */
+export type ExtractedCard = {
+  word: string;
+  phonetic: string;
+  partOfSpeech: string;
+  meaning: string;
+  definitionEn: string;
+  exampleSentence: string;
+  exampleMeaning: string;
+  imageUrl: string;
+  audioUrl: string;
+  note: string;
+  position: number;
+};
+
+/**
+ * Magic sort: hand it loose words, get a suggested deck for each.
+ *
+ * The spec and the guide disagree here and both are wrong about something. The
+ * guide says cardIds and deckIds of numbers; the server takes words as strings
+ * plus an optional map of deck id to deck name. Proven by wrong-type probe.
+ */
+export type MagicSortRequest = {
+  words: string[];
+  /** Deck id as a string key, mapped to the deck's name. Optional. */
+  decks?: Record<string, string>;
+};
+
+export type MagicSortResult = {
+  word: string;
+  targetDeckId: number | null;
+  suggestedDeckName: string | null;
+};
+
+/**
+ * One click deck generator.
+ *
+ * cardCount is REQUIRED despite both the spec and the guide calling it
+ * optional with a default of 15. It is a Java primitive int, so omitting it
+ * answers 400 every time. The effective ceiling is 30: cardCount 31 already
+ * fails, so clamp before sending.
+ *
+ * THIS ENDPOINT PERSISTS NOTHING. Its message reads "Tạo bộ thẻ thành công"
+ * and its body status is 201, but no deck id and no card ids come back, and no
+ * deck exists afterwards. It is a preview generator; saving is a separate
+ * POST /decks followed by one card create per row.
+ */
+export type AiAutoDeckRequest = {
+  topic: string;
+  cardCount: number;
+  sourceLanguage?: string;
+  targetLanguage?: string;
+};
+
+export type AiAutoDeckResponse = {
+  title: string;
+  description: string;
+  /** Echoed back only when sent. Null when omitted, so send them. */
+  sourceLanguage: string | null;
+  targetLanguage: string | null;
+  cards: ExtractedCard[];
+};
+
+/**
+ * Story generator: weave a set of words into a short text.
+ *
+ * Takes either literal words or cardIds, which it resolves to those cards'
+ * words server side.
+ *
+ * contextType's allowed values are genuinely unknown. The spec says
+ * BUSINESS_EMAIL, DAILY_STORY, NEWS_ARTICLE; the guide says BUSINESS_EMAIL,
+ * DAILY_NEWS, CASUAL_CHAT. Only BUSINESS_EMAIL appears in both, so that is the
+ * only value this client offers.
+ */
+export type AiStoryRequest = {
+  words?: string[];
+  cardIds?: number[];
+  contextType?: string;
+};
+
+export type AiStoryResponse = {
+  title: string;
+  /** Carries literal newlines. Render with whitespace preserved. */
+  storyText: string;
+  translationText: string;
+  targetWords: string[];
+};
+
+export type SituationalSentence = {
+  english: string;
+  vietnamese: string;
+};
+
+/**
+ * Situational learning.
+ *
+ * cefrLevel is REQUIRED, and the guide's field table omits it entirely.
+ *
+ * The guide also documents a completely different response
+ * (scenarioDescription, dialogue, vocabulary, quizOptions). Those fields do
+ * not exist. In particular there is NO quiz here, so do not build one.
+ *
+ * A 200 whose every array is empty means the generation failed. The envelope
+ * still says success, so emptiness is the only signal there is.
+ */
+export type SituationalLearningRequest = {
+  context: string;
+  cefrLevel: string;
+  location?: string;
+  currentTime?: string;
+};
+
+export type SituationalLearningResponse = {
+  mainActions: SituationalSentence[];
+  interactions: SituationalSentence[];
+  emotions: SituationalSentence[];
+  shortCaptions: SituationalSentence[];
+  vocabularies: SituationalSentence[];
+};
+
+/**
+ * Roleplay tutor, the only stateful AI surface here.
+ *
+ * conversationId is truncated to 36 characters server side, silently, so two
+ * ids sharing a 36 character prefix collide into one conversation. This client
+ * truncates first, so the id it holds is the id the server holds.
+ *
+ * History is NOT user scoped: any authenticated caller who knows an id can
+ * read it. Never put anything private behind a guessable conversation id.
+ */
+export type AiRoleplayRequest = {
+  userMessage: string;
+  scenario?: string;
+  targetWords?: string[];
+  conversationId?: string;
+};
+
+export type AiRoleplayResponse = {
+  tutorReply: string;
+  /** Zero to one hundred. */
+  score: number;
+  wordsUsed: string[];
+  /** Vietnamese coaching notes. */
+  suggestions: string[];
+};
+
+export type AiRoleplayTurn = {
+  role: "USER" | "ASSISTANT";
+  content: string;
+  /**
+   * A zoneless LocalDateTime such as "2026-08-28T12:04:08.874292". Passing it
+   * straight to new Date() reads it as browser local time and drifts.
+   */
+  createdAt: string;
+};
+
+/* ---------------------------------------------------------------------------
+   Notifications
+   ------------------------------------------------------------------------- */
+
+export type NotificationType =
+  | "SYSTEM"
+  | "DECK_SHARED"
+  | "STREAK_REMINDER"
+  | "QUIZ_REMINDER";
+
+/**
+ * `read` is ALWAYS false in every response from every endpoint in this group,
+ * even immediately after marking a row read, and even though the change does
+ * persist. A per row read indicator therefore cannot be built truthfully yet.
+ * The unread count endpoint is accurate; trust that instead.
+ */
+export type NotificationResponse = {
+  id: number;
+  title: string;
+  content: string;
+  type: NotificationType;
+  read: boolean;
+  createdAt: string;
+};
+
+export type NotificationCreateRequest = {
+  recipientId: string;
+  title: string;
+  content: string;
+  type: NotificationType;
+};
+
+/* ---------------------------------------------------------------------------
+   Stars, mastery, cram
+   ------------------------------------------------------------------------- */
+
+/** The `is` prefix survives here, unlike DeckResponse.official. Verified live. */
+export type CardStarToggleResponse = {
+  cardId: number;
+  isStarred: boolean;
+};
+
+/**
+ * newCardsCount is null unless deckId is supplied. Every sibling field answers
+ * 0 in that case, so this one field really is null rather than zero.
+ */
+export type SrsMasteryResponse = {
+  totalLearnedCards: number;
+  newCardsCount: number | null;
+  masteredCards: number;
+  learningCards: number;
+  reviewCards: number;
+  lapsedCards: number;
+};
+
+export type CramCard = {
+  card: CardResponse;
+  srsStatus: string;
+};
+
+export type CramCardsResponse = {
+  deckId: number;
+  deckTitle: string;
+  totalCards: number;
+  cards: CramCard[];
+};
+
+/* ---------------------------------------------------------------------------
+   Tags
+   ------------------------------------------------------------------------- */
+
+export type TagRequest = {
+  name: string;
+};

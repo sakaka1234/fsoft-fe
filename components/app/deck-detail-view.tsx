@@ -10,6 +10,8 @@ import { ArrowUp } from "@phosphor-icons/react/ArrowUp";
 import { PencilSimple } from "@phosphor-icons/react/PencilSimple";
 import { Plus } from "@phosphor-icons/react/Plus";
 import { MagicWand } from "@phosphor-icons/react/MagicWand";
+import { FilePdf } from "@phosphor-icons/react/FilePdf";
+import { Star } from "@phosphor-icons/react/Star";
 import { Trash } from "@phosphor-icons/react/Trash";
 import { Cards as CardsIcon } from "@phosphor-icons/react/Cards";
 import { List } from "@phosphor-icons/react/List";
@@ -49,8 +51,10 @@ import { EmptyState, ErrorState, RowSkeleton, SingleCardSkeleton } from "@/compo
 import {
   createCard,
   deleteCard,
+  exportDeckPdf,
   listCards,
   reorderCards,
+  toggleCardStar,
   updateCard,
 } from "@/lib/api/cards";
 import {
@@ -143,6 +147,16 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
   const [rowError, setRowError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  /*
+    Star state has to be tracked here because CardResponse carries no starred
+    flag: the list endpoint simply does not return one. So the page starts with
+    nothing marked and fills in as the reader toggles. A page reload forgets
+    it. Fixing that properly needs the flag on CardResponse, or a second call
+    to /cards/starred and an intersection, which is a request per deck view for
+    a decoration.
+  */
+  const [starred, setStarred] = useState<Set<number>>(new Set());
+
   const deck = useAsync(
     useCallback((signal: AbortSignal) => getDeck(deckId, signal), [deckId]),
     `deck-${deckId}`,
@@ -210,6 +224,35 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
     await run(async () => {
       await setDeckVisibility(deckId, visibility);
       deck.reload();
+    });
+  }
+
+  /*
+    The only endpoint in the API that answers a file rather than the envelope,
+    so it goes through apiDownload. The Excel sibling is broken server side
+    (a headless JVM font error) and is deliberately not offered.
+  */
+  async function onExportPdf() {
+    await run(async () => {
+      const { blob, filename } = await exportDeckPdf(deckId);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename ?? `deck-${deckId}.pdf`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  async function onToggleStar(card: CardResponse) {
+    await run(async () => {
+      const result = await toggleCardStar(card.id);
+      setStarred((current) => {
+        const next = new Set(current);
+        if (result.isStarred) next.add(card.id);
+        else next.delete(card.id);
+        return next;
+      });
     });
   }
 
@@ -362,6 +405,11 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
             >
               <UserPlus aria-hidden size={15} weight="bold" />
               Share card
+            </Button>
+
+            <Button variant="secondary" onClick={onExportPdf} disabled={busy}>
+              <FilePdf aria-hidden size={15} weight="bold" />
+              PDF
             </Button>
 
             {viewMode === "list" && !addingCard ? (
@@ -592,6 +640,25 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                       <span className="font-mono text-sm text-muted tabular-nums sm:mt-0.5">
                         {card.position}
                       </span>
+
+                      <button
+                        type="button"
+                        onClick={() => onToggleStar(card)}
+                        disabled={busy}
+                        aria-pressed={starred.has(card.id)}
+                        aria-label={
+                          starred.has(card.id)
+                            ? `Bỏ sao ${card.word}`
+                            : `Gắn sao ${card.word}`
+                        }
+                        className="shrink-0 rounded-full p-1 text-muted transition-colors hover:text-accent-text disabled:opacity-40 sm:mt-0.5"
+                      >
+                        <Star
+                          size={17}
+                          weight={starred.has(card.id) ? "fill" : "regular"}
+                          className={starred.has(card.id) ? "text-accent" : undefined}
+                        />
+                      </button>
 
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
