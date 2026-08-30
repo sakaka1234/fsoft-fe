@@ -62,8 +62,11 @@ const QUESTION_TIME_LIMIT = 15;
 const OPTION_LETTERS = ["A", "B", "C", "D"];
 
 interface Props {
-  deckId: number;
-  deckTitle: string;
+  /* Cả hai đều tuỳ chọn: vào phòng bằng mã thì chủ phòng mới là người
+     cung cấp bộ thẻ, người vào không cần có bộ thẻ nào. deckId chỉ dùng đúng
+     một chỗ là lúc TẠO phòng. */
+  deckId?: number;
+  deckTitle?: string;
   onBackToSolo?: () => void;
 }
 
@@ -223,6 +226,8 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
 
   /** 1. Host Tạo Phòng mới */
   async function handleCreateRoom() {
+    /* Nút tạo phòng đã bị ẩn khi không có bộ thẻ; đây là chốt chặn thứ hai. */
+    if (deckId == null) return;
     setLoading(true);
     setError(null);
     try {
@@ -411,27 +416,34 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
             </motion.div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 w-full mt-4">
+          <div
+            className={cn(
+              "grid grid-cols-1 gap-5 w-full mt-4",
+              deckId != null ? "sm:grid-cols-2" : "sm:max-w-sm sm:mx-auto",
+            )}
+          >
             {/* Card 1: Tạo phòng mới */}
-            <div className="group relative flex flex-col items-center justify-between gap-5 p-7 rounded-card border border-line bg-surface shadow-card transition-colors hover:border-accent hover:bg-surface-2 text-center">
-              <div className="flex flex-col items-center gap-3">
-                <div className="flex size-14 items-center justify-center rounded-card bg-accent-soft text-accent-text shadow-inner">
-                  <Crown size={32} weight="fill" />
+            {deckId != null ? (
+              <div className="group relative flex flex-col items-center justify-between gap-5 p-7 rounded-card border border-line bg-surface shadow-card transition-colors hover:border-accent hover:bg-surface-2 text-center">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="flex size-14 items-center justify-center rounded-card bg-accent-soft text-accent-text shadow-inner">
+                    <Crown size={32} weight="fill" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-ink text-lg">Tạo Phòng Mới</h3>
+                    <p className="text-xs text-muted mt-1 leading-relaxed">Trở thành Host và mời bạn bè tham gia phòng thi đấu</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-ink text-lg">Tạo Phòng Mới</h3>
-                  <p className="text-xs text-muted mt-1 leading-relaxed">Trở thành Host và mời bạn bè tham gia phòng thi đấu</p>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleCreateRoom}
+                  disabled={loading}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-bold bg-accent text-accent-fg shadow-card hover:bg-accent-hover active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {loading ? "Đang khởi tạo..." : "Tạo Phòng Mới"}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={handleCreateRoom}
-                disabled={loading}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-bold bg-accent text-accent-fg shadow-card hover:bg-accent-hover active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
-              >
-                {loading ? "Đang khởi tạo..." : "Tạo Phòng Mới"}
-              </button>
-            </div>
+            ) : null}
 
             {/* Card 2: Nhập mã phòng */}
             <div className="group relative flex flex-col items-center justify-between gap-5 p-7 rounded-card border border-line bg-surface shadow-card transition-colors hover:border-accent hover:bg-surface-2 text-center">

@@ -17,6 +17,7 @@ import { ArrowLeft } from "@phosphor-icons/react/ArrowLeft";
 import { CaretRight } from "@phosphor-icons/react/CaretRight";
 import { GameController } from "@phosphor-icons/react/GameController";
 import { Rocket } from "@phosphor-icons/react/Rocket";
+import { UserPlus } from "@phosphor-icons/react/UserPlus";
 import { Users } from "@phosphor-icons/react/Users";
 
 /*
@@ -42,18 +43,21 @@ const GAME_MODES = [
     title: "Chơi một mình",
     body: "Luyện phản xạ nghe, cộng điểm combo và leo bảng xếp hạng.",
     Icon: GameController,
+    multiplayer: false,
   },
   {
     key: "multiplayer" as const,
     title: "Thi đấu với bạn bè",
     body: "Tạo phòng sáu ký tự hoặc nhập mã để đấu trực tiếp.",
     Icon: Users,
+    multiplayer: true,
   },
   {
     key: "space-striker" as const,
     title: "Space Striker",
     body: "Lái phi thuyền bắn từ vựng, ai bắn trúng trước thì ghi điểm.",
     Icon: Rocket,
+    multiplayer: true,
   },
 ];
 
@@ -65,8 +69,21 @@ const DECK_PAGE_SIZE = 50;
 export function GamesView() {
   const [mode, setMode] = useState<GameMode | null>(null);
   const [deck, setDeck] = useState<DeckResponse | null>(null);
+  /* Vào phòng bằng mã thì chủ phòng mới là người mang bộ thẻ, nên bước chọn bộ
+     thẻ được bỏ qua hẳn — người chưa có bộ thẻ nào vẫn chơi cùng bạn bè được. */
+  const [joinByCode, setJoinByCode] = useState(false);
 
   const chosenMode = GAME_MODES.find((m) => m.key === mode) ?? null;
+
+  function pickMode(next: GameMode) {
+    setJoinByCode(false);
+    setMode(next);
+  }
+
+  function backToModes() {
+    setJoinByCode(false);
+    setMode(null);
+  }
 
   return (
     <Container className="flex flex-col gap-8 py-10">
@@ -79,19 +96,24 @@ export function GamesView() {
       </header>
 
       {mode === null ? (
-        <ModePicker onPick={setMode} />
-      ) : deck === null ? (
+        <ModePicker onPick={pickMode} />
+      ) : deck === null && !joinByCode ? (
         <DeckPicker
           modeTitle={chosenMode?.title ?? ""}
-          onBack={() => setMode(null)}
+          canJoinByCode={chosenMode?.multiplayer ?? false}
+          onBack={backToModes}
           onPick={setDeck}
+          onJoinByCode={() => setJoinByCode(true)}
         />
       ) : (
         <PlayArea
           mode={mode}
           deck={deck}
-          onChangeMode={() => setMode(null)}
-          onChangeDeck={() => setDeck(null)}
+          onChangeMode={backToModes}
+          onChangeDeck={() => {
+            setJoinByCode(false);
+            setDeck(null);
+          }}
         />
       )}
     </Container>
@@ -136,12 +158,16 @@ function ModePicker({ onPick }: { onPick: (mode: GameMode) => void }) {
 
 function DeckPicker({
   modeTitle,
+  canJoinByCode,
   onBack,
   onPick,
+  onJoinByCode,
 }: {
   modeTitle: string;
+  canJoinByCode: boolean;
   onBack: () => void;
   onPick: (deck: DeckResponse) => void;
+  onJoinByCode: () => void;
 }) {
   const [keyword, setKeyword] = useState("");
 
@@ -172,7 +198,9 @@ function DeckPicker({
         Chọn bộ thẻ để chơi
       </h2>
       <p className="mt-2 text-base text-muted">
-        {modeTitle} cần một bộ thẻ. Chọn bộ bạn muốn luyện.
+        {canJoinByCode
+          ? `${modeTitle} chỉ cần bộ thẻ khi bạn là người tạo phòng.`
+          : `${modeTitle} cần một bộ thẻ. Chọn bộ bạn muốn luyện.`}
       </p>
 
       {rows && rows.length > 0 ? (
@@ -249,6 +277,28 @@ function DeckPicker({
           </ul>
         )
       ) : null}
+
+      {canJoinByCode ? (
+        <div className="mt-6">
+          <p className="text-sm text-muted">Được bạn bè rủ vào phòng?</p>
+          <button
+            type="button"
+            onClick={onJoinByCode}
+            className="mt-2 flex w-full items-center gap-4 rounded-card border border-line bg-surface px-5 py-4 text-left transition-colors hover:border-accent hover:bg-surface-2"
+          >
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-field bg-accent-soft text-accent-text">
+              <UserPlus aria-hidden size={22} weight="fill" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold">Vào phòng bằng mã</span>
+              <span className="mt-0.5 block text-sm text-muted">
+                Không cần bộ thẻ nào. Chủ phòng chọn bộ thẻ cho cả phòng.
+              </span>
+            </span>
+            <CaretRight aria-hidden size={16} className="shrink-0 text-muted" />
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -262,9 +312,65 @@ function PlayArea({
   onChangeDeck,
 }: {
   mode: GameMode;
-  deck: DeckResponse;
+  deck: DeckResponse | null;
   onChangeMode: () => void;
   onChangeDeck: () => void;
+}) {
+  return (
+    <section>
+      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <BackLink onClick={onChangeMode} label="Đổi cách chơi" />
+        {deck ? (
+          <button
+            type="button"
+            onClick={onChangeDeck}
+            className="inline-flex min-h-10 items-center rounded-full px-3 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+          >
+            Đổi bộ thẻ:{" "}
+            <span className="ml-1 font-semibold text-ink">{deck.title}</span>
+          </button>
+        ) : (
+          <span className="text-sm text-muted">
+            Đang vào phòng bằng mã — bộ thẻ do chủ phòng chọn.
+          </span>
+        )}
+      </div>
+
+      {/* Hai nhánh là hai component riêng chứ không phải một khối điều kiện:
+          nhánh có bộ thẻ cần gọi useAsync, mà hook thì không được nằm trong
+          nhánh rẽ. */}
+      {deck ? (
+        <DeckGame mode={mode} deck={deck} onChangeMode={onChangeMode} />
+      ) : (
+        <JoinByCodeGame mode={mode} onChangeMode={onChangeMode} />
+      )}
+    </section>
+  );
+}
+
+/** Vào phòng bằng mã: không truyền deckId, nên sảnh của game ẩn thẻ tạo phòng. */
+function JoinByCodeGame({
+  mode,
+  onChangeMode,
+}: {
+  mode: GameMode;
+  onChangeMode: () => void;
+}) {
+  return mode === "multiplayer" ? (
+    <AudioReflexMultiplayer onBackToSolo={onChangeMode} />
+  ) : (
+    <SpaceStrikerMultiplayer onBackToSolo={onChangeMode} />
+  );
+}
+
+function DeckGame({
+  mode,
+  deck,
+  onChangeMode,
+}: {
+  mode: GameMode;
+  deck: DeckResponse;
+  onChangeMode: () => void;
 }) {
   /* Trang bộ thẻ chỉ mở đường vào game khi bộ thẻ thật sự có thẻ
      (deck-detail-view.tsx:498). Bước chọn bộ thẻ ở trên không biết điều đó vì
@@ -286,19 +392,7 @@ function PlayArea({
   const empty = cards.status === "success" && cards.data.content.length === 0;
 
   return (
-    <section>
-      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <BackLink onClick={onChangeMode} label="Đổi cách chơi" />
-        <button
-          type="button"
-          onClick={onChangeDeck}
-          className="inline-flex min-h-10 items-center rounded-full px-3 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-        >
-          Đổi bộ thẻ:{" "}
-          <span className="ml-1 font-semibold text-ink">{deck.title}</span>
-        </button>
-      </div>
-
+    <>
       {cards.status === "loading" ? <RowSkeleton count={3} /> : null}
 
       {cards.status === "error" ? (
@@ -330,7 +424,7 @@ function PlayArea({
           />
         )
       ) : null}
-    </section>
+    </>
   );
 }
 
