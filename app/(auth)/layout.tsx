@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { Container } from "@/components/ui/container";
@@ -20,9 +21,17 @@ export default function AuthLayout({
         <Container size="wide">
           <div className="flex h-16 items-center justify-between gap-6 md:h-17">
             <Link href="/" className="flex items-center gap-2.5">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-accent font-mono text-[0.7rem] font-semibold tracking-tight text-accent-fg">
-                AE
-              </span>
+              {/* Logo lấy thẳng từ app/favicon.ico để favicon và logo luôn là một: đổi
+                  favicon là đổi luôn logo, không phải nhớ cập nhật hai nơi. unoptimized vì
+                  .ico không nằm trong các định dạng next/image xử lý được. */}
+              <Image
+                src="/favicon.ico"
+                alt=""
+                width={28}
+                height={28}
+                unoptimized
+                className="size-7 shrink-0 rounded-full"
+              />
               <span className="text-[0.95rem] font-semibold tracking-tight">
                 {site.name}
               </span>

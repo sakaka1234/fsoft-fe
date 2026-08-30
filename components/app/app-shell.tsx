@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -176,9 +177,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex h-16 items-center justify-between gap-4 md:h-17">
             <div className="flex min-w-0 items-center gap-8">
               <Link href="/" className="flex shrink-0 items-center gap-2.5">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent font-mono text-[0.7rem] font-semibold tracking-tight text-accent-fg">
-                  AE
-                </span>
+                {/* Logo lấy thẳng từ app/favicon.ico để favicon và logo luôn là một: đổi
+                    favicon là đổi luôn logo, không phải nhớ cập nhật hai nơi. unoptimized vì
+                    .ico không nằm trong các định dạng next/image xử lý được. */}
+                <Image
+                  src="/favicon.ico"
+                  alt=""
+                  width={28}
+                  height={28}
+                  unoptimized
+                  className="size-7 shrink-0 rounded-full"
+                />
                 <span className="text-[0.95rem] font-semibold tracking-tight">
                   {site.name}
                 </span>

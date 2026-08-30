@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import { Container } from "@/components/ui/container";
 import { footerColumns, site } from "@/content/site";
 
@@ -8,9 +10,15 @@ export function SiteFooter() {
         <div className="grid gap-12 py-16 md:grid-cols-12 md:py-20">
           <div className="flex flex-col gap-3 md:col-span-5">
             <div className="flex items-center gap-2.5">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-accent font-mono text-[0.7rem] font-semibold tracking-tight text-accent-fg">
-                AE
-              </span>
+              {/* Cùng nguồn với favicon, xem chú thích ở site-header. */}
+              <Image
+                src="/favicon.ico"
+                alt=""
+                width={28}
+                height={28}
+                unoptimized
+                className="size-7 shrink-0 rounded-full"
+              />
               <span className="text-[0.95rem] font-semibold tracking-tight">
                 {site.fullName}
               </span>

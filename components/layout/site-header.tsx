@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -111,16 +112,23 @@ export function SiteHeader() {
             className="flex shrink-0 items-center gap-2.5"
             aria-label={`${site.fullName}, home`}
           >
-            <span className="flex size-7 items-center justify-center rounded-lg bg-accent font-mono text-[0.7rem] font-semibold tracking-tight text-accent-fg">
-              AE
-            </span>
+            {/* Logo lấy thẳng từ app/favicon.ico để favicon và logo luôn là một: đổi
+                favicon là đổi luôn logo, không phải nhớ cập nhật hai nơi. unoptimized vì
+                .ico không nằm trong các định dạng next/image xử lý được. */}
+            <Image
+              src="/favicon.ico"
+              alt=""
+              width={28}
+              height={28}
+              unoptimized
+              className="size-7 shrink-0 rounded-full"
+            />
             {/* Down a step from what this bar used to carry, because the whole
                 scale in globals.css moved up an eighth and these were already
                 compensating for the same thing by hand. Net effect on screen is
                 that the bar stays where it is while the page around it grows.
-                The class is on the name rather than the whole link so the AE
-                badge, whose glyphs sit on a solid accent fill, keeps its clean
-                edges. */}
+                The class is on the name rather than the whole link so the
+                logo mark, which carries its own artwork, is left untouched. */}
             <span
               className={cn(
                 "text-lg font-semibold tracking-tight",
