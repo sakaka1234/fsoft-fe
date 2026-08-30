@@ -26,6 +26,7 @@ const APP_NAV = [
   { label: "Explore", href: "/explore" },
   { label: "Tags", href: "/tags" },
   { label: "Tra từ", href: "/search" },
+  { label: "Chơi game", href: "/games" },
   { label: "Profile", href: "/profile" },
 ] as const;
 
