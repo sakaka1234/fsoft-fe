@@ -662,9 +662,9 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 w-full mt-4">
-            <div className="group relative flex flex-col items-center justify-between gap-5 p-7 rounded-card border border-accent bg-surface shadow-card hover:border-accent transition-all duration-300 text-center">
+            <div className="group relative flex flex-col items-center justify-between gap-5 p-7 rounded-card border border-line bg-surface shadow-card transition-colors hover:border-accent hover:bg-surface-2 text-center">
               <div className="flex flex-col items-center gap-3">
-                <div className="flex size-14 items-center justify-center rounded-card bg-accent-soft text-accent-text shadow-inner transition-transform">
+                <div className="flex size-14 items-center justify-center rounded-card bg-accent-soft text-accent-text shadow-inner">
                   <Crown size={32} weight="fill" />
                 </div>
                 <div>
@@ -682,9 +682,9 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
               </button>
             </div>
 
-            <div className="group relative flex flex-col items-center justify-between gap-5 p-7 rounded-card border border-accent bg-surface shadow-card hover:border-accent transition-all duration-300 text-center">
+            <div className="group relative flex flex-col items-center justify-between gap-5 p-7 rounded-card border border-line bg-surface shadow-card transition-colors hover:border-accent hover:bg-surface-2 text-center">
               <div className="flex flex-col items-center gap-3 w-full">
-                <div className="flex size-14 items-center justify-center rounded-card bg-accent-soft text-accent-text shadow-inner transition-transform">
+                <div className="flex size-14 items-center justify-center rounded-card bg-accent-soft text-accent-text shadow-inner">
                   <GameController size={32} weight="fill" />
                 </div>
                 <div>
