@@ -14,7 +14,9 @@ import {
   deleteAdminDeck,
   deleteAdminTag,
   listAdminTags,
+  listPendingCommunityPosts,
   listPendingPublicDecks,
+  moderateCommunityPost,
   renameAdminTag,
   deleteAdminGameRecord,
   getAdminDashboardStats,
@@ -23,9 +25,10 @@ import {
   listAdminGameRecords,
   listAdminUsers,
   setDeckOfficial,
+  setDeckVisibility,
   updateAdminUserRoles,
 } from "@/lib/api/admin";
-import type { DeckVisibility } from "@/lib/api/types";
+import type { CommunityPostResponse, DeckVisibility } from "@/lib/api/types";
 import { useAsync } from "@/lib/use-async";
 import { cn } from "@/lib/cn";
 import { ChartBar } from "@phosphor-icons/react/ChartBar";
@@ -35,6 +38,11 @@ import { GameController } from "@phosphor-icons/react/GameController";
 import { Trash } from "@phosphor-icons/react/Trash";
 import { SealCheck } from "@phosphor-icons/react/SealCheck";
 import { Tag } from "@phosphor-icons/react/Tag";
+import { Globe } from "@phosphor-icons/react/Globe";
+import { ChatCircleText } from "@phosphor-icons/react/ChatCircleText";
+import { Check } from "@phosphor-icons/react/Check";
+import { X } from "@phosphor-icons/react/X";
+import { CreditCard } from "@phosphor-icons/react/CreditCard";
 
 /*
   The admin console.
@@ -131,15 +139,6 @@ function SectionError({ error, onRetry }: { error: string; onRetry: () => void }
 
 /* --------------------------------- stats --------------------------------- */
 
-const STAT_LABELS: { key: keyof AdminStats; label: string }[] = [
-  { key: "totalUsers", label: "Người dùng" },
-  { key: "totalDecks", label: "Bộ thẻ" },
-  { key: "totalCards", label: "Thẻ" },
-  { key: "totalGameRecords", label: "Lượt chơi" },
-  { key: "totalOfficialDecks", label: "Bộ thẻ chính thức" },
-  { key: "totalPublicDecks", label: "Bộ thẻ công khai" },
-];
-
 type AdminStats = {
   totalUsers: number;
   totalDecks: number;
@@ -148,6 +147,57 @@ type AdminStats = {
   totalOfficialDecks: number;
   totalPublicDecks: number;
 };
+
+const STAT_ITEMS: {
+  key: keyof AdminStats;
+  label: string;
+  description: string;
+  Icon: typeof Users;
+  iconBg: string;
+}[] = [
+  {
+    key: "totalUsers",
+    label: "Người dùng",
+    description: "Tổng tài khoản đã đăng ký",
+    Icon: Users,
+    iconBg: "bg-blue-500/12 text-blue-500 dark:bg-blue-400/20 dark:text-blue-400",
+  },
+  {
+    key: "totalDecks",
+    label: "Bộ thẻ",
+    description: "Tổng số bộ flashcard",
+    Icon: Cards,
+    iconBg: "bg-amber-500/12 text-amber-500 dark:bg-amber-400/20 dark:text-amber-400",
+  },
+  {
+    key: "totalCards",
+    label: "Tổng số thẻ",
+    description: "Thẻ từ vựng trong hệ thống",
+    Icon: CreditCard,
+    iconBg: "bg-emerald-500/12 text-emerald-500 dark:bg-emerald-400/20 dark:text-emerald-400",
+  },
+  {
+    key: "totalGameRecords",
+    label: "Lượt chơi game",
+    description: "Ván game đã hoàn thành",
+    Icon: GameController,
+    iconBg: "bg-purple-500/12 text-purple-500 dark:bg-purple-400/20 dark:text-purple-400",
+  },
+  {
+    key: "totalOfficialDecks",
+    label: "Bộ thẻ chính thức",
+    description: "Bộ bài chuẩn do hệ thống tạo",
+    Icon: SealCheck,
+    iconBg: "bg-accent-soft text-accent dark:bg-accent-soft dark:text-accent",
+  },
+  {
+    key: "totalPublicDecks",
+    label: "Bộ thẻ công khai",
+    description: "Bộ bài chia sẻ cho cộng đồng",
+    Icon: Globe,
+    iconBg: "bg-cyan-500/12 text-cyan-500 dark:bg-cyan-400/20 dark:text-cyan-400",
+  },
+];
 
 function StatsSection() {
   const stats = useAsync(
@@ -162,15 +212,40 @@ function StatsSection() {
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {STAT_LABELS.map(({ key, label }) => (
+      {STAT_ITEMS.map(({ key, label, description, Icon, iconBg }) => (
         <div
           key={key}
-          className="flex flex-col gap-1 rounded-card border border-line bg-surface p-6"
+          className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-line bg-surface p-5 sm:p-6 transition-all duration-200 hover:border-ink/20 hover:shadow-sm"
         >
-          <span className="text-sm text-muted">{label}</span>
-          <span className="font-mono text-3xl font-semibold tabular-nums">
-            {stats.data[key].toLocaleString("vi-VN")}
-          </span>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm font-medium text-muted">{label}</span>
+            <div
+              className={cn(
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-110",
+                iconBg,
+              )}
+            >
+              <Icon size={22} weight="duotone" />
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center gap-3">
+            <div
+              className={cn(
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:hidden",
+                iconBg,
+              )}
+            >
+              <Icon size={18} weight="bold" />
+            </div>
+            <span className="font-mono text-3xl sm:text-4xl font-bold tracking-tight text-ink tabular-nums">
+              {stats.data[key].toLocaleString("vi-VN")}
+            </span>
+          </div>
+
+          <p className="mt-2 text-xs text-muted">
+            {description}
+          </p>
         </div>
       ))}
     </div>
@@ -377,6 +452,22 @@ function DecksSection() {
     }
   }
 
+  async function toggleVisibility(deckId: number, current: DeckVisibility) {
+    const next: DeckVisibility = current === "PUBLIC" ? "PRIVATE" : "PUBLIC";
+    setBusy(true);
+    setRowError(null);
+    try {
+      await setDeckVisibility(deckId, { visibility: next });
+      decks.reload();
+    } catch (error) {
+      setRowError(
+        error instanceof ApiError ? error.message : "Không đổi được quyền riêng tư.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function remove(deckId: number, title: string) {
     if (!window.confirm(`Xoá vĩnh viễn bộ thẻ "${title}" và toàn bộ thẻ trong đó?`)) {
       return;
@@ -477,7 +568,16 @@ function DecksSection() {
                       {deck.official ? " · chính thức" : ""}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() => toggleVisibility(deck.id, deck.visibility)}
+                      title="Chuyển đổi trạng thái Public/Private"
+                    >
+                      <Globe aria-hidden size={15} weight="bold" />
+                      {deck.visibility === "PUBLIC" ? "Làm Private" : "Làm Public"}
+                    </Button>
                     <Button
                       variant="secondary"
                       disabled={busy}
@@ -810,15 +910,48 @@ function TagsSection() {
 
 /* ------------------------------- moderation ------------------------------ */
 
-/**
- * Decks waiting for approval to be listed publicly.
- *
- * The page number sent and the page number returned do not agree on this
- * route: sending page=N answers pageNo=N+1, checked across three consecutive
- * values. So the pager below tracks its own zero based number and never reads
- * pageNo, which would be off by one against every other admin list.
- */
+type ModerationTab = "decks" | "posts";
+
 function ModerationSection() {
+  const [tab, setTab] = useState<ModerationTab>("decks");
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center gap-1 rounded-full border border-line bg-surface p-1 w-fit">
+        <button
+          type="button"
+          onClick={() => setTab("decks")}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+            tab === "decks"
+              ? "bg-accent text-accent-fg shadow-2xs"
+              : "text-muted hover:text-ink",
+          )}
+        >
+          <Cards size={16} />
+          Bộ thẻ chờ duyệt
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("posts")}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+            tab === "posts"
+              ? "bg-accent text-accent-fg shadow-2xs"
+              : "text-muted hover:text-ink",
+          )}
+        >
+          <ChatCircleText size={16} />
+          Bài viết cộng đồng chờ duyệt
+        </button>
+      </div>
+
+      {tab === "decks" ? <DecksModeration /> : <PostsModeration />}
+    </div>
+  );
+}
+
+function DecksModeration() {
   const [page, setPage] = useState(0);
   const [busy, setBusy] = useState(false);
   const [rowError, setRowError] = useState<string | null>(null);
@@ -828,7 +961,7 @@ function ModerationSection() {
       (signal: AbortSignal) => listPendingPublicDecks(page, PAGE_SIZE, signal),
       [page],
     ),
-    `admin-pending-${page}`,
+    `admin-pending-decks-${page}`,
   );
 
   async function decide(deckId: number, approved: boolean, title: string) {
@@ -899,6 +1032,7 @@ function ModerationSection() {
                       disabled={busy}
                       onClick={() => decide(deck.id, true, deck.title)}
                     >
+                      <Check aria-hidden size={15} weight="bold" />
                       Duyệt
                     </Button>
                     <Button
@@ -906,6 +1040,166 @@ function ModerationSection() {
                       disabled={busy}
                       onClick={() => decide(deck.id, false, deck.title)}
                     >
+                      <X aria-hidden size={15} weight="bold" />
+                      Từ chối
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <Pager
+              page={page}
+              last={pending.data.content.length < PAGE_SIZE}
+              total={pending.data.totalElements}
+              onChange={setPage}
+            />
+          </>
+        )
+      ) : null}
+    </div>
+  );
+}
+
+function PostsModeration() {
+  const [page, setPage] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [rowError, setRowError] = useState<string | null>(null);
+
+  const pending = useAsync(
+    useCallback(
+      (signal: AbortSignal) =>
+        listPendingCommunityPosts(page, PAGE_SIZE, signal),
+      [page],
+    ),
+    `admin-pending-posts-${page}`,
+  );
+
+  async function decide(postId: number, approved: boolean, title: string) {
+    let reason: string | undefined = undefined;
+    if (!approved) {
+      const input = window.prompt(
+        `Nhập lý do từ chối bài viết "${title}":`,
+        "Nội dung chưa phù hợp tiêu chuẩn cộng đồng",
+      );
+      if (input === null) return; // Cancelled by admin
+      reason = input.trim() || "Nội dung chưa phù hợp";
+    } else {
+      if (!window.confirm(`Duyệt đăng bài viết "${title}" lên cộng đồng?`)) {
+        return;
+      }
+    }
+
+    setBusy(true);
+    setRowError(null);
+    try {
+      await moderateCommunityPost(postId, {
+        status: approved ? "APPROVED" : "REJECTED",
+        reason,
+      });
+      pending.reload();
+    } catch (error) {
+      setRowError(
+        error instanceof ApiError ? error.message : "Không xử lý được bài viết.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <p className="max-w-prose text-sm text-muted">
+        Bài viết do thành viên đăng lên bảng tin cộng đồng đang ở trạng thái chờ
+        kiểm duyệt.
+      </p>
+
+      {rowError ? <ErrorState message={rowError} /> : null}
+
+      {pending.status === "loading" ? <RowSkeleton count={4} /> : null}
+      {pending.status === "error" ? (
+        <SectionError error={pending.error} onRetry={pending.reload} />
+      ) : null}
+
+      {pending.status === "success" ? (
+        pending.data.content.length === 0 ? (
+          <EmptyState
+            title="Không có bài viết nào chờ duyệt"
+            body="Khi người dùng đăng bài viết mới vào cộng đồng, nó sẽ hiển thị tại đây để bạn kiểm duyệt."
+          />
+        ) : (
+          <>
+            <ul className="divide-y divide-line rounded-card border border-line bg-surface">
+              {pending.data.content.map((post) => (
+                <li
+                  key={post.id}
+                  className="flex flex-col gap-3 p-5 sm:flex-row sm:items-start sm:justify-between"
+                >
+                  <div className="min-w-0 flex-1 flex flex-col gap-2">
+                    <div className="flex items-center gap-2 text-xs text-muted">
+                      <span className="font-semibold text-ink">
+                        {post.profileName || "Ẩn danh"}
+                      </span>
+                      <span>·</span>
+                      <span>
+                        {new Date(post.createdAt).toLocaleDateString("vi-VN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+
+                    <h4 className="text-base font-semibold text-ink">
+                      {post.title}
+                    </h4>
+
+                    <p className="text-sm text-ink/80 whitespace-pre-line line-clamp-3">
+                      {post.content}
+                    </p>
+
+                    {post.deckTitle && post.deckId ? (
+                      <div className="flex items-center gap-1.5 text-xs text-accent-text mt-1">
+                        <Cards size={14} />
+                        <span>Bộ thẻ đính kèm: </span>
+                        <Link
+                          href={`/decks/${post.deckId}`}
+                          className="font-medium underline hover:text-accent-hover"
+                        >
+                          {post.deckTitle}
+                        </Link>
+                      </div>
+                    ) : null}
+
+                    {post.tags && post.tags.length > 0 ? (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {post.tags.map((t) => (
+                          <span
+                            key={t.id}
+                            className="rounded-full bg-surface-2 px-2 py-0.5 text-2xs text-muted"
+                          >
+                            #{t.name}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-start shrink-0 pt-2 sm:pt-0">
+                    <Button
+                      disabled={busy}
+                      onClick={() => decide(post.id, true, post.title)}
+                    >
+                      <Check aria-hidden size={15} weight="bold" />
+                      Duyệt
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() => decide(post.id, false, post.title)}
+                    >
+                      <X aria-hidden size={15} weight="bold" />
                       Từ chối
                     </Button>
                   </div>

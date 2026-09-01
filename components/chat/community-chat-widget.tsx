@@ -54,13 +54,15 @@ export function CommunityChatWidget() {
     setError(null);
     try {
       const [historyData, onlineData] = await Promise.allSettled([
-        fetchMessageHistory(1, 40),
+        fetchMessageHistory(1, 50),
         fetchOnlineCount(),
       ]);
 
       if (historyData.status === "fulfilled" && historyData.value?.content) {
-        // Reverse array if server returns newest first
-        const list = [...historyData.value.content].reverse();
+        // Sort chronologically (oldest at top, newest at bottom)
+        const list = [...historyData.value.content].sort(
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        );
         setMessages(list);
       }
       if (onlineData.status === "fulfilled" && onlineData.value?.onlineUsers !== undefined) {
@@ -84,19 +86,19 @@ export function CommunityChatWidget() {
     const interval = setInterval(async () => {
       try {
         const [historyRes, onlineRes] = await Promise.allSettled([
-          fetchMessageHistory(1, 20),
+          fetchMessageHistory(1, 30),
           fetchOnlineCount(),
         ]);
         if (historyRes.status === "fulfilled" && historyRes.value?.content) {
-          const fetched = [...historyRes.value.content].reverse();
+          const fetched = historyRes.value.content;
           setMessages((prev) => {
-            const existingIds = new Set(prev.map((m) => m.id));
-            const newItems = fetched.filter((m) => !existingIds.has(m.id));
-            if (newItems.length > 0) {
-              setTimeout(scrollToBottom, 100);
-              return [...prev, ...newItems];
-            }
-            return prev;
+            const map = new Map<string, ChatMessageResponse>();
+            prev.forEach((m) => map.set(m.id, m));
+            fetched.forEach((m) => map.set(m.id, m));
+            const merged = Array.from(map.values()).sort(
+              (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+            );
+            return merged;
           });
         }
         if (onlineRes.status === "fulfilled" && onlineRes.value?.onlineUsers !== undefined) {
@@ -124,7 +126,9 @@ export function CommunityChatWidget() {
               const newMsg: ChatMessageResponse = JSON.parse(msg.body);
               setMessages((prev) => {
                 if (prev.some((m) => m.id === newMsg.id)) return prev;
-                return [...prev, newMsg];
+                return [...prev, newMsg].sort(
+                  (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+                );
               });
               setTimeout(scrollToBottom, 100);
             } catch {

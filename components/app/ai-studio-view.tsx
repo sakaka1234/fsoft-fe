@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -21,12 +21,15 @@ import {
   aiStory,
   situationalLessonIsEmpty,
 } from "@/lib/api/ai";
-import { createDeck } from "@/lib/api/decks";
-import { createCard } from "@/lib/api/cards";
+import { createDeck, listMyDecks } from "@/lib/api/decks";
+import { createCard, listCards } from "@/lib/api/cards";
 import type {
   AiAutoDeckResponse,
   AiRoleplayResponse,
   AiStoryResponse,
+  CardResponse,
+  DeckResponse,
+  ExtractedCard,
   SituationalLearningResponse,
   SituationalSentence,
 } from "@/lib/api/types";
@@ -35,6 +38,23 @@ import { MagicWand } from "@phosphor-icons/react/MagicWand";
 import { BookOpenText } from "@phosphor-icons/react/BookOpenText";
 import { MapPin } from "@phosphor-icons/react/MapPin";
 import { ChatsCircle } from "@phosphor-icons/react/ChatsCircle";
+import { Cards } from "@phosphor-icons/react/Cards";
+import { Check } from "@phosphor-icons/react/Check";
+import { Copy } from "@phosphor-icons/react/Copy";
+import { MagnifyingGlass } from "@phosphor-icons/react/MagnifyingGlass";
+import { X } from "@phosphor-icons/react/X";
+import { Trash } from "@phosphor-icons/react/Trash";
+import { PencilSimple } from "@phosphor-icons/react/PencilSimple";
+import { Plus } from "@phosphor-icons/react/Plus";
+import { CaretDown } from "@phosphor-icons/react/CaretDown";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 /*
   Four AI tools that are not tied to one deck, so they live on their own page
@@ -115,6 +135,105 @@ const errorText = (error: unknown) =>
 
 /* ------------------------------ auto deck ------------------------------ */
 
+function CardFormInputs({
+  card,
+  onChange,
+  onSave,
+  onCancel,
+  saveLabel = "Xong",
+}: {
+  card: ExtractedCard;
+  onChange: (updated: ExtractedCard) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  saveLabel?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-5 sm:p-6 shadow-sm">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field id="card-word" label="Từ vựng *">
+          <TextInput
+            id="card-word"
+            value={card.word}
+            placeholder="vd: deadline"
+            onChange={(e) => onChange({ ...card, word: e.target.value })}
+            className="h-10 text-sm rounded-lg"
+          />
+        </Field>
+        <Field id="card-phonetic" label="Phiên âm (IPA)">
+          <TextInput
+            id="card-phonetic"
+            value={card.phonetic ?? ""}
+            placeholder="vd: /ˈded.laɪn/"
+            onChange={(e) => onChange({ ...card, phonetic: e.target.value })}
+            className="h-10 text-sm rounded-lg font-mono"
+          />
+        </Field>
+        <Field id="card-pos" label="Từ loại">
+          <TextInput
+            id="card-pos"
+            value={card.partOfSpeech ?? ""}
+            placeholder="vd: noun, verb..."
+            onChange={(e) => onChange({ ...card, partOfSpeech: e.target.value })}
+            className="h-10 text-sm rounded-lg"
+          />
+        </Field>
+      </div>
+
+      <Field id="card-meaning" label="Nghĩa tiếng Việt *">
+        <TextInput
+          id="card-meaning"
+          value={card.meaning}
+          placeholder="vd: hạn chót hoàn thành công việc"
+          onChange={(e) => onChange({ ...card, meaning: e.target.value })}
+          className="h-10 text-sm rounded-lg"
+        />
+      </Field>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field id="card-ex-sentence" label="Câu ví dụ (English)">
+          <TextInput
+            id="card-ex-sentence"
+            value={card.exampleSentence ?? ""}
+            placeholder="vd: We must meet the project deadline."
+            onChange={(e) => onChange({ ...card, exampleSentence: e.target.value })}
+            className="h-10 text-sm rounded-lg"
+          />
+        </Field>
+        <Field id="card-ex-meaning" label="Dịch câu ví dụ (Tiếng Việt)">
+          <TextInput
+            id="card-ex-meaning"
+            value={card.exampleMeaning ?? ""}
+            placeholder="vd: Chúng ta phải hoàn thành đúng hạn dự án."
+            onChange={(e) => onChange({ ...card, exampleMeaning: e.target.value })}
+            className="h-10 text-sm rounded-lg"
+          />
+        </Field>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-end gap-3 pt-4 border-t border-line">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-line bg-surface px-4 text-sm font-medium text-ink transition-colors hover:bg-surface-2 active:scale-[0.98]"
+        >
+          <X size={15} />
+          Huỷ
+        </button>
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={!card.word.trim() || !card.meaning.trim()}
+          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-accent px-5 text-sm font-semibold text-accent-fg shadow-xs transition-colors hover:bg-accent-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Check size={15} weight="bold" />
+          {saveLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function AutoDeckPanel() {
   const router = useRouter();
   const [topic, setTopic] = useState("");
@@ -123,15 +242,87 @@ function AutoDeckPanel() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AiAutoDeckResponse | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingCardData, setEditingCardData] = useState<ExtractedCard | null>(null);
+  const [isAddingCard, setIsAddingCard] = useState(false);
+  const [newCard, setNewCard] = useState<ExtractedCard>({
+    word: "",
+    meaning: "",
+    phonetic: "",
+    partOfSpeech: "",
+    definitionEn: "",
+    exampleSentence: "",
+    exampleMeaning: "",
+    imageUrl: "",
+    audioUrl: "",
+    note: "",
+    position: 0,
+  });
 
   function generate() {
     setPending(true);
     setError(null);
     setResult(null);
+    setEditingIndex(null);
+    setIsAddingCard(false);
     aiAutoDeck({ topic, cardCount })
       .then((data) => setResult(data))
       .catch((e) => setError(errorText(e)))
       .finally(() => setPending(false));
+  }
+
+  function startEditCard(index: number) {
+    if (!result) return;
+    setEditingIndex(index);
+    setEditingCardData({ ...result.cards[index] });
+    setIsAddingCard(false);
+  }
+
+  function saveEditCard() {
+    if (!result || editingIndex === null || !editingCardData) return;
+    const nextCards = [...result.cards];
+    nextCards[editingIndex] = editingCardData;
+    setResult({ ...result, cards: nextCards });
+    setEditingIndex(null);
+    setEditingCardData(null);
+  }
+
+  function cancelEditCard() {
+    setEditingIndex(null);
+    setEditingCardData(null);
+  }
+
+  function deleteCard(index: number) {
+    if (!result) return;
+    const nextCards = result.cards.filter((_, i) => i !== index);
+    setResult({ ...result, cards: nextCards });
+    if (editingIndex === index) {
+      setEditingIndex(null);
+      setEditingCardData(null);
+    }
+  }
+
+  function addCard() {
+    if (!result) return;
+    if (!newCard.word.trim() || !newCard.meaning.trim()) return;
+    setResult({
+      ...result,
+      cards: [...result.cards, { ...newCard }],
+    });
+    setNewCard({
+      word: "",
+      meaning: "",
+      phonetic: "",
+      partOfSpeech: "",
+      definitionEn: "",
+      exampleSentence: "",
+      exampleMeaning: "",
+      imageUrl: "",
+      audioUrl: "",
+      note: "",
+      position: 0,
+    });
+    setIsAddingCard(false);
   }
 
   /*
@@ -141,13 +332,13 @@ function AutoDeckPanel() {
     requests and can partly fail.
   */
   async function save() {
-    if (!result) return;
+    if (!result || result.cards.length === 0) return;
     setError(null);
     setSaving("Đang tạo bộ thẻ…");
     try {
       const deck = await createDeck({
-        title: result.title,
-        description: result.description,
+        title: result.title.trim() || "Bộ thẻ mới",
+        description: result.description.trim(),
         sourceLanguage: result.sourceLanguage ?? "en",
         targetLanguage: result.targetLanguage ?? "vi",
         visibility: "PRIVATE",
@@ -157,13 +348,13 @@ function AutoDeckPanel() {
       for (const card of result.cards) {
         setSaving(`Đang lưu thẻ ${saved + 1}/${result.cards.length}…`);
         await createCard(deck.id, {
-          word: card.word,
-          meaning: card.meaning,
-          phonetic: card.phonetic,
-          partOfSpeech: card.partOfSpeech,
-          definitionEn: card.definitionEn,
-          exampleSentence: card.exampleSentence,
-          exampleMeaning: card.exampleMeaning,
+          word: card.word.trim(),
+          meaning: card.meaning.trim(),
+          phonetic: card.phonetic?.trim() || undefined,
+          partOfSpeech: card.partOfSpeech?.trim() || undefined,
+          definitionEn: card.definitionEn?.trim() || undefined,
+          exampleSentence: card.exampleSentence?.trim() || undefined,
+          exampleMeaning: card.exampleMeaning?.trim() || undefined,
           position: saved + 1,
         });
         saved += 1;
@@ -208,38 +399,157 @@ function AutoDeckPanel() {
       {saving ? <p className="text-sm text-muted">{saving}</p> : null}
 
       {result ? (
-        <div className="flex flex-col gap-4 rounded-card border border-line bg-surface p-6">
-          <div>
-            <h2 className="text-xl font-semibold">{result.title}</h2>
-            <p className="mt-1 text-sm text-muted">{result.description}</p>
+        <div className="flex flex-col gap-5 rounded-card border border-line bg-surface p-5 sm:p-6 shadow-sm">
+          {/* Deck Metadata editable */}
+          <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-2 p-4">
+            <Field id="deck-title-edit" label="Tiêu đề bộ bài">
+              <TextInput
+                id="deck-title-edit"
+                value={result.title}
+                onChange={(e) => setResult({ ...result, title: e.target.value })}
+                disabled={saving !== null}
+              />
+            </Field>
+            <Field id="deck-desc-edit" label="Mô tả bộ bài">
+              <TextArea
+                id="deck-desc-edit"
+                rows={2}
+                value={result.description}
+                onChange={(e) => setResult({ ...result, description: e.target.value })}
+                disabled={saving !== null}
+              />
+            </Field>
           </div>
-          <p className="text-sm text-muted">
-            {result.cards.length} thẻ. Chưa có gì được lưu, bấm nút bên dưới để
-            tạo thành bộ thẻ thật.
-          </p>
-          <ul className="divide-y divide-line">
-            {result.cards.map((card, index) => (
-              <li key={`${card.word}-${index}`} className="py-3">
-                <p className="font-medium">
-                  {card.word}
-                  {card.phonetic ? (
-                    <span className="ml-2 font-normal text-muted">{card.phonetic}</span>
-                  ) : null}
-                </p>
-                <p className="text-sm text-muted">{card.meaning}</p>
-                {card.exampleSentence ? (
-                  <p className="text-sm italic text-muted">{card.exampleSentence}</p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+
+          {/* Cards Header & Actions */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
+            <div>
+              <h3 className="font-semibold text-ink">
+                Danh sách thẻ ({result.cards.length} thẻ)
+              </h3>
+              <p className="text-xs text-muted">
+                Bạn có thể thêm, sửa, hoặc xoá thẻ trước khi bấm lưu.
+              </p>
+            </div>
+            {!isAddingCard ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAddingCard(true);
+                  setEditingIndex(null);
+                }}
+                disabled={saving !== null}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line bg-surface px-3.5 text-xs font-medium text-ink transition-colors hover:bg-surface-2 hover:border-ink/20 shadow-2xs shrink-0 active:scale-[0.98]"
+              >
+                <Plus size={14} weight="bold" />
+                Thêm thẻ mới
+              </button>
+            ) : null}
+          </div>
+
+          {/* Add New Card Form */}
+          {isAddingCard ? (
+            <div className="flex flex-col gap-3 my-2">
+              <span className="text-sm font-semibold text-accent-text flex items-center gap-1.5 px-1">
+                <Plus size={16} weight="bold" />
+                Thêm thẻ từ vựng mới
+              </span>
+              <CardFormInputs
+                card={newCard}
+                onChange={setNewCard}
+                onSave={addCard}
+                onCancel={() => setIsAddingCard(false)}
+                saveLabel="Thêm vào bộ thẻ"
+              />
+            </div>
+          ) : null}
+
+          {/* Cards List */}
+          {result.cards.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted">
+              Chưa có thẻ nào trong bộ. Hãy bấm &quot;Thêm thẻ mới&quot; hoặc sinh lại.
+            </p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {result.cards.map((card, index) => (
+                <li key={`card-${index}`} className="py-3">
+                  {editingIndex === index && editingCardData ? (
+                    <CardFormInputs
+                      card={editingCardData}
+                      onChange={setEditingCardData}
+                      onSave={saveEditCard}
+                      onCancel={cancelEditCard}
+                      saveLabel="Lưu thay đổi"
+                    />
+                  ) : (
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-baseline gap-2">
+                          <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-2xs font-mono font-medium text-muted">
+                            #{index + 1}
+                          </span>
+                          <p className="font-semibold text-ink">{card.word}</p>
+                          {card.phonetic ? (
+                            <span className="font-mono text-xs text-muted">
+                              {card.phonetic}
+                            </span>
+                          ) : null}
+                          {card.partOfSpeech ? (
+                            <span className="text-2xs uppercase tracking-wider text-muted font-medium">
+                              ({card.partOfSpeech})
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-1 text-sm text-ink/80">{card.meaning}</p>
+                        {card.exampleSentence ? (
+                          <div className="mt-1.5 rounded-md bg-surface-2 p-2 text-xs">
+                            <p className="italic text-muted font-medium">
+                              &ldquo;{card.exampleSentence}&rdquo;
+                            </p>
+                            {card.exampleMeaning ? (
+                              <p className="mt-0.5 text-muted/80">{card.exampleMeaning}</p>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => startEditCard(index)}
+                          disabled={saving !== null}
+                          className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink transition-colors"
+                          title="Chỉnh sửa thẻ này"
+                        >
+                          <PencilSimple size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteCard(index)}
+                          disabled={saving !== null}
+                          className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-danger transition-colors"
+                          title="Xoá thẻ này"
+                        >
+                          <Trash size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       ) : null}
 
       <div className="flex flex-wrap justify-end gap-2">
         {result ? (
-          <Button onClick={save} disabled={saving !== null}>
-            Lưu thành bộ thẻ
+          <Button
+            onClick={save}
+            disabled={saving !== null || result.cards.length === 0}
+          >
+            Lưu thành bộ thẻ ({result.cards.length} thẻ)
           </Button>
         ) : null}
         <Button
@@ -256,71 +566,584 @@ function AutoDeckPanel() {
 
 /* -------------------------------- story -------------------------------- */
 
+function highlightStoryWords(text: string, words: string[]): React.ReactNode {
+  const cleanWords = words
+    .map((w) => w.trim())
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length);
+
+  if (cleanWords.length === 0) return text;
+
+  const escaped = cleanWords.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const regex = new RegExp(`(\\b(?:${escaped.join("|")})(?:s|es|ed|ing|d)?\\b)`, "gi");
+
+  const parts = text.split(regex);
+  return parts.map((part, index) => {
+    const isMatch = cleanWords.some((w) => {
+      const p = part.toLowerCase();
+      const target = w.toLowerCase();
+      return p === target || p.startsWith(target) || target.startsWith(p);
+    });
+
+    if (isMatch && part.trim()) {
+      return (
+        <span
+          key={index}
+          className="font-semibold text-ink underline decoration-accent decoration-2 underline-offset-4 bg-accent-soft/30 px-1 py-0.5 rounded-xs transition-colors"
+          title={`Từ mục tiêu: ${part}`}
+        >
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
+}
+
 function StoryPanel() {
-  const [words, setWords] = useState("");
+  const [inputTab, setInputTab] = useState<"deck" | "custom">("deck");
+  const [decks, setDecks] = useState<DeckResponse[]>([]);
+  const [decksLoading, setDecksLoading] = useState(true);
+  const [selectedDeckId, setSelectedDeckId] = useState<number | null>(null);
+  const [cards, setCards] = useState<CardResponse[]>([]);
+  const [cardsLoading, setCardsLoading] = useState(false);
+  const [cardSearch, setCardSearch] = useState("");
+  const [selectedCards, setSelectedCards] = useState<CardResponse[]>([]);
+  const [customWords, setCustomWords] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AiStoryResponse | null>(null);
+  const [copied, setCopied] = useState<"story" | "translation" | null>(null);
 
-  function generate() {
-    const list = words
+  // Load saved decks on mount
+  useEffect(() => {
+    let active = true;
+    setDecksLoading(true);
+    listMyDecks(1, 100)
+      .then((res) => {
+        if (!active) return;
+        setDecks(res.content);
+        if (res.content.length > 0 && selectedDeckId === null) {
+          setSelectedDeckId(res.content[0].id);
+        }
+      })
+      .catch(() => {
+        if (active) setDecks([]);
+      })
+      .finally(() => {
+        if (active) setDecksLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Load cards when selected deck changes
+  useEffect(() => {
+    if (!selectedDeckId) {
+      setCards([]);
+      return;
+    }
+    let active = true;
+    setCardsLoading(true);
+    listCards(selectedDeckId, 0, 100)
+      .then((res) => {
+        if (!active) return;
+        setCards(res.content);
+      })
+      .catch(() => {
+        if (active) setCards([]);
+      })
+      .finally(() => {
+        if (active) setCardsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [selectedDeckId]);
+
+  const filteredCards = useMemo(() => {
+    const q = cardSearch.trim().toLowerCase();
+    if (!q) return cards;
+    return cards.filter(
+      (c) =>
+        c.word.toLowerCase().includes(q) ||
+        c.meaning.toLowerCase().includes(q) ||
+        (c.phonetic && c.phonetic.toLowerCase().includes(q)),
+    );
+  }, [cards, cardSearch]);
+
+  const manualWordList = useMemo(() => {
+    return customWords
       .split(/[\n,]/)
       .map((w) => w.trim())
       .filter(Boolean);
+  }, [customWords]);
+
+  const allTargetWords = useMemo(() => {
+    const cardWords = selectedCards.map((c) => c.word.trim());
+    const unique = new Set([...cardWords, ...manualWordList]);
+    return Array.from(unique).filter(Boolean);
+  }, [selectedCards, manualWordList]);
+
+  const toggleCard = useCallback((card: CardResponse) => {
+    setSelectedCards((prev) => {
+      const exists = prev.some((c) => c.id === card.id);
+      if (exists) {
+        return prev.filter((c) => c.id !== card.id);
+      }
+      return [...prev, card];
+    });
+  }, []);
+
+  const selectAllVisible = useCallback(() => {
+    setSelectedCards((prev) => {
+      const existingIds = new Set(prev.map((c) => c.id));
+      const toAdd = filteredCards.filter((c) => !existingIds.has(c.id));
+      return [...prev, ...toAdd];
+    });
+  }, [filteredCards]);
+
+  const deselectAllVisible = useCallback(() => {
+    setSelectedCards((prev) => {
+      const visibleIds = new Set(filteredCards.map((c) => c.id));
+      return prev.filter((c) => !visibleIds.has(c.id));
+    });
+  }, [filteredCards]);
+
+  const removeCard = useCallback((cardId: number) => {
+    setSelectedCards((prev) => prev.filter((c) => c.id !== cardId));
+  }, []);
+
+  const removeManualWord = useCallback((wordToRemove: string) => {
+    setCustomWords((prev) =>
+      prev
+        .split(/[\n,]/)
+        .map((w) => w.trim())
+        .filter((w) => w && w !== wordToRemove)
+        .join("\n"),
+    );
+  }, []);
+
+  const clearAll = useCallback(() => {
+    setSelectedCards([]);
+    setCustomWords("");
+  }, []);
+
+  const copyToClipboard = (text: string, type: "story" | "translation") => {
+    navigator.clipboard.writeText(text);
+    setCopied(type);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  function generate() {
+    if (allTargetWords.length === 0) return;
     setPending(true);
     setError(null);
     setResult(null);
-    /*
-      Only BUSINESS_EMAIL is sent. The spec and the written guide list three
-      context types each and agree on only that one, so offering the others
-      would be guessing at values the server may reject.
-    */
-    aiStory({ words: list, contextType: "BUSINESS_EMAIL" })
+
+    const cardIds = selectedCards.map((c) => c.id);
+    aiStory({
+      words: allTargetWords,
+      cardIds: cardIds.length > 0 ? cardIds : undefined,
+      contextType: "BUSINESS_EMAIL",
+    })
       .then((data) => setResult(data))
       .catch((e) => setError(errorText(e)))
       .finally(() => setPending(false));
   }
 
+  const allVisibleSelected =
+    filteredCards.length > 0 &&
+    filteredCards.every((c) => selectedCards.some((sc) => sc.id === c.id));
+
   return (
-    <div className="flex flex-col gap-5">
-      <Field
-        id="story-words"
-        label="Từ cần ghép vào bài"
-        hint="Mỗi dòng hoặc mỗi dấu phẩy một từ."
-      >
-        <TextArea
-          id="story-words"
-          rows={5}
-          value={words}
-          placeholder={"deadline\nproposal\nconsensus"}
-          onChange={(event) => setWords(event.target.value)}
-          disabled={pending}
-        />
-      </Field>
+    <div className="flex flex-col gap-6">
+      {/* Source selection tabs */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-1 rounded-full border border-line bg-surface p-1">
+            <button
+              type="button"
+              onClick={() => setInputTab("deck")}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
+                inputTab === "deck"
+                  ? "bg-accent text-accent-fg shadow-sm"
+                  : "text-muted hover:text-ink",
+              )}
+            >
+              <Cards size={16} />
+              Chọn từ bộ thẻ đã lưu
+              {selectedCards.length > 0 ? (
+                <span className="ml-1 rounded-full bg-white/20 px-1.5 py-0.2 text-xs">
+                  {selectedCards.length}
+                </span>
+              ) : null}
+            </button>
+            <button
+              type="button"
+              onClick={() => setInputTab("custom")}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
+                inputTab === "custom"
+                  ? "bg-accent text-accent-fg shadow-sm"
+                  : "text-muted hover:text-ink",
+              )}
+            >
+              <PencilSimple size={16} />
+              Nhập từ tự do
+              {manualWordList.length > 0 ? (
+                <span className="ml-1 rounded-full bg-white/20 px-1.5 py-0.2 text-xs">
+                  {manualWordList.length}
+                </span>
+              ) : null}
+            </button>
+          </div>
+
+          {allTargetWords.length > 0 ? (
+            <button
+              type="button"
+              onClick={clearAll}
+              disabled={pending}
+              className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-danger transition-colors"
+            >
+              <Trash size={14} />
+              Xoá tất cả ({allTargetWords.length} từ)
+            </button>
+          ) : null}
+        </div>
+
+        {/* Tab 1: From Saved Decks */}
+        {inputTab === "deck" ? (
+          <div className="flex flex-col gap-4 rounded-card border border-line bg-surface p-4 sm:p-5">
+            {decksLoading ? (
+              <RowSkeleton count={2} />
+            ) : decks.length === 0 ? (
+              <div className="py-6 text-center">
+                <p className="text-sm text-muted">
+                  Bạn chưa có bộ thẻ nào đã lưu. Hãy tạo bộ thẻ trước hoặc dùng tab &quot;Nhập từ tự do&quot;.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Deck picker & search */}
+                <div className="grid gap-3 sm:grid-cols-[1fr_1fr]">
+                  <Field id="deck-picker" label="Chọn bộ thẻ">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          id="deck-picker"
+                          type="button"
+                          disabled={pending || cardsLoading || decks.length === 0}
+                          className="flex h-11 w-full items-center justify-between gap-2 rounded-field border border-line bg-surface px-3.5 text-base text-ink transition-colors hover:border-ink/25 focus:outline-none focus:ring-2 focus:ring-accent disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <Cards size={18} className="shrink-0 text-accent" />
+                            <span className="truncate font-medium">
+                              {decks.find((d) => d.id === selectedDeckId)?.title ?? "Chọn một bộ thẻ..."}
+                            </span>
+                            {decks.find((d) => d.id === selectedDeckId)?.totalCards !== undefined ? (
+                              <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted">
+                                {decks.find((d) => d.id === selectedDeckId)?.totalCards} thẻ
+                              </span>
+                            ) : null}
+                          </div>
+                          <CaretDown size={16} className="shrink-0 text-muted" />
+                        </button>
+                      </DropdownMenuTrigger>
+
+                      <DropdownMenuContent
+                        align="start"
+                        className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-72 overflow-y-auto"
+                      >
+                        <DropdownMenuLabel>Bộ thẻ đã lưu ({decks.length})</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {decks.map((deck) => {
+                          const isSelected = deck.id === selectedDeckId;
+                          return (
+                            <DropdownMenuItem
+                              key={deck.id}
+                              onClick={() => setSelectedDeckId(deck.id)}
+                              className={cn(
+                                "flex items-center justify-between py-2.5",
+                                isSelected && "bg-accent-soft/40 font-medium text-accent-text",
+                              )}
+                            >
+                              <div className="flex items-center gap-2 truncate">
+                                <Cards size={16} className={isSelected ? "text-accent" : "text-muted"} />
+                                <span className="truncate">{deck.title}</span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-xs text-muted">
+                                  {deck.totalCards ?? 0} thẻ
+                                </span>
+                                {isSelected ? (
+                                  <Check size={14} weight="bold" className="text-accent" />
+                                ) : null}
+                              </div>
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </Field>
+
+                  <Field id="card-search" label="Tìm thẻ trong bộ">
+                    <div className="relative flex items-center">
+                      <MagnifyingGlass
+                        size={16}
+                        className="pointer-events-none absolute left-3 text-muted"
+                      />
+                      <TextInput
+                        id="card-search"
+                        value={cardSearch}
+                        placeholder="Tìm theo từ, phiên âm, nghĩa..."
+                        onChange={(e) => setCardSearch(e.target.value)}
+                        disabled={pending || cardsLoading || cards.length === 0}
+                        className="pl-9"
+                      />
+                    </div>
+                  </Field>
+                </div>
+
+                {/* Cards header & quick actions */}
+                <div className="flex items-center justify-between border-t border-line pt-3 text-xs text-muted">
+                  <span>
+                    {cardsLoading
+                      ? "Đang tải thẻ…"
+                      : `Hiển thị ${filteredCards.length}/${cards.length} thẻ từ bộ đã chọn`}
+                  </span>
+                  {filteredCards.length > 0 && !cardsLoading ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={allVisibleSelected ? deselectAllVisible : selectAllVisible}
+                        disabled={pending}
+                        className="text-accent-text hover:underline font-medium"
+                      >
+                        {allVisibleSelected ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Cards List / Grid */}
+                {cardsLoading ? (
+                  <RowSkeleton count={3} />
+                ) : cards.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-muted">
+                    Bộ thẻ này chưa có thẻ từ vựng nào.
+                  </p>
+                ) : filteredCards.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-muted">
+                    Không tìm thấy từ vựng khớp với từ khoá &quot;{cardSearch}&quot;.
+                  </p>
+                ) : (
+                  <div className="grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                    {filteredCards.map((card) => {
+                      const selected = selectedCards.some((c) => c.id === card.id);
+                      return (
+                        <button
+                          key={card.id}
+                          type="button"
+                          onClick={() => toggleCard(card)}
+                          disabled={pending}
+                          className={cn(
+                            "flex items-start gap-3 rounded-lg border p-3 text-left transition-all",
+                            selected
+                              ? "border-accent bg-accent-soft/30 shadow-xs"
+                              : "border-line bg-surface hover:border-ink/20 hover:bg-surface-2",
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+                              selected
+                                ? "border-accent bg-accent text-accent-fg"
+                                : "border-line bg-surface",
+                            )}
+                          >
+                            {selected ? <Check size={12} weight="bold" /> : null}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-baseline gap-1.5">
+                              <span className="font-semibold text-ink">{card.word}</span>
+                              {card.phonetic ? (
+                                <span className="text-xs text-muted font-mono">{card.phonetic}</span>
+                              ) : null}
+                              {card.partOfSpeech ? (
+                                <span className="text-2xs uppercase tracking-wider text-muted font-medium">
+                                  ({card.partOfSpeech})
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="mt-0.5 line-clamp-2 text-xs text-muted">
+                              {card.meaning}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        ) : (
+          /* Tab 2: Custom words textarea */
+          <Field
+            id="story-words"
+            label="Từ cần ghép vào bài"
+            hint="Mỗi dòng hoặc mỗi dấu phẩy một từ."
+          >
+            <TextArea
+              id="story-words"
+              rows={5}
+              value={customWords}
+              placeholder={"deadline\nproposal\nconsensus"}
+              onChange={(event) => setCustomWords(event.target.value)}
+              disabled={pending}
+            />
+          </Field>
+        )}
+      </div>
+
+      {/* Selected Words Tray / Summary */}
+      {allTargetWords.length > 0 ? (
+        <div className="flex flex-col gap-2 rounded-card border border-line bg-surface-2 p-4">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-medium text-ink">
+              Từ vựng đã chọn ({allTargetWords.length} từ):
+            </span>
+            <span className="text-muted">
+              {selectedCards.length} từ bộ thẻ · {manualWordList.length} từ tự nhập
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
+            {selectedCards.map((card) => (
+              <span
+                key={`card-${card.id}`}
+                className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-3 py-1 text-xs font-medium text-ink shadow-2xs"
+              >
+                <span className="font-semibold">{card.word}</span>
+                {card.meaning ? (
+                  <span className="text-muted truncate max-w-[120px] font-normal">
+                    · {card.meaning}
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => removeCard(card.id)}
+                  disabled={pending}
+                  className="rounded-full p-0.5 hover:bg-black/10 transition-colors"
+                  title="Bỏ từ này"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+
+            {manualWordList.map((word, idx) => (
+              <span
+                key={`manual-${idx}-${word}`}
+                className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium text-ink shadow-2xs"
+              >
+                <span>{word}</span>
+                <span className="text-muted text-2xs italic font-normal">(tự nhập)</span>
+                <button
+                  type="button"
+                  onClick={() => removeManualWord(word)}
+                  disabled={pending}
+                  className="rounded-full p-0.5 hover:bg-black/10 transition-colors"
+                  title="Bỏ từ này"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {error ? <FormMessage>{error}</FormMessage> : null}
       {pending ? <Generating what="viết đoạn văn" /> : null}
 
+      {/* Generation Result */}
       {result ? (
-        <article className="flex flex-col gap-4 rounded-card border border-line bg-surface p-6">
-          <h2 className="text-xl font-semibold">{result.title}</h2>
-          <p className="whitespace-pre-line leading-relaxed">{result.storyText}</p>
-          <div className="border-t border-line pt-4">
+        <article className="flex flex-col gap-4 rounded-card border border-line bg-surface p-6 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <h2 className="text-xl font-semibold">{result.title}</h2>
+            <Button
+              variant="secondary"
+              onClick={() => copyToClipboard(result.storyText, "story")}
+              className="shrink-0 h-9 px-3.5 text-xs"
+            >
+              {copied === "story" ? (
+                <>
+                  <Check size={14} className="text-accent" />
+                  Đã chép
+                </>
+              ) : (
+                <>
+                  <Copy size={14} />
+                  Sao chép đoạn văn
+                </>
+              )}
+            </Button>
+          </div>
+
+          <p className="whitespace-pre-line leading-relaxed text-ink/90 font-serif sm:text-lg">
+            {highlightStoryWords(
+              result.storyText,
+              result.targetWords.length > 0 ? result.targetWords : allTargetWords,
+            )}
+          </p>
+
+          <div className="border-t border-line pt-4 flex flex-col gap-2">
+            <div className="flex items-center justify-between text-xs text-muted font-medium">
+              <span>Bản dịch Tiếng Việt</span>
+              <button
+                type="button"
+                onClick={() => copyToClipboard(result.translationText, "translation")}
+                className="inline-flex items-center gap-1 hover:text-ink transition-colors"
+              >
+                {copied === "translation" ? (
+                  <Check size={12} className="text-accent" />
+                ) : (
+                  <Copy size={12} />
+                )}
+                {copied === "translation" ? "Đã chép dịch" : "Chép dịch"}
+              </button>
+            </div>
             <p className="whitespace-pre-line text-sm leading-relaxed text-muted">
               {result.translationText}
             </p>
           </div>
+
           {result.targetWords.length > 0 ? (
-            <p className="text-sm text-muted">
-              Đã dùng: {result.targetWords.join(", ")}
-            </p>
+            <div className="border-t border-line pt-3 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+              <span>Đã lồng ghép thành công:</span>
+              {result.targetWords.map((word) => (
+                <span
+                  key={word}
+                  className="rounded-md bg-accent-soft px-2 py-0.5 font-medium text-accent-text"
+                >
+                  {word}
+                </span>
+              ))}
+            </div>
           ) : null}
         </article>
       ) : null}
 
-      <div className="flex justify-end">
-        <Button onClick={generate} disabled={pending || !words.trim()}>
-          {result ? "Viết lại" : "Viết đoạn văn"}
+      <div className="flex justify-end gap-2">
+        <Button
+          onClick={generate}
+          disabled={pending || allTargetWords.length === 0}
+        >
+          {result ? "Viết lại" : `Viết đoạn văn (${allTargetWords.length} từ)`}
         </Button>
       </div>
     </div>

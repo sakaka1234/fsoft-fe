@@ -5,10 +5,13 @@ import type {
   AdminUpdateDeckOfficialRequest,
   AdminUpdateUserRolesRequest,
   AdminUserResponse,
+  CommunityPostResponse,
   DeckResponse,
   DeckVisibility,
+  DeckVisibilityRequest,
   DeckWriteRequest,
   PageResponse,
+  PostModerateRequest,
   TagRequest,
   TagResponse,
 } from "@/lib/api/types";
@@ -366,5 +369,61 @@ export function approvePublicDeck(
   return apiFetch<DeckResponse>(
     `/admin/decks/${deckId}/approve-public?approved=${approved}`,
     { method: "PATCH", auth: true, signal },
+  );
+}
+
+/* ----------------------------- deck visibility ---------------------------- */
+
+/**
+ * Flip a deck's visibility between PUBLIC and PRIVATE.
+ *
+ * Body: { visibility: "PUBLIC" | "PRIVATE" }
+ * Response: the updated DeckResponse.
+ */
+export function setDeckVisibility(
+  deckId: number,
+  body: DeckVisibilityRequest,
+  signal?: AbortSignal,
+) {
+  return apiFetch<DeckResponse>(`/admin/decks/${deckId}/visibility`, {
+    method: "PUT",
+    body,
+    auth: true,
+    signal,
+  });
+}
+
+/* ----------------------- community post moderation ----------------------- */
+
+/**
+ * List community posts awaiting moderation.
+ *
+ * Uses plain 0-based page/size query params (not Spring Pageable).
+ */
+export function listPendingCommunityPosts(
+  page = 0,
+  size = 20,
+  signal?: AbortSignal,
+) {
+  return apiFetch<PageResponse<CommunityPostResponse>>(
+    `/community-posts/admin/pending?page=${page}&size=${size}`,
+    { auth: true, signal },
+  );
+}
+
+/**
+ * Approve or reject a community post.
+ *
+ * status: "APPROVED" | "REJECTED"
+ * reason: required when rejecting, ignored when approving.
+ */
+export function moderateCommunityPost(
+  postId: number,
+  body: PostModerateRequest,
+  signal?: AbortSignal,
+) {
+  return apiFetch<CommunityPostResponse>(
+    `/community-posts/admin/${postId}/moderate`,
+    { method: "PUT", body, auth: true, signal },
   );
 }

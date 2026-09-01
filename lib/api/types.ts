@@ -884,3 +884,41 @@ export type CramCardsResponse = {
 export type TagRequest = {
   name: string;
 };
+
+/* ---------------------------------------------------------------------------
+   Community Posts (Admin moderation)
+   ------------------------------------------------------------------------- */
+
+export type PostModerationStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export type CommunityPostResponse = {
+  id: number;
+  profileId: string;
+  profileName: string;
+  profileAvatar: string | null;
+  title: string;
+  content: string;
+  status: PostModerationStatus;
+  rejectionReason: string | null;
+  approvedAt: string | null;
+  likeCount: number;
+  commentCount: number;
+  likedByCurrentUser: boolean;
+  deckId: number | null;
+  deckTitle: string | null;
+  deckDescription: string | null;
+  deckCoverImageUrl: string | null;
+  deckTotalCards: number | null;
+  tags: TagResponse[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PostModerateRequest = {
+  /** APPROVED or REJECTED (sending PENDING has no effect in practice) */
+  status: PostModerationStatus;
+  /** Required when status is REJECTED, ignored when APPROVED */
+  reason?: string;
+};
+
+
