@@ -1166,7 +1166,7 @@ function SentenceList({
       <ul className="divide-y divide-line">
         {items.map((item, index) => (
           <li key={`${item.english}-${index}`} className="py-2.5">
-            <p>{item.english}</p>
+            <p className="font-medium text-ink">{item.english}</p>
             <p className="text-sm text-muted">{item.vietnamese}</p>
           </li>
         ))}
@@ -1176,6 +1176,7 @@ function SentenceList({
 }
 
 function SituationPanel() {
+  const router = useRouter();
   const [context, setContext] = useState("");
   const [level, setLevel] = useState<string>("B1");
   const [pending, setPending] = useState(false);
@@ -1183,26 +1184,186 @@ function SituationPanel() {
   const [result, setResult] = useState<SituationalLearningResponse | null>(null);
   const [empty, setEmpty] = useState(false);
 
+  // Vocabulary deck & cards state
+  const [deckTitle, setDeckTitle] = useState("");
+  const [deckDesc, setDeckDesc] = useState("");
+  const [vocabCards, setVocabCards] = useState<ExtractedCard[]>([]);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingCardData, setEditingCardData] = useState<ExtractedCard | null>(null);
+  const [isAddingCard, setIsAddingCard] = useState(false);
+  const [newCard, setNewCard] = useState<ExtractedCard>({
+    word: "",
+    meaning: "",
+    phonetic: "",
+    partOfSpeech: "",
+    definitionEn: "",
+    exampleSentence: "",
+    exampleMeaning: "",
+    imageUrl: "",
+    audioUrl: "",
+    note: "",
+    position: 0,
+  });
+
+  // Saving destination state
+  const [saveMode, setSaveMode] = useState<"NEW" | "EXISTING">("NEW");
+  const [decks, setDecks] = useState<DeckResponse[]>([]);
+  const [decksLoading, setDecksLoading] = useState(false);
+  const [selectedDeckId, setSelectedDeckId] = useState<number | null>(null);
+  const [saving, setSaving] = useState<string | null>(null);
+
+  // Load saved decks for "Save to existing deck"
+  useEffect(() => {
+    let active = true;
+    setDecksLoading(true);
+    listMyDecks(1, 100)
+      .then((res) => {
+        if (!active) return;
+        setDecks(res.content);
+        if (res.content.length > 0 && selectedDeckId === null) {
+          setSelectedDeckId(res.content[0].id);
+        }
+      })
+      .catch(() => {
+        if (active) setDecks([]);
+      })
+      .finally(() => {
+        if (active) setDecksLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   function generate() {
     setPending(true);
     setError(null);
     setResult(null);
     setEmpty(false);
+    setEditingIndex(null);
+    setIsAddingCard(false);
     aiSituationalLearning({ context, cefrLevel: level })
       .then((data) => {
-        /*
-          A generation that produced nothing still answers 200 with a success
-          message, so emptiness is the only signal that it failed.
-        */
-        if (situationalLessonIsEmpty(data)) setEmpty(true);
-        else setResult(data);
+        if (situationalLessonIsEmpty(data)) {
+          setEmpty(true);
+        } else {
+          setResult(data);
+          setDeckTitle(`Từ vựng tình huống: ${context.trim()}`);
+          setDeckDesc(`Bộ từ vựng tiếng Anh theo tình huống: ${context.trim()} (${level})`);
+          // Map vocabularies (ExtractedCard[]) directly into editable draft cards
+          const initialCards: ExtractedCard[] = (data.vocabularies ?? []).map((item, idx) => ({
+            word: item.word?.trim() ?? "",
+            meaning: item.meaning?.trim() ?? "",
+            phonetic: item.phonetic ?? "",
+            partOfSpeech: item.partOfSpeech ?? "",
+            definitionEn: item.definitionEn ?? "",
+            exampleSentence: item.exampleSentence ?? "",
+            exampleMeaning: item.exampleMeaning ?? "",
+            imageUrl: item.imageUrl ?? "",
+            audioUrl: item.audioUrl ?? "",
+            note: item.note ?? "Từ vựng tình huống",
+            position: item.position ?? idx + 1,
+          }));
+          setVocabCards(initialCards);
+        }
       })
       .catch((e) => setError(errorText(e)))
       .finally(() => setPending(false));
   }
 
+  function startEditCard(index: number) {
+    setEditingIndex(index);
+    setEditingCardData({ ...vocabCards[index] });
+    setIsAddingCard(false);
+  }
+
+  function saveEditCard() {
+    if (editingIndex === null || !editingCardData) return;
+    const next = [...vocabCards];
+    next[editingIndex] = editingCardData;
+    setVocabCards(next);
+    setEditingIndex(null);
+    setEditingCardData(null);
+  }
+
+  function cancelEditCard() {
+    setEditingIndex(null);
+    setEditingCardData(null);
+  }
+
+  function deleteCard(index: number) {
+    const next = vocabCards.filter((_, i) => i !== index);
+    setVocabCards(next);
+    if (editingIndex === index) {
+      setEditingIndex(null);
+      setEditingCardData(null);
+    }
+  }
+
+  function addCard() {
+    if (!newCard.word.trim() || !newCard.meaning.trim()) return;
+    setVocabCards((prev) => [...prev, { ...newCard, position: prev.length + 1 }]);
+    setNewCard({
+      word: "",
+      meaning: "",
+      phonetic: "",
+      partOfSpeech: "",
+      definitionEn: "",
+      exampleSentence: "",
+      exampleMeaning: "",
+      imageUrl: "",
+      audioUrl: "",
+      note: "",
+      position: 0,
+    });
+    setIsAddingCard(false);
+  }
+
+  async function saveDeck() {
+    if (vocabCards.length === 0) return;
+    setError(null);
+    try {
+      let targetDeckId = selectedDeckId;
+      if (saveMode === "NEW" || !targetDeckId) {
+        setSaving("Đang tạo bộ thẻ mới…");
+        const created = await createDeck({
+          title: deckTitle.trim() || `Từ vựng: ${context}`,
+          description: deckDesc.trim() || `Tình huống ${level}`,
+          sourceLanguage: "en",
+          targetLanguage: "vi",
+          visibility: "PRIVATE",
+          isOfficial: false,
+        });
+        targetDeckId = created.id;
+      }
+
+      let saved = 0;
+      for (const card of vocabCards) {
+        setSaving(`Đang lưu thẻ ${saved + 1}/${vocabCards.length}…`);
+        await createCard(targetDeckId, {
+          word: card.word.trim(),
+          meaning: card.meaning.trim(),
+          phonetic: card.phonetic?.trim() || undefined,
+          partOfSpeech: card.partOfSpeech?.trim() || undefined,
+          definitionEn: card.definitionEn?.trim() || undefined,
+          exampleSentence: card.exampleSentence?.trim() || undefined,
+          exampleMeaning: card.exampleMeaning?.trim() || undefined,
+          note: card.note?.trim() || undefined,
+          position: saved + 1,
+        });
+        saved += 1;
+      }
+
+      setSaving(null);
+      router.push(`/decks/${targetDeckId}`);
+    } catch (e) {
+      setSaving(null);
+      setError(errorText(e));
+    }
+  }
+
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
         <Field id="sit-context" label="Tình huống">
           <TextInput
@@ -1210,7 +1371,7 @@ function SituationPanel() {
             value={context}
             placeholder="ví dụ: đi phỏng vấn vị trí Java Developer"
             onChange={(event) => setContext(event.target.value)}
-            disabled={pending}
+            disabled={pending || saving !== null}
           />
         </Field>
         <Field id="sit-level" label="Trình độ">
@@ -1218,7 +1379,7 @@ function SituationPanel() {
             id="sit-level"
             value={level}
             onChange={(event) => setLevel(event.target.value)}
-            disabled={pending}
+            disabled={pending || saving !== null}
           >
             {CEFR_LEVELS.map((l) => (
               <option key={l} value={l}>
@@ -1230,7 +1391,8 @@ function SituationPanel() {
       </div>
 
       {error ? <FormMessage>{error}</FormMessage> : null}
-      {pending ? <Generating what="dựng bài học" /> : null}
+      {pending ? <Generating what="dựng bài học tình huống" /> : null}
+      {saving ? <p className="text-sm text-muted">{saving}</p> : null}
 
       {empty ? (
         <EmptyState
@@ -1240,17 +1402,283 @@ function SituationPanel() {
       ) : null}
 
       {result ? (
-        <div className="flex flex-col gap-6 rounded-card border border-line bg-surface p-6">
-          <SentenceList title="Hành động chính" items={result.mainActions} />
-          <SentenceList title="Câu giao tiếp" items={result.interactions} />
-          <SentenceList title="Cảm xúc" items={result.emotions} />
-          <SentenceList title="Câu ngắn" items={result.shortCaptions} />
-          <SentenceList title="Từ vựng" items={result.vocabularies} />
+        <div className="flex flex-col gap-6">
+          {/* 1. Situational Lesson Dialogue & Actions */}
+          <div className="flex flex-col gap-6 rounded-card border border-line bg-surface p-6 shadow-sm">
+            <h3 className="font-semibold text-ink text-base">
+              Nội dung bài học tình huống
+            </h3>
+            <div className="grid gap-6 sm:grid-cols-2">
+              <SentenceList title="Hành động chính" items={result.mainActions} />
+              <SentenceList title="Câu giao tiếp" items={result.interactions} />
+              <SentenceList title="Cảm xúc" items={result.emotions} />
+              <SentenceList title="Câu ngắn" items={result.shortCaptions} />
+            </div>
+          </div>
+
+          {/* 2. Vocabulary Deck Builder (Cards Editable, Addable, Deletable) */}
+          <div className="flex flex-col gap-5 rounded-card border border-line bg-surface p-6 shadow-sm">
+            {/* Header & Add Card Action */}
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-4">
+              <div>
+                <h3 className="font-semibold text-ink text-base flex items-center gap-2">
+                  <Cards size={18} className="text-accent" />
+                  Bộ thẻ từ vựng tình huống ({vocabCards.length} thẻ)
+                </h3>
+                <p className="text-xs text-muted mt-0.5">
+                  Các từ vựng cốt lõi trích xuất từ tình huống. Bạn có thể chỉnh sửa, xóa hoặc bổ sung thẻ trước khi lưu.
+                </p>
+              </div>
+
+              {!isAddingCard ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddingCard(true);
+                    setEditingIndex(null);
+                  }}
+                  disabled={saving !== null}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line bg-surface px-3.5 text-xs font-medium text-ink transition-colors hover:bg-surface-2 hover:border-ink/20 shadow-2xs shrink-0 active:scale-[0.98]"
+                >
+                  <Plus size={14} weight="bold" />
+                  Thêm thẻ mới
+                </button>
+              ) : null}
+            </div>
+
+            {/* Add New Card Form */}
+            {isAddingCard ? (
+              <div className="flex flex-col gap-3 my-2">
+                <span className="text-sm font-semibold text-accent-text flex items-center gap-1.5 px-1">
+                  <Plus size={16} weight="bold" />
+                  Thêm thẻ từ vựng mới vào bộ
+                </span>
+                <CardFormInputs
+                  card={newCard}
+                  onChange={setNewCard}
+                  onSave={addCard}
+                  onCancel={() => setIsAddingCard(false)}
+                  saveLabel="Thêm vào bộ thẻ"
+                />
+              </div>
+            ) : null}
+
+            {/* Vocabulary Cards List */}
+            {vocabCards.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted">
+                Chưa có thẻ từ vựng nào. Hãy bấm &quot;Thêm thẻ mới&quot;.
+              </p>
+            ) : (
+              <ul className="divide-y divide-line">
+                {vocabCards.map((card, index) => (
+                  <li key={`vocab-card-${index}`} className="py-3">
+                    {editingIndex === index && editingCardData ? (
+                      <CardFormInputs
+                        card={editingCardData}
+                        onChange={setEditingCardData}
+                        onSave={saveEditCard}
+                        onCancel={cancelEditCard}
+                        saveLabel="Lưu thay đổi"
+                      />
+                    ) : (
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-baseline gap-2">
+                            <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-2xs font-mono font-medium text-muted">
+                              #{index + 1}
+                            </span>
+                            <p className="font-semibold text-ink">{card.word}</p>
+                            {card.phonetic ? (
+                              <span className="font-mono text-xs text-muted">
+                                {card.phonetic}
+                              </span>
+                            ) : null}
+                            {card.partOfSpeech ? (
+                              <span className="text-2xs uppercase tracking-wider text-muted font-medium">
+                                ({card.partOfSpeech})
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="mt-1 text-sm text-ink/90">{card.meaning}</p>
+                          {card.exampleSentence ? (
+                            <div className="mt-1.5 rounded-md bg-surface-2/60 p-2 text-xs">
+                              <p className="text-ink/80 italic font-serif">
+                                &quot;{card.exampleSentence}&quot;
+                              </p>
+                              {card.exampleMeaning ? (
+                                <p className="mt-0.5 text-muted">
+                                  {card.exampleMeaning}
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex shrink-0 items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => startEditCard(index)}
+                            disabled={saving !== null}
+                            className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink transition-colors"
+                            title="Chỉnh sửa thẻ này"
+                          >
+                            <PencilSimple size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteCard(index)}
+                            disabled={saving !== null}
+                            className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-danger transition-colors"
+                            title="Xoá thẻ này"
+                          >
+                            <Trash size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* Destination Deck Options */}
+            <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface-2 p-4 mt-2">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+                  Tùy chọn lưu bộ thẻ:
+                </span>
+
+                <div className="flex items-center gap-1 rounded-lg border border-line bg-surface p-0.5 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setSaveMode("NEW")}
+                    className={cn(
+                      "rounded-md px-2.5 py-1 font-medium transition-colors",
+                      saveMode === "NEW"
+                        ? "bg-accent text-accent-fg shadow-2xs"
+                        : "text-muted hover:text-ink",
+                    )}
+                  >
+                    Tạo bộ thẻ mới
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSaveMode("EXISTING")}
+                    disabled={decks.length === 0}
+                    className={cn(
+                      "rounded-md px-2.5 py-1 font-medium transition-colors disabled:opacity-50",
+                      saveMode === "EXISTING"
+                        ? "bg-accent text-accent-fg shadow-2xs"
+                        : "text-muted hover:text-ink",
+                    )}
+                  >
+                    Lưu vào bộ đã có ({decks.length})
+                  </button>
+                </div>
+              </div>
+
+              {saveMode === "NEW" ? (
+                <div className="grid gap-3 sm:grid-cols-[1fr_1.5fr]">
+                  <Field id="sit-deck-title" label="Tên bộ thẻ">
+                    <TextInput
+                      id="sit-deck-title"
+                      value={deckTitle}
+                      onChange={(e) => setDeckTitle(e.target.value)}
+                      disabled={saving !== null}
+                      className="h-9 text-sm"
+                    />
+                  </Field>
+                  <Field id="sit-deck-desc" label="Mô tả">
+                    <TextInput
+                      id="sit-deck-desc"
+                      value={deckDesc}
+                      onChange={(e) => setDeckDesc(e.target.value)}
+                      disabled={saving !== null}
+                      className="h-9 text-sm"
+                    />
+                  </Field>
+                </div>
+              ) : (
+                <Field id="sit-deck-select" label="Chọn bộ thẻ đã lưu">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        id="sit-deck-select"
+                        type="button"
+                        disabled={saving !== null || decksLoading || decks.length === 0}
+                        className="flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3.5 text-sm text-ink transition-colors hover:border-ink/25"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <Cards size={16} className="shrink-0 text-accent" />
+                          <span className="truncate font-medium">
+                            {decks.find((d) => d.id === selectedDeckId)?.title ?? "Chọn một bộ thẻ..."}
+                          </span>
+                          {decks.find((d) => d.id === selectedDeckId)?.totalCards !== undefined ? (
+                            <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-2xs text-muted">
+                              {decks.find((d) => d.id === selectedDeckId)?.totalCards} thẻ
+                            </span>
+                          ) : null}
+                        </div>
+                        <CaretDown size={14} className="shrink-0 text-muted" />
+                      </button>
+                    </DropdownMenuTrigger>
+
+                    <DropdownMenuContent
+                      align="start"
+                      className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-64 overflow-y-auto"
+                    >
+                      <DropdownMenuLabel>Bộ thẻ đã lưu ({decks.length})</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {decks.map((deck) => {
+                        const isSelected = deck.id === selectedDeckId;
+                        return (
+                          <DropdownMenuItem
+                            key={deck.id}
+                            onClick={() => setSelectedDeckId(deck.id)}
+                            className={cn(
+                              "flex items-center justify-between py-2",
+                              isSelected && "bg-accent-soft/40 font-medium text-accent-text",
+                            )}
+                          >
+                            <div className="flex items-center gap-2 truncate">
+                              <Cards size={15} className={isSelected ? "text-accent" : "text-muted"} />
+                              <span className="truncate">{deck.title}</span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-xs text-muted">
+                                {deck.totalCards ?? 0} thẻ
+                              </span>
+                              {isSelected ? (
+                                <Check size={13} weight="bold" className="text-accent" />
+                              ) : null}
+                            </div>
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </Field>
+              )}
+            </div>
+          </div>
         </div>
       ) : null}
 
-      <div className="flex justify-end">
-        <Button onClick={generate} disabled={pending || !context.trim()}>
+      <div className="flex flex-wrap justify-end gap-2.5">
+        {result ? (
+          <Button
+            onClick={saveDeck}
+            disabled={saving !== null || vocabCards.length === 0}
+          >
+            Lưu thành bộ thẻ ({vocabCards.length} thẻ)
+          </Button>
+        ) : null}
+        <Button
+          variant={result || empty ? "secondary" : "primary"}
+          onClick={generate}
+          disabled={pending || !context.trim() || saving !== null}
+        >
           {result || empty ? "Dựng lại" : "Dựng bài học"}
         </Button>
       </div>

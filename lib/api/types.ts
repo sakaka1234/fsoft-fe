@@ -771,7 +771,7 @@ export type SituationalLearningResponse = {
   interactions: SituationalSentence[];
   emotions: SituationalSentence[];
   shortCaptions: SituationalSentence[];
-  vocabularies: SituationalSentence[];
+  vocabularies: ExtractedCard[];
 };
 
 /**
