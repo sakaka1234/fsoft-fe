@@ -46,6 +46,7 @@ function getEstimatedFsrsInterval(rating: number, repetitions = 0): string {
 }
 
 export function FsrsStudyMode({ cards, onFinished, onCardReviewed }: FsrsStudyModeProps) {
+  const [cardList, setCardList] = useState<CardResponse[]>(cards);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [backStep, setBackStep] = useState<"initial" | "rating" | "test">("initial");
@@ -55,7 +56,17 @@ export function FsrsStudyMode({ cards, onFinished, onCardReviewed }: FsrsStudyMo
   const [busy, setBusy] = useState(false);
 
   const hiddenInputRef = useRef<HTMLInputElement>(null);
-  const currentCard = cards[currentIndex];
+  const initializedRef = useRef(false);
+
+  useEffect(() => {
+    if (!initializedRef.current || cardList.length === 0) {
+      setCardList(cards);
+      setCurrentIndex(0);
+      initializedRef.current = true;
+    }
+  }, [cards]);
+
+  const currentCard = cardList[currentIndex];
 
   // Auto focus hidden text input when entering test mode
   useEffect(() => {
@@ -111,9 +122,9 @@ export function FsrsStudyMode({ cards, onFinished, onCardReviewed }: FsrsStudyMo
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isFlipped, backStep, isAnswerChecked, currentIndex, cards.length]);
+  }, [isFlipped, backStep, isAnswerChecked, currentIndex, cardList.length]);
 
-  if (!currentCard || cards.length === 0) {
+  if (!currentCard || cardList.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center bg-surface border border-line rounded-3xl">
         <CheckCircle size={48} className="text-emerald-500 mb-3" weight="fill" />
@@ -172,7 +183,12 @@ export function FsrsStudyMode({ cards, onFinished, onCardReviewed }: FsrsStudyMo
     setIsAnswerChecked(false);
     setBusy(false);
 
-    if (currentIndex < cards.length - 1) {
+    // If rating is 1 (Again), re-queue currentCard to end of cardList
+    if (rating === 1) {
+      setCardList((prev) => [...prev, currentCard]);
+    }
+
+    if (currentIndex < cardList.length - 1 || rating === 1) {
       setCurrentIndex((prev) => prev + 1);
     } else {
       if (onFinished) onFinished();
@@ -249,14 +265,14 @@ export function FsrsStudyMode({ cards, onFinished, onCardReviewed }: FsrsStudyMo
     <div className="flex flex-col items-center gap-6 py-2">
       {/* Progress Header */}
       <div className="w-full max-w-xl flex items-center justify-between px-2 text-xs font-semibold text-muted">
-        <span>Thẻ {currentIndex + 1} / {cards.length}</span>
+        <span>Thẻ {currentIndex + 1} / {cardList.length}</span>
         <div className="h-2 flex-1 max-w-[200px] bg-surface-2 rounded-full overflow-hidden mx-3 border border-line">
           <div
             className="h-full bg-accent transition-all duration-300"
-            style={{ width: `${((currentIndex + 1) / cards.length) * 100}%` }}
+            style={{ width: `${((currentIndex + 1) / cardList.length) * 100}%` }}
           />
         </div>
-        <span className="font-mono text-accent-text">{Math.round(((currentIndex + 1) / cards.length) * 100)}%</span>
+        <span className="font-mono text-accent-text">{Math.round(((currentIndex + 1) / cardList.length) * 100)}%</span>
       </div>
 
       {/* 3D Flip Card Container */}
@@ -483,48 +499,44 @@ export function FsrsStudyMode({ cards, onFinished, onCardReviewed }: FsrsStudyMo
         {isFlipped && (backStep === "rating" || isAnswerChecked) ? (
           <div className="w-full flex flex-col gap-2">
             <div className="grid grid-cols-4 gap-2 sm:gap-3 w-full">
-              {/* Nút 1: Học lại (10m) */}
+              {/* Nút 1: Học lại */}
               <button
                 type="button"
                 onClick={() => handleRatingSelect(1)}
                 disabled={busy}
-                className="flex flex-col items-center justify-center rounded-2xl bg-rose-500 py-3 text-white hover:bg-rose-600 transition-colors shadow-md cursor-pointer disabled:opacity-50 active:scale-95"
+                className="flex items-center justify-center rounded-2xl bg-rose-500 py-3.5 text-sm font-extrabold text-white hover:bg-rose-600 transition-colors shadow-md cursor-pointer disabled:opacity-50 active:scale-95"
               >
-                <span className="text-sm font-extrabold">Học lại</span>
-                <span className="text-xs font-mono opacity-90">{getEstimatedFsrsInterval(1, currentCard.position)}</span>
+                Học lại
               </button>
 
-              {/* Nút 2: Khó (2d) */}
+              {/* Nút 2: Khó */}
               <button
                 type="button"
                 onClick={() => handleRatingSelect(2)}
                 disabled={busy}
-                className="flex flex-col items-center justify-center rounded-2xl border border-amber-500/40 bg-amber-500/10 py-3 text-amber-700 hover:bg-amber-500/20 transition-colors shadow-sm cursor-pointer disabled:opacity-50 active:scale-95"
+                className="flex items-center justify-center rounded-2xl border border-amber-500/40 bg-amber-500/10 py-3.5 text-sm font-extrabold text-amber-700 hover:bg-amber-500/20 transition-colors shadow-sm cursor-pointer disabled:opacity-50 active:scale-95"
               >
-                <span className="text-sm font-extrabold">Khó</span>
-                <span className="text-xs font-mono font-semibold text-amber-600">{getEstimatedFsrsInterval(2, currentCard.position)}</span>
+                Khó
               </button>
 
-              {/* Nút 3: Tốt (3d) */}
+              {/* Nút 3: Tốt */}
               <button
                 type="button"
                 onClick={() => handleRatingSelect(3)}
                 disabled={busy}
-                className="flex flex-col items-center justify-center rounded-2xl border border-emerald-500/40 bg-emerald-500/10 py-3 text-emerald-700 hover:bg-emerald-500/20 transition-colors shadow-sm cursor-pointer disabled:opacity-50 active:scale-95"
+                className="flex items-center justify-center rounded-2xl border border-emerald-500/40 bg-emerald-500/10 py-3.5 text-sm font-extrabold text-emerald-700 hover:bg-emerald-500/20 transition-colors shadow-sm cursor-pointer disabled:opacity-50 active:scale-95"
               >
-                <span className="text-sm font-extrabold">Tốt</span>
-                <span className="text-xs font-mono font-semibold text-emerald-600">{getEstimatedFsrsInterval(3, currentCard.position)}</span>
+                Tốt
               </button>
 
-              {/* Nút 4: Dễ (8d) */}
+              {/* Nút 4: Dễ */}
               <button
                 type="button"
                 onClick={() => handleRatingSelect(4)}
                 disabled={busy}
-                className="flex flex-col items-center justify-center rounded-2xl bg-blue-600 py-3 text-white hover:bg-blue-700 transition-colors shadow-md cursor-pointer disabled:opacity-50 active:scale-95"
+                className="flex items-center justify-center rounded-2xl bg-blue-600 py-3.5 text-sm font-extrabold text-white hover:bg-blue-700 transition-colors shadow-md cursor-pointer disabled:opacity-50 active:scale-95"
               >
-                <span className="text-sm font-extrabold">Dễ</span>
-                <span className="text-xs font-mono opacity-90">{getEstimatedFsrsInterval(4, currentCard.position)}</span>
+                Dễ
               </button>
             </div>
             <span className="text-[0.75rem] font-medium text-muted text-center mt-1">
