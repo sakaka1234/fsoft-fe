@@ -32,17 +32,152 @@ const STARTERS = [
   "Những từ nào dễ nhầm lẫn với nhau?",
 ];
 
+function FormattedMarkdown({ content }: { content: string }) {
+  if (!content) return null;
+
+  const lines = content.split("\n");
+  const elements: React.ReactNode[] = [];
+  let elementCounter = 0;
+  let currentList: { type: "ul" | "ol"; items: React.ReactNode[] } | null = null;
+
+  function flushList() {
+    if (currentList) {
+      const listKey = `list-${++elementCounter}`;
+      if (currentList.type === "ul") {
+        elements.push(
+          <ul key={listKey} className="my-2 list-disc space-y-1 pl-5">
+            {currentList.items.map((item, idx) => (
+              <li key={`item-${idx}`}>{item}</li>
+            ))}
+          </ul>
+        );
+      } else {
+        elements.push(
+          <ol key={listKey} className="my-2 list-decimal space-y-1 pl-5">
+            {currentList.items.map((item, idx) => (
+              <li key={`item-${idx}`}>{item}</li>
+            ))}
+          </ol>
+        );
+      }
+      currentList = null;
+    }
+  }
+
+  function parseInline(text: string): React.ReactNode[] {
+    const parts: React.ReactNode[] = [];
+    const regex = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*]+\*)/g;
+    let lastIdx = 0;
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIdx) {
+        parts.push(text.substring(lastIdx, match.index));
+      }
+      const matchedStr = match[0];
+      const inlineKey = `inline-${match.index}`;
+      if (matchedStr.startsWith("**") && matchedStr.endsWith("**")) {
+        parts.push(
+          <strong key={inlineKey} className="font-semibold text-foreground">
+            {matchedStr.slice(2, -2)}
+          </strong>
+        );
+      } else if (matchedStr.startsWith("`") && matchedStr.endsWith("`")) {
+        parts.push(
+          <code key={inlineKey} className="rounded bg-surface px-1.5 py-0.5 font-mono text-xs text-brand">
+            {matchedStr.slice(1, -1)}
+          </code>
+        );
+      } else if (matchedStr.startsWith("*") && matchedStr.endsWith("*")) {
+        parts.push(
+          <em key={inlineKey} className="italic">
+            {matchedStr.slice(1, -1)}
+          </em>
+        );
+      }
+      lastIdx = regex.lastIndex;
+    }
+
+    if (lastIdx < text.length) {
+      parts.push(text.substring(lastIdx));
+    }
+
+    return parts;
+  }
+
+  lines.forEach((rawLine) => {
+    const line = rawLine.trim();
+
+    if (!line) {
+      flushList();
+      return;
+    }
+
+    const itemKey = `elem-${++elementCounter}`;
+
+    if (line.startsWith("### ")) {
+      flushList();
+      elements.push(
+        <h4 key={itemKey} className="mt-3 mb-1 font-semibold text-base text-foreground">
+          {parseInline(line.slice(4))}
+        </h4>
+      );
+      return;
+    }
+    if (line.startsWith("## ")) {
+      flushList();
+      elements.push(
+        <h3 key={itemKey} className="mt-4 mb-2 font-bold text-lg text-foreground">
+          {parseInline(line.slice(3))}
+        </h3>
+      );
+      return;
+    }
+    if (line.startsWith("# ")) {
+      flushList();
+      elements.push(
+        <h2 key={itemKey} className="mt-4 mb-2 font-bold text-xl text-foreground">
+          {parseInline(line.slice(2))}
+        </h2>
+      );
+      return;
+    }
+
+    const bulletMatch = line.match(/^[-*•]\s+(.+)/);
+    if (bulletMatch) {
+      if (!currentList || currentList.type !== "ul") {
+        flushList();
+        currentList = { type: "ul", items: [] };
+      }
+      currentList.items.push(parseInline(bulletMatch[1]));
+      return;
+    }
+
+    const numMatch = line.match(/^\d+\.\s+(.+)/);
+    if (numMatch) {
+      if (!currentList || currentList.type !== "ol") {
+        flushList();
+        currentList = { type: "ol", items: [] };
+      }
+      currentList.items.push(parseInline(numMatch[1]));
+      return;
+    }
+
+    flushList();
+    elements.push(
+      <p key={itemKey} className="mb-2 leading-relaxed text-foreground">
+        {parseInline(line)}
+      </p>
+    );
+  });
+
+  flushList();
+
+  return <div className="space-y-1 text-sm leading-relaxed">{elements}</div>;
+}
+
 /**
  * Grounded chat scoped to one deck.
- *
- * scope_deck_id keeps retrieval inside the deck the reader has open, so
- * citations point at cards they can actually go and look at. The API keeps no
- * conversation state, so the whole thread is resent on every turn; that is
- * also why history lives in component state and not on the server.
- *
- * Citations are filtered to used_in_answer. The response also carries the
- * candidates that were retrieved but not used, and showing those would suggest
- * the answer leaned on cards it never touched.
  */
 export function DeckAiChat({ deckId, onOpenCard }: DeckAiChatProps) {
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -71,7 +206,7 @@ export function DeckAiChat({ deckId, onOpenCard }: DeckAiChatProps) {
         query,
         scope_deck_id: deckId,
         history,
-        options: { top_k: 5, max_output_tokens: 600 },
+        options: { top_k: 5, max_output_tokens: 2048 },
       });
 
       setTurns((value) => [
@@ -92,7 +227,6 @@ export function DeckAiChat({ deckId, onOpenCard }: DeckAiChatProps) {
       );
     } finally {
       setPending(false);
-      /* After the turn is committed, not before, or it scrolls to the old end. */
       requestAnimationFrame(() => {
         threadRef.current?.scrollTo({
           top: threadRef.current.scrollHeight,
@@ -146,7 +280,11 @@ export function DeckAiChat({ deckId, onOpenCard }: DeckAiChatProps) {
                       : "bg-surface-2",
                   )}
                 >
-                  <p className="whitespace-pre-wrap">{turn.content}</p>
+                  {turn.role === "user" ? (
+                    <p className="whitespace-pre-wrap">{turn.content}</p>
+                  ) : (
+                    <FormattedMarkdown content={turn.content} />
+                  )}
                 </div>
 
                 {turn.citations?.length ? (

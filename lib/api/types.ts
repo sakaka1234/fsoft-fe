@@ -405,6 +405,38 @@ export type AiQuizStats = {
   latency_ms: number;
 };
 
+export type QuizGenerateRequest = {
+  deckId?: number;
+  allowedDeckIds?: number[];
+  questionCount?: number;
+  types?: string[];
+  cardIds?: number[];
+  useAiContext?: boolean;
+  isSrsOnly?: boolean;
+};
+
+export type QuizQuestionResponse = {
+  index: number;
+  cardId: number;
+  word?: string;
+  meaning?: string;
+  questionText: string;
+  questionType: string;
+  choices: string[];
+  correctIndex: number;
+  correctAnswer?: string;
+  explanation?: string;
+  audioUrl?: string;
+  engine?: string;
+  matching?: AiMatchingPair[];
+};
+
+export type QuizGenerateResponse = {
+  questions: QuizQuestionResponse[];
+  totalQuestions: number;
+  engine?: string;
+};
+
 export type AiQuizRequest = {
   deck_id?: number;
   allowed_deck_ids?: number[];
@@ -412,11 +444,43 @@ export type AiQuizRequest = {
   types?: string[];
   card_ids?: number[];
   use_ai_context?: boolean;
+  is_srs_only?: boolean;
 };
 
 export type AiQuizResponse = {
   questions: AiQuizQuestion[];
   stats: AiQuizStats;
+};
+
+export type QuizSubmitRequest = {
+  scope: "DECK" | "ALL" | "CUSTOM";
+  totalQuestions: number;
+  correctAnswers: number;
+  score: number;
+  accuracyRate: number;
+  timeSpentSeconds: number;
+};
+
+export type QuizResultResponse = {
+  id: number;
+  scope: string;
+  totalQuestions: number;
+  correctAnswers: number;
+  score: number;
+  accuracyRate: number;
+  timeSpentSeconds: number;
+  xpEarned?: number;
+  isPerfectScore?: boolean;
+  createdAt: string;
+};
+
+export type QuizAnalyticsResponse = {
+  totalQuizzesTaken: number;
+  averageAccuracyRate: number;
+  totalScoreEarned: number;
+  totalTimeSpentSeconds: number;
+  bestAccuracy: number;
+  recentResults: QuizResultResponse[];
 };
 
 export type AiSearchResultItem = {
