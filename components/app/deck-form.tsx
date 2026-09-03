@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Trash } from "@phosphor-icons/react/Trash";
 
 import { Button } from "@/components/ui/button";
-import { Field, SelectInput, TextArea, TextInput } from "@/components/ui/field";
+import { Field, TextArea, TextInput } from "@/components/ui/field";
+import { SelectDropdown } from "@/components/ui/select-dropdown";
 import { FormMessage } from "@/components/auth/form-message";
 import { ApiError } from "@/lib/api/client";
 import type {
@@ -163,33 +164,29 @@ export function DeckForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         <Field id="deck-source" label="Learning from">
-          <SelectInput
+          <SelectDropdown
             id="deck-source"
             value={sourceLanguage}
-            onChange={(event) => setSourceLanguage(event.target.value)}
+            options={LANGUAGES.map((language) => ({
+              value: language.code,
+              label: language.label,
+            }))}
+            onValueChange={(v) => setSourceLanguage(v)}
             disabled={pending}
-          >
-            {LANGUAGES.map((language) => (
-              <option key={language.code} value={language.code}>
-                {language.label}
-              </option>
-            ))}
-          </SelectInput>
+          />
         </Field>
 
         <Field id="deck-target" label="Translated into">
-          <SelectInput
+          <SelectDropdown
             id="deck-target"
             value={targetLanguage}
-            onChange={(event) => setTargetLanguage(event.target.value)}
+            options={LANGUAGES.map((language) => ({
+              value: language.code,
+              label: language.label,
+            }))}
+            onValueChange={(v) => setTargetLanguage(v)}
             disabled={pending}
-          >
-            {LANGUAGES.map((language) => (
-              <option key={language.code} value={language.code}>
-                {language.label}
-              </option>
-            ))}
-          </SelectInput>
+          />
         </Field>
       </div>
 

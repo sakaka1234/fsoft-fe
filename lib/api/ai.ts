@@ -17,6 +17,7 @@ import type {
   MagicSortResult,
   SituationalLearningRequest,
   SituationalLearningResponse,
+  StoryContextType,
   TextExtractionRequest,
   UrlExtractionRequest,
 } from "@/lib/api/types";
@@ -301,13 +302,21 @@ export function aiAutoDeck(body: AiAutoDeckRequest, signal?: AbortSignal) {
 }
 
 /**
- * The only contextType both the spec and the guide agree on.
+ * Context types the UI offers for story generation.
  *
- * The spec offers BUSINESS_EMAIL, DAILY_STORY and NEWS_ARTICLE; the guide
- * offers BUSINESS_EMAIL, DAILY_NEWS and CASUAL_CHAT. Rather than guess which
- * list is real, the client offers only the value that appears in both.
+ * The spec lists BUSINESS_EMAIL, DAILY_STORY and NEWS_ARTICLE; the guide
+ * lists BUSINESS_EMAIL, DAILY_NEWS and CASUAL_CHAT. The field is a free-form
+ * string on the wire (no enum constraint in the schema), so the union of both
+ * lists is offered. BUSINESS_EMAIL stays first and default: it is the only
+ * value both documents agree on.
  */
-export const STORY_CONTEXT_TYPES = ["BUSINESS_EMAIL"] as const;
+export const STORY_CONTEXT_TYPES = [
+  "BUSINESS_EMAIL",
+  "DAILY_STORY",
+  "DAILY_NEWS",
+  "NEWS_ARTICLE",
+  "CASUAL_CHAT",
+] as const satisfies readonly StoryContextType[];
 
 /**
  * Weave a set of words into a short text with a translation.

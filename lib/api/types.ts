@@ -787,15 +787,22 @@ export type AiAutoDeckResponse = {
  * Takes either literal words or cardIds, which it resolves to those cards'
  * words server side.
  *
- * contextType's allowed values are genuinely unknown. The spec says
- * BUSINESS_EMAIL, DAILY_STORY, NEWS_ARTICLE; the guide says BUSINESS_EMAIL,
- * DAILY_NEWS, CASUAL_CHAT. Only BUSINESS_EMAIL appears in both, so that is the
- * only value this client offers.
+ * contextType is a free-form string on the wire, no enum constraint in the
+ * schema. The spec lists BUSINESS_EMAIL, DAILY_STORY and NEWS_ARTICLE; the
+ * guide lists BUSINESS_EMAIL, DAILY_NEWS and CASUAL_CHAT, so the union is
+ * what the client offers.
  */
+export type StoryContextType =
+  | "BUSINESS_EMAIL"
+  | "DAILY_STORY"
+  | "DAILY_NEWS"
+  | "NEWS_ARTICLE"
+  | "CASUAL_CHAT";
+
 export type AiStoryRequest = {
   words?: string[];
   cardIds?: number[];
-  contextType?: string;
+  contextType?: StoryContextType;
 };
 
 export type AiStoryResponse = {

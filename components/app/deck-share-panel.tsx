@@ -5,7 +5,8 @@ import { Trash } from "@phosphor-icons/react/Trash";
 import { UserPlus } from "@phosphor-icons/react/UserPlus";
 
 import { Button } from "@/components/ui/button";
-import { Field, SelectInput, TextInput } from "@/components/ui/field";
+import { Field, TextInput } from "@/components/ui/field";
+import { SelectDropdown } from "@/components/ui/select-dropdown";
 import { EmptyState, ErrorState, RowSkeleton } from "@/components/app/states";
 import { ApiError } from "@/lib/api/client";
 import {
@@ -119,16 +120,15 @@ export function DeckSharePanel({ deckId, compact = false }: DeckSharePanelProps)
         </Field>
 
         <Field id="share-permission" label="Access" className="w-40">
-          <SelectInput
+          <SelectDropdown
             id="share-permission"
             value={permission}
-            onChange={(event) =>
-              setPermission(event.target.value as SharePermission)
-            }
-          >
-            <option value="VIEW">Can view</option>
-            <option value="EDIT">Can edit</option>
-          </SelectInput>
+            options={[
+              { value: "VIEW", label: "Can view" },
+              { value: "EDIT", label: "Can edit" },
+            ]}
+            onValueChange={(v) => setPermission(v as SharePermission)}
+          />
         </Field>
 
         <Button type="submit" disabled={busy || !email.trim()}>
@@ -170,21 +170,23 @@ export function DeckSharePanel({ deckId, compact = false }: DeckSharePanelProps)
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <SelectInput
+                  <SelectDropdown
                     aria-label={`Access for ${share.email}`}
+                    id={`share-permission-${share.profileId}`}
                     value={share.permission}
-                    disabled={busyProfileId === share.profileId}
-                    onChange={(event) =>
+                    options={[
+                      { value: "VIEW", label: "Can view" },
+                      { value: "EDIT", label: "Can edit" },
+                    ]}
+                    onValueChange={(v) =>
                       onChangePermission(
                         share.profileId,
-                        event.target.value as SharePermission,
+                        v as SharePermission,
                       )
                     }
+                    disabled={busyProfileId === share.profileId}
                     className="w-36"
-                  >
-                    <option value="VIEW">Can view</option>
-                    <option value="EDIT">Can edit</option>
-                  </SelectInput>
+                  />
 
                   <Button
                     variant="secondary"

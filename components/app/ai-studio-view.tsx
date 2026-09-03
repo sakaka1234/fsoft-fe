@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { Field, SelectInput, TextArea, TextInput } from "@/components/ui/field";
+import { Field, TextArea, TextInput } from "@/components/ui/field";
+import { SelectDropdown } from "@/components/ui/select-dropdown";
 import { FormMessage } from "@/components/auth/form-message";
 import { EmptyState, RowSkeleton } from "@/components/app/states";
 import { ApiError } from "@/lib/api/client";
@@ -13,6 +14,7 @@ import {
   AUTO_DECK_MAX_CARDS,
   CEFR_LEVELS,
   ROLEPLAY_SCENARIOS,
+  STORY_CONTEXT_TYPES,
   aiAutoDeck,
   aiRoleplay,
   aiRoleplayHistory,
@@ -32,6 +34,7 @@ import type {
   ExtractedCard,
   SituationalLearningResponse,
   SituationalSentence,
+  StoryContextType,
 } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { MagicWand } from "@phosphor-icons/react/MagicWand";
@@ -76,6 +79,14 @@ const TOOLS: { key: Tool; label: string; Icon: typeof MagicWand }[] = [
   { key: "situation", label: "Học theo tình huống", Icon: MapPin },
   { key: "roleplay", label: "Luyện hội thoại", Icon: ChatsCircle },
 ];
+
+const STORY_CONTEXT_LABELS: Record<StoryContextType, string> = {
+  BUSINESS_EMAIL: "Email công việc",
+  DAILY_STORY: "Câu chuyện đời thường",
+  DAILY_NEWS: "Bản tin hàng ngày",
+  NEWS_ARTICLE: "Bài báo",
+  CASUAL_CHAT: "Trò chuyện thân mật",
+};
 
 export function AiStudioView() {
   const [tool, setTool] = useState<Tool>("deck");
@@ -610,6 +621,9 @@ function StoryPanel() {
   const [cardSearch, setCardSearch] = useState("");
   const [selectedCards, setSelectedCards] = useState<CardResponse[]>([]);
   const [customWords, setCustomWords] = useState("");
+  const [contextType, setContextType] = useState<StoryContextType>(
+    STORY_CONTEXT_TYPES[0],
+  );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AiStoryResponse | null>(null);
@@ -746,7 +760,7 @@ function StoryPanel() {
     aiStory({
       words: allTargetWords,
       cardIds: cardIds.length > 0 ? cardIds : undefined,
-      contextType: "BUSINESS_EMAIL",
+      contextType,
     })
       .then((data) => setResult(data))
       .catch((e) => setError(errorText(e)))
@@ -814,10 +828,10 @@ function StoryPanel() {
           ) : null}
         </div>
 
-        {/* Tab 1: From Saved Decks */}
-        {inputTab === "deck" ? (
-          <div className="flex flex-col gap-4 rounded-card border border-line bg-surface p-4 sm:p-5">
-            {decksLoading ? (
+        {/* Input card: tab content + context type */}
+        <div className="flex flex-col gap-4 rounded-card border border-line bg-surface p-4 sm:p-5">
+          {inputTab === "deck" ? (
+            decksLoading ? (
               <RowSkeleton count={2} />
             ) : decks.length === 0 ? (
               <div className="py-6 text-center">
@@ -988,25 +1002,46 @@ function StoryPanel() {
                   </div>
                 )}
               </>
-            )}
-          </div>
-        ) : (
-          /* Tab 2: Custom words textarea */
-          <Field
-            id="story-words"
-            label="Từ cần ghép vào bài"
-            hint="Mỗi dòng hoặc mỗi dấu phẩy một từ."
-          >
-            <TextArea
+            )
+          ) : (
+            /* Tab 2: Custom words textarea */
+            <Field
               id="story-words"
-              rows={5}
-              value={customWords}
-              placeholder={"deadline\nproposal\nconsensus"}
-              onChange={(event) => setCustomWords(event.target.value)}
-              disabled={pending}
-            />
-          </Field>
-        )}
+              label="Từ cần ghép vào bài"
+              hint="Mỗi dòng hoặc mỗi dấu phẩy một từ."
+            >
+              <TextArea
+                id="story-words"
+                rows={5}
+                value={customWords}
+                placeholder={"deadline\nproposal\nconsensus"}
+                onChange={(event) => setCustomWords(event.target.value)}
+                disabled={pending}
+              />
+            </Field>
+          )}
+
+          {/* Context type selector */}
+          <div className="border-t border-line pt-4">
+            <Field
+              id="story-context-type"
+              label="Loại văn bản"
+              hint="Ngữ cảnh AI dùng để viết."
+              className="sm:max-w-xs"
+            >
+              <SelectDropdown
+                id="story-context-type"
+                value={contextType}
+                options={STORY_CONTEXT_TYPES.map((t) => ({
+                  value: t,
+                  label: STORY_CONTEXT_LABELS[t],
+                }))}
+                onValueChange={(v) => setContextType(v as StoryContextType)}
+                disabled={pending}
+              />
+            </Field>
+          </div>
+        </div>
       </div>
 
       {/* Selected Words Tray / Summary */}
@@ -1374,19 +1409,14 @@ function SituationPanel() {
             disabled={pending || saving !== null}
           />
         </Field>
-        <Field id="sit-level" label="Trình độ">
-          <SelectInput
+        <Field id="sit-level" label="Trình độ" className="sm:w-40">
+          <SelectDropdown
             id="sit-level"
             value={level}
-            onChange={(event) => setLevel(event.target.value)}
+            options={CEFR_LEVELS.map((l) => ({ value: l, label: l }))}
+            onValueChange={(v) => setLevel(v)}
             disabled={pending || saving !== null}
-          >
-            {CEFR_LEVELS.map((l) => (
-              <option key={l} value={l}>
-                {l}
-              </option>
-            ))}
-          </SelectInput>
+          />
         </Field>
       </div>
 
@@ -1753,18 +1783,16 @@ function RoleplayPanel() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end gap-3">
         <Field id="rp-scenario" label="Kịch bản" className="min-w-52">
-          <SelectInput
+          <SelectDropdown
             id="rp-scenario"
             value={scenario}
-            onChange={(event) => setScenario(event.target.value)}
+            options={ROLEPLAY_SCENARIOS.map((s) => ({
+              value: s,
+              label: s.replace(/_/g, " ").toLowerCase(),
+            }))}
+            onValueChange={(v) => setScenario(v)}
             disabled={pending}
-          >
-            {ROLEPLAY_SCENARIOS.map((s) => (
-              <option key={s} value={s}>
-                {s.replace(/_/g, " ").toLowerCase()}
-              </option>
-            ))}
-          </SelectInput>
+          />
         </Field>
         <Button variant="secondary" onClick={loadHistory} disabled={pending}>
           Tải hội thoại cũ

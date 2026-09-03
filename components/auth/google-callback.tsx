@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { ButtonLink } from "@/components/ui/button-link";
+import { Spinner } from "@/components/ui/spinner";
 import { FormMessage } from "@/components/auth/form-message";
 import { loginWithGoogle } from "@/lib/api/auth";
 import { startSession } from "@/lib/auth/session-store";
@@ -58,13 +59,23 @@ export function GoogleCallback({ code, error }: GoogleCallbackProps) {
 
   return (
     <Panel>
-      <p className="text-base text-muted">Signing you in with Google</p>
-      <Link
-        href="/login"
-        className="text-sm font-medium text-accent-text underline underline-offset-4"
-      >
-        Cancel
-      </Link>
+      <div className="flex flex-col items-center gap-4 text-center">
+        <Spinner size={36} label="Signing you in" />
+        <div className="flex flex-col gap-1">
+          <p className="text-base font-medium text-ink">
+            Signing you in with Google
+          </p>
+          <p className="text-sm text-muted">
+            This takes a moment, you will land on your dashboard shortly.
+          </p>
+        </div>
+        <Link
+          href="/login"
+          className="text-sm font-medium text-accent-text underline underline-offset-4"
+        >
+          Cancel
+        </Link>
+      </div>
     </Panel>
   );
 }

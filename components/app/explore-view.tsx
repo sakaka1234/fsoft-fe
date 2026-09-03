@@ -9,7 +9,8 @@ import { MagnifyingGlass } from "@phosphor-icons/react/MagnifyingGlass";
 
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { Field, SelectInput, TextInput } from "@/components/ui/field";
+import { Field, TextInput } from "@/components/ui/field";
+import { SelectDropdown } from "@/components/ui/select-dropdown";
 import { DeckCard } from "@/components/app/deck-card";
 import { CardSkeleton, EmptyState, ErrorState } from "@/components/app/states";
 import { ApiError } from "@/lib/api/client";
@@ -128,37 +129,33 @@ export function ExploreView() {
         </Field>
 
         <Field id="explore-source" label="From">
-          <SelectInput
+          <SelectDropdown
             id="explore-source"
             value={sourceLang}
-            onChange={(event) => {
-              setSourceLang(event.target.value);
+            options={LANGUAGES.map((language) => ({
+              value: language.code,
+              label: language.label,
+            }))}
+            onValueChange={(v) => {
+              setSourceLang(v);
               resetToFirstPage();
             }}
-          >
-            {LANGUAGES.map((language) => (
-              <option key={language.code || "any"} value={language.code}>
-                {language.label}
-              </option>
-            ))}
-          </SelectInput>
+          />
         </Field>
 
         <Field id="explore-target" label="Into">
-          <SelectInput
+          <SelectDropdown
             id="explore-target"
             value={targetLang}
-            onChange={(event) => {
-              setTargetLang(event.target.value);
+            options={LANGUAGES.map((language) => ({
+              value: language.code,
+              label: language.label,
+            }))}
+            onValueChange={(v) => {
+              setTargetLang(v);
               resetToFirstPage();
             }}
-          >
-            {LANGUAGES.map((language) => (
-              <option key={language.code || "any"} value={language.code}>
-                {language.label}
-              </option>
-            ))}
-          </SelectInput>
+          />
         </Field>
       </div>
 

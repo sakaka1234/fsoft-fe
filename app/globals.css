@@ -403,6 +403,11 @@
       transition: none;
       transform: none;
     }
+
+    /* Tailwind's animate-spin has no built-in reduced-motion guard. */
+    .animate-spin {
+      animation: none;
+    }
   }
 }
 

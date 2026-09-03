@@ -81,20 +81,3 @@ export function TextArea({
     />
   );
 }
-
-export function SelectInput({
-  invalid,
-  className,
-  children,
-  ...props
-}: React.ComponentPropsWithRef<"select"> & { invalid?: boolean }) {
-  return (
-    <select
-      {...props}
-      aria-invalid={invalid || undefined}
-      className={cn(CONTROL, invalid ? INVALID : VALID, "h-11", className)}
-    >
-      {children}
-    </select>
-  );
-}

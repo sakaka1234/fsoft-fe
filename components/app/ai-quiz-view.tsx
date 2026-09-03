@@ -11,7 +11,8 @@ import { Clock } from "@phosphor-icons/react/Clock";
 import { ClockCounterClockwise } from "@phosphor-icons/react/ClockCounterClockwise";
 
 import { Button } from "@/components/ui/button";
-import { Field, SelectInput } from "@/components/ui/field";
+import { Field } from "@/components/ui/field";
+import { SelectDropdown } from "@/components/ui/select-dropdown";
 import { CardSkeleton, EmptyState, ErrorState } from "@/components/app/states";
 import { ApiError } from "@/lib/api/client";
 import { aiQuiz } from "@/lib/api/ai";
@@ -347,57 +348,56 @@ export function AiQuizView({ deckId }: AiQuizViewProps) {
 
               <div className="mt-6 grid gap-5 sm:grid-cols-2">
                 <Field id="quiz-engine" label="Chế độ tạo câu hỏi">
-                  <SelectInput
+                  <SelectDropdown
                     id="quiz-engine"
                     value={engine}
-                    onChange={(event) => setEngine(event.target.value as "LOCAL" | "AI")}
-                  >
-                    <option value="LOCAL">Tạo nhanh</option>
-                    <option value="AI">Tạo nâng cao với AI</option>
-                  </SelectInput>
+                    options={[
+                      { value: "LOCAL", label: "Tạo nhanh" },
+                      { value: "AI", label: "Tạo nâng cao với AI" },
+                    ]}
+                    onValueChange={(v) => setEngine(v as "LOCAL" | "AI")}
+                  />
                 </Field>
 
                 <Field id="quiz-count" label="Số câu hỏi">
-                  <SelectInput
+                  <SelectDropdown
                     id="quiz-count"
                     value={String(count)}
-                    onChange={(event) => setCount(Number(event.target.value))}
-                  >
-                    {[5, 10, 15, 20].map((value) => (
-                      <option key={value} value={value}>
-                        {value} câu
-                      </option>
-                    ))}
-                  </SelectInput>
+                    options={[5, 10, 15, 20].map((value) => ({
+                      value: String(value),
+                      label: `${value} câu`,
+                    }))}
+                    onValueChange={(v) => setCount(Number(v))}
+                  />
                 </Field>
 
                 {engine === "AI" ? (
                   <>
                     <Field id="quiz-type" label="Dạng câu hỏi">
-                      <SelectInput
+                      <SelectDropdown
                         id="quiz-type"
                         value={quizType}
-                        onChange={(event) => setQuizType(event.target.value)}
-                      >
-                        <option value="MIXED">Trộn nhiều dạng câu</option>
-                        <option value="MULTIPLE_CHOICE">Trắc nghiệm nghĩa từ</option>
-                        <option value="LISTENING">Luyện nghe âm thanh</option>
-                        <option value="MATCHING">Nối từ với nghĩa</option>
-                        <option value="FILL_BLANK">Điền vào chỗ trống (AI)</option>
-                      </SelectInput>
+                        options={[
+                          { value: "MIXED", label: "Trộn nhiều dạng câu" },
+                          { value: "MULTIPLE_CHOICE", label: "Trắc nghiệm nghĩa từ" },
+                          { value: "LISTENING", label: "Luyện nghe âm thanh" },
+                          { value: "MATCHING", label: "Nối từ với nghĩa" },
+                          { value: "FILL_BLANK", label: "Điền vào chỗ trống (AI)" },
+                        ]}
+                        onValueChange={(v) => setQuizType(v)}
+                      />
                     </Field>
 
                     <Field id="quiz-scope" label="Chế độ học">
-                      <SelectInput
+                      <SelectDropdown
                         id="quiz-scope"
                         value={isSrsOnly ? "srs" : "all"}
-                        onChange={(event) =>
-                          setIsSrsOnly(event.target.value === "srs")
-                        }
-                      >
-                        <option value="all">Tất cả các thẻ</option>
-                        <option value="srs">Thẻ đến hạn SRS</option>
-                      </SelectInput>
+                        options={[
+                          { value: "all", label: "Tất cả các thẻ" },
+                          { value: "srs", label: "Thẻ đến hạn SRS" },
+                        ]}
+                        onValueChange={(v) => setIsSrsOnly(v === "srs")}
+                      />
                     </Field>
                   </>
                 ) : null}
@@ -609,23 +609,29 @@ export function AiQuizView({ deckId }: AiQuizViewProps) {
                               )}
                             >
                               <span className="font-semibold text-base">{pair.word}</span>
-                              <SelectInput
-                                value={userOption !== undefined ? String(userOption) : ""}
-                                onChange={(e) => {
-                                  if (matchingSubmitted) return;
-                                  const val = Number(e.target.value);
-                                  setMatchingPicks((prev) => ({ ...prev, [idx]: val }));
+                              <SelectDropdown
+                                id={`matching-${question.index}-${pair.word}`}
+                                value={
+                                  userOption !== undefined ? String(userOption) : ""
+                                }
+                                options={[
+                                  { value: "", label: "-- Chọn nghĩa khớp --" },
+                                  ...question.choices.map((opt, optIdx) => ({
+                                    value: String(optIdx),
+                                    label: opt,
+                                  })),
+                                ]}
+                                placeholder="-- Chọn nghĩa khớp --"
+                                onValueChange={(v) => {
+                                  if (matchingSubmitted || v === "") return;
+                                  setMatchingPicks((prev) => ({
+                                    ...prev,
+                                    [idx]: Number(v),
+                                  }));
                                 }}
                                 disabled={matchingSubmitted}
                                 className="sm:w-60"
-                              >
-                                <option value="" disabled>-- Chọn nghĩa khớp --</option>
-                                {question.choices.map((opt, optIdx) => (
-                                  <option key={optIdx} value={optIdx}>
-                                    {opt}
-                                  </option>
-                                ))}
-                              </SelectInput>
+                              />
                             </div>
                           );
                         })}

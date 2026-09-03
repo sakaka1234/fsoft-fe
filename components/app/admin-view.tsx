@@ -5,7 +5,8 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { Field, SelectInput, TextInput } from "@/components/ui/field";
+import { Field, TextInput } from "@/components/ui/field";
+import { SelectDropdown } from "@/components/ui/select-dropdown";
 import { EmptyState, ErrorState, RowSkeleton } from "@/components/app/states";
 import { ApiError } from "@/lib/api/client";
 import {
@@ -316,18 +317,19 @@ function UsersSection() {
           />
         </Field>
         <Field id="admin-user-role" label="Lọc theo quyền">
-          <SelectInput
+          <SelectDropdown
             id="admin-user-role"
             value={role}
-            onChange={(event) => {
+            options={[
+              { value: "", label: "Tất cả" },
+              { value: "USER", label: "USER" },
+              { value: "ADMIN", label: "ADMIN" },
+            ]}
+            onValueChange={(v) => {
               setPage(0);
-              setRole(event.target.value);
+              setRole(v);
             }}
-          >
-            <option value="">Tất cả</option>
-            <option value="USER">USER</option>
-            <option value="ADMIN">ADMIN</option>
-          </SelectInput>
+          />
         </Field>
       </div>
 
@@ -500,33 +502,35 @@ function DecksSection() {
           />
         </Field>
         <Field id="admin-deck-visibility" label="Phạm vi">
-          <SelectInput
+          <SelectDropdown
             id="admin-deck-visibility"
             value={visibility}
-            onChange={(event) => {
+            options={[
+              { value: "", label: "Tất cả" },
+              { value: "PUBLIC", label: "PUBLIC" },
+              { value: "PRIVATE", label: "PRIVATE" },
+              { value: "SHARED", label: "SHARED" },
+            ]}
+            onValueChange={(v) => {
               setPage(0);
-              setVisibility(event.target.value as "" | DeckVisibility);
+              setVisibility(v as "" | DeckVisibility);
             }}
-          >
-            <option value="">Tất cả</option>
-            <option value="PUBLIC">PUBLIC</option>
-            <option value="PRIVATE">PRIVATE</option>
-            <option value="SHARED">SHARED</option>
-          </SelectInput>
+          />
         </Field>
         <Field id="admin-deck-official" label="Chính thức">
-          <SelectInput
+          <SelectDropdown
             id="admin-deck-official"
             value={official}
-            onChange={(event) => {
+            options={[
+              { value: "", label: "Tất cả" },
+              { value: "true", label: "Chỉ bộ chính thức" },
+              { value: "false", label: "Không chính thức" },
+            ]}
+            onValueChange={(v) => {
               setPage(0);
-              setOfficial(event.target.value as "" | "true" | "false");
+              setOfficial(v as "" | "true" | "false");
             }}
-          >
-            <option value="">Tất cả</option>
-            <option value="true">Chỉ bộ chính thức</option>
-            <option value="false">Không chính thức</option>
-          </SelectInput>
+          />
         </Field>
       </div>
 

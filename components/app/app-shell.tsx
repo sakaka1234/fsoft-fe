@@ -10,6 +10,7 @@ import { X } from "@phosphor-icons/react/X";
 
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
+import { Spinner } from "@/components/ui/spinner";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { NotificationBell } from "@/components/app/notification-bell";
 import { site } from "@/content/site";
@@ -164,7 +165,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (!session) {
     return (
-      <div className="flex min-h-dvh items-center justify-center">
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-3">
+        <Spinner size={36} label="Checking your session" />
         <p className="text-sm text-muted">Checking your session</p>
       </div>
     );
