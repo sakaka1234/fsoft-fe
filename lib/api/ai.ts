@@ -10,6 +10,8 @@ import type {
   AiRoleplayRequest,
   AiRoleplayResponse,
   AiRoleplayTurn,
+  AiRoleplaySessionResponse,
+  CreateAiRoleplaySessionRequest,
   AiStoryRequest,
   AiStoryResponse,
   ExtractedCard,
@@ -20,6 +22,9 @@ import type {
   StoryContextType,
   TextExtractionRequest,
   UrlExtractionRequest,
+  VocabLookupRequest,
+  VocabLookupResponse,
+  CardSuggestionResponse,
 } from "@/lib/api/types";
 
 /*
@@ -442,6 +447,33 @@ export function aiRoleplayReset(conversationId: string, signal?: AbortSignal) {
   );
 }
 
+export function aiRoleplaySessions(signal?: AbortSignal) {
+  return apiFetch<AiRoleplaySessionResponse[]>("/api/ai/roleplay/sessions", {
+    auth: true,
+    signal,
+  });
+}
+
+export function aiRoleplayCreateSession(
+  body: CreateAiRoleplaySessionRequest,
+  signal?: AbortSignal,
+) {
+  return apiFetch<AiRoleplaySessionResponse>("/api/ai/roleplay/sessions", {
+    method: "POST",
+    body,
+    auth: true,
+    signal,
+  });
+}
+
+export function aiRoleplayDeleteSession(sessionId: string, signal?: AbortSignal) {
+  return apiFetch<void>(`/api/ai/roleplay/sessions/${encodeURIComponent(sessionId)}`, {
+    method: "DELETE",
+    auth: true,
+    signal,
+  });
+}
+
 /**
  * Suggest a deck for each loose word.
  *
@@ -462,13 +494,26 @@ export function aiMagicSort(body: MagicSortRequest, signal?: AbortSignal) {
   });
 }
 
-/*
-  NOT WIRED, on purpose: GET /api/ai/extract/suggestions.
+/**
+ * Tra từ vựng bằng AI Service (fsoft-ai /internal/v1/vocab/lookup).
+ */
+export function aiVocabLookup(body: VocabLookupRequest, signal?: AbortSignal) {
+  return apiFetch<VocabLookupResponse>("/api/ai/vocab/lookup", {
+    method: "POST",
+    body,
+    auth: true,
+    signal,
+  });
+}
 
-  It is the typeahead the guide describes for the card form, and it would be
-  genuinely useful there. It is also broken: nine of nine calls answered HTTP
-  500 "Something went wrong: Failed to read resource" in about 0.4s, with both
-  a user and an admin token and five different queries. It never returned a
-  successful body, so its response shape has never been seen and nothing here
-  could be written against it honestly. See docs/backend-issues.md.
-*/
+/**
+ * Autocomplete suggestions khi vừa gõ từ trong CardForm (Java BE /api/ai/extract/suggestions).
+ */
+export function aiCardSuggestions(query: string, signal?: AbortSignal) {
+  return apiFetch<CardSuggestionResponse>(
+    `/api/ai/extract/suggestions?query=${encodeURIComponent(query)}`,
+    { auth: true, signal },
+  );
+}
+
+

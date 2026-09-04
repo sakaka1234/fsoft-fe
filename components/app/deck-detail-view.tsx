@@ -458,6 +458,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
         {addingCard ? (
           <div className="mt-6">
             <CardForm
+              deckId={deckId}
               submitLabel="Add card"
               onCancel={() => setAddingCard(false)}
               onSubmit={async (request, files) => {
@@ -507,6 +508,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
             editingCardId ? (
               <div className="mb-6">
                 <CardForm
+                  deckId={deckId}
                   card={cards.data.content.find((c) => c.id === editingCardId)}
                   submitLabel="Save card"
                   onCancel={() => setEditingCardId(null)}

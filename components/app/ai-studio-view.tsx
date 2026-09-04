@@ -19,8 +19,12 @@ import {
   aiRoleplay,
   aiRoleplayHistory,
   aiRoleplayReset,
+  aiRoleplaySessions,
+  aiRoleplayCreateSession,
+  aiRoleplayDeleteSession,
   aiSituationalLearning,
   aiStory,
+  aiVocabLookup,
   situationalLessonIsEmpty,
 } from "@/lib/api/ai";
 import { createDeck, listMyDecks } from "@/lib/api/decks";
@@ -28,6 +32,7 @@ import { createCard, listCards } from "@/lib/api/cards";
 import type {
   AiAutoDeckResponse,
   AiRoleplayResponse,
+  AiRoleplaySessionResponse,
   AiStoryResponse,
   CardResponse,
   DeckResponse,
@@ -35,6 +40,7 @@ import type {
   SituationalLearningResponse,
   SituationalSentence,
   StoryContextType,
+  VocabLookupResponse,
 } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { MagicWand } from "@phosphor-icons/react/MagicWand";
@@ -1718,32 +1724,195 @@ function SituationPanel() {
 
 /* ------------------------------- roleplay ------------------------------- */
 
-type Turn = { role: "USER" | "ASSISTANT"; content: string };
+type Turn = { role: "USER" | "ASSISTANT"; content: string; createdAt?: string };
+
+const SCENARIO_PRESETS = [
+  { key: "JOB_INTERVIEW", label: "Phỏng vấn tuyển dụng" },
+  { key: "DOCTOR_APPOINTMENT", label: "Khám bệnh phòng khám" },
+  { key: "HOTEL_CHECKIN", label: "Check-in Khách sạn" },
+  { key: "RESTAURANT", label: "Gọi món Nhà hàng" },
+  { key: "CUSTOM", label: "Kịch bản tự chọn" },
+];
 
 function RoleplayPanel() {
-  const [scenario, setScenario] = useState<string>(ROLEPLAY_SCENARIOS[0]);
+  const [sessions, setSessions] = useState<AiRoleplaySessionResponse[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("ai_roleplay_active_session") || "";
+    }
+    return "";
+  });
+
+  const [selectedPreset, setSelectedPreset] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("ai_roleplay_preset") || "CUSTOM";
+    }
+    return "CUSTOM";
+  });
+
+  const [customScenarioText, setCustomScenarioText] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("ai_roleplay_custom_text") || "";
+    }
+    return "";
+  });
+
+  const [targetWordsInput, setTargetWordsInput] = useState<string>("deadline, proposal, consensus");
   const [message, setMessage] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
   const [feedback, setFeedback] = useState<AiRoleplayResponse | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /*
-    No conversationId is sent, so the server keys the thread on the account's
-    own id. That is deliberate: conversation history is NOT user scoped, and
-    any authenticated caller who knows an id can read it, so inventing a
-    guessable id here would make a private practice session readable by anyone
-    who guessed it.
-  */
+  const refreshSessions = useCallback(() => {
+    aiRoleplaySessions()
+      .then((data) => {
+        setSessions(data);
+        if (data.length > 0 && !activeSessionId) {
+          setActiveSessionId(data[0].id);
+          if (data[0].scenario) {
+            if (SCENARIO_PRESETS.some((p) => p.key === data[0].scenario)) {
+              setSelectedPreset(data[0].scenario);
+            } else {
+              setSelectedPreset("CUSTOM");
+              setCustomScenarioText(data[0].scenario);
+            }
+          }
+          if (data[0].targetWords && data[0].targetWords.length > 0) {
+            setTargetWordsInput(data[0].targetWords.join(", "));
+          }
+        }
+      })
+      .catch(() => undefined);
+  }, [activeSessionId]);
+
+  useEffect(() => {
+    refreshSessions();
+  }, [refreshSessions]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && activeSessionId) {
+      localStorage.setItem("ai_roleplay_active_session", activeSessionId);
+    }
+  }, [activeSessionId]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ai_roleplay_preset", selectedPreset);
+    }
+  }, [selectedPreset]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ai_roleplay_custom_text", customScenarioText);
+    }
+  }, [customScenarioText]);
+
+  const conversationId = useMemo(() => {
+    if (activeSessionId) return activeSessionId.slice(0, 36);
+    const raw = selectedPreset === "CUSTOM" 
+      ? "session-custom"
+      : `session-${selectedPreset.toLowerCase()}`;
+    return raw.slice(0, 36);
+  }, [activeSessionId, selectedPreset]);
+
+  const scenario = useMemo(() => {
+    if (selectedPreset === "CUSTOM") {
+      return customScenarioText.trim() || "Giao tiếp tự do";
+    }
+    return selectedPreset;
+  }, [selectedPreset, customScenarioText]);
+
+  const targetWords = useMemo(
+    () =>
+      targetWordsInput
+        .split(/[\n,]/)
+        .map((w) => w.trim())
+        .filter(Boolean),
+    [targetWordsInput],
+  );
+
   const loadHistory = useCallback(() => {
-    aiRoleplayHistory()
+    if (!conversationId) return;
+    setPending(true);
+    setError(null);
+    aiRoleplayHistory(conversationId)
       .then((past) =>
-        setTurns(past.map((t) => ({ role: t.role, content: t.content }))),
+        setTurns(past.map((t) => ({ role: t.role, content: t.content, createdAt: t.createdAt }))),
       )
       .catch(() => {
-        // An empty or unreadable history is not worth an error banner.
-      });
-  }, []);
+        setTurns([]);
+      })
+      .finally(() => setPending(false));
+  }, [conversationId]);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+
+  function handleCreateNewSession() {
+    const defaultTitle = selectedPreset === "CUSTOM" && customScenarioText.trim()
+      ? customScenarioText.trim()
+      : (SCENARIO_PRESETS.find((p) => p.key === selectedPreset)?.label || "Phiên hội thoại mới");
+
+    setPending(true);
+    aiRoleplayCreateSession({
+      title: defaultTitle,
+      scenario,
+      targetWords,
+    })
+      .then((newSession) => {
+        setSessions((prev) => [newSession, ...prev]);
+        setActiveSessionId(newSession.id);
+        setTurns([]);
+        setFeedback(null);
+      })
+      .catch(() => {
+        const fallbackId = typeof window !== "undefined" && window.crypto?.randomUUID
+          ? window.crypto.randomUUID()
+          : `session-${Date.now()}`;
+        setActiveSessionId(fallbackId);
+        setTurns([]);
+        setFeedback(null);
+      })
+      .finally(() => setPending(false));
+  }
+
+  function handleDeleteSession(sessionId: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!window.confirm("Bạn có chắc chắn muốn xóa phiên hội thoại này?")) return;
+    
+    aiRoleplayDeleteSession(sessionId)
+      .then(() => {
+        const remaining = sessions.filter((s) => s.id !== sessionId);
+        setSessions(remaining);
+        if (activeSessionId === sessionId) {
+          if (remaining.length > 0) {
+            handleSelectSession(remaining[0]);
+          } else {
+            setActiveSessionId("");
+            setTurns([]);
+            setFeedback(null);
+          }
+        }
+      })
+      .catch(() => undefined);
+  }
+
+  function handleSelectSession(session: AiRoleplaySessionResponse) {
+    setActiveSessionId(session.id);
+    if (session.scenario) {
+      if (SCENARIO_PRESETS.some((p) => p.key === session.scenario)) {
+        setSelectedPreset(session.scenario);
+      } else {
+        setSelectedPreset("CUSTOM");
+        setCustomScenarioText(session.scenario);
+      }
+    }
+    if (session.targetWords && session.targetWords.length > 0) {
+      setTargetWordsInput(session.targetWords.join(", "));
+    }
+  }
 
   function send() {
     const text = message.trim();
@@ -1752,114 +1921,267 @@ function RoleplayPanel() {
     setMessage("");
     setPending(true);
     setError(null);
-    aiRoleplay({ userMessage: text, scenario })
+
+    aiRoleplay({
+      userMessage: text,
+      scenario,
+      targetWords,
+      conversationId,
+    })
       .then((reply) => {
         setTurns((current) => [
           ...current,
           { role: "ASSISTANT", content: reply.tutorReply },
         ]);
         setFeedback(reply);
+        refreshSessions();
       })
       .catch((e) => setError(errorText(e)))
       .finally(() => setPending(false));
   }
 
   function reset() {
-    if (!window.confirm("Xoá toàn bộ hội thoại đang có?")) return;
+    if (!window.confirm("Xoá toàn bộ lịch sử đối thoại kịch bản này?")) return;
     setPending(true);
-    // Without an explicit id the server uses the account id; the reset route
-    // needs that id in the path, so the thread is cleared by sending "me",
-    // which the server resolves the same way. Falls back to clearing locally.
-    aiRoleplayReset("me")
+    aiRoleplayReset(conversationId)
       .catch(() => undefined)
       .finally(() => {
         setTurns([]);
         setFeedback(null);
+        setCustomScenarioText("");
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("ai_roleplay_custom_text");
+        }
         setPending(false);
       });
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-end gap-3">
-        <Field id="rp-scenario" label="Kịch bản" className="min-w-52">
+    <div className="flex flex-col gap-6">
+      {/* Session History Header Bar */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-line bg-surface-2/40 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ChatsCircle size={18} className="text-accent" />
+            <span className="font-semibold text-sm text-ink">Danh sách phiên hội thoại ({sessions.length})</span>
+          </div>
+          <Button variant="secondary" className="h-8 px-3 text-xs" onClick={handleCreateNewSession} disabled={pending}>
+            <Plus size={14} className="mr-1" />
+            Tạo phiên mới
+          </Button>
+        </div>
+
+        {sessions.length > 0 ? (
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+            {sessions.map((s) => {
+              const isActive = s.id === conversationId;
+              return (
+                <div
+                  key={s.id}
+                  onClick={() => handleSelectSession(s)}
+                  className={cn(
+                    "group flex shrink-0 cursor-pointer items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-medium transition-all",
+                    isActive
+                      ? "border-accent bg-accent-soft/40 text-accent font-semibold shadow-xs"
+                      : "border-line bg-surface hover:border-ink/20 text-ink/80",
+                  )}
+                >
+                  <span className="max-w-[150px] truncate">{s.title || "Phiên hội thoại"}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => handleDeleteSession(s.id, e)}
+                    className="opacity-0 group-hover:opacity-100 text-muted hover:text-red-500 transition-opacity p-0.5"
+                    title="Xóa phiên chat này"
+                  >
+                    <Trash size={13} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
+
+      {/* Controls Header */}
+      <div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto]">
+        <Field id="rp-scenario" label="Kịch bản giao tiếp">
           <SelectDropdown
             id="rp-scenario"
-            value={scenario}
-            options={ROLEPLAY_SCENARIOS.map((s) => ({
-              value: s,
-              label: s.replace(/_/g, " ").toLowerCase(),
-            }))}
-            onValueChange={(v) => setScenario(v)}
+            value={selectedPreset}
+            options={SCENARIO_PRESETS.map((s) => ({ value: s.key, label: s.label }))}
+            onValueChange={(val) => setSelectedPreset(val)}
             disabled={pending}
           />
         </Field>
-        <Button variant="secondary" onClick={loadHistory} disabled={pending}>
-          Tải hội thoại cũ
-        </Button>
-        <Button variant="secondary" onClick={reset} disabled={pending}>
-          Bắt đầu lại
-        </Button>
+
+        {selectedPreset === "CUSTOM" ? (
+          <Field id="rp-custom-scenario" label="Mô tả kịch bản tự chọn của bạn">
+            <TextInput
+              id="rp-custom-scenario"
+              value={customScenarioText}
+              placeholder="vd: Thuyết trình sản phẩm cho đối tác Nhật Bản"
+              onChange={(e) => setCustomScenarioText(e.target.value)}
+              disabled={pending}
+              className="h-10 text-sm"
+            />
+          </Field>
+        ) : (
+          <Field
+            id="rp-target-words"
+            label="Từ vựng mục tiêu (ngăn cách bởi dấu phẩy)"
+            hint="Gia sư AI sẽ ép bạn lồng ghép các từ này vào câu trả lời"
+          >
+            <TextInput
+              id="rp-target-words"
+              value={targetWordsInput}
+              placeholder="vd: deadline, proposal, budget"
+              onChange={(event) => setTargetWordsInput(event.target.value)}
+              disabled={pending}
+              className="h-10 text-sm"
+            />
+          </Field>
+        )}
+
+        <div className="flex items-end gap-2">
+          <Button variant="secondary" onClick={reset} disabled={pending}>
+            Bắt đầu lại
+          </Button>
+        </div>
       </div>
+
+      {/* Additional target words field if custom scenario is selected */}
+      {selectedPreset === "CUSTOM" ? (
+        <Field
+          id="rp-target-words-custom"
+          label="Từ vựng mục tiêu (ngăn cách bởi dấu phẩy)"
+          hint="Gia sư AI sẽ ép bạn lồng ghép các từ này vào câu trả lời"
+        >
+          <TextInput
+            id="rp-target-words-custom"
+            value={targetWordsInput}
+            placeholder="vd: deadline, proposal, budget"
+            onChange={(event) => setTargetWordsInput(event.target.value)}
+            disabled={pending}
+            className="h-10 text-sm"
+          />
+        </Field>
+      ) : null}
+
+
+      {/* Target Words Badges */}
+      {targetWords.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface-2/60 p-3 text-xs">
+          <span className="font-semibold text-muted">Từ vựng ép dùng:</span>
+          {targetWords.map((word, idx) => {
+            const isUsed = feedback?.wordsUsed?.some(
+              (w) => w.toLowerCase() === word.toLowerCase(),
+            );
+            return (
+              <span
+                key={idx}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 font-medium transition-colors",
+                  isUsed
+                    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"
+                    : "bg-surface border border-line text-ink/80",
+                )}
+              >
+                {isUsed ? <Check size={12} weight="bold" /> : null}
+                {word}
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
 
       {error ? <FormMessage>{error}</FormMessage> : null}
 
+      {/* Conversation Turns Stream */}
       {turns.length === 0 && !pending ? (
         <EmptyState
-          title="Chưa có lượt nào"
-          body="Chọn kịch bản rồi gõ câu tiếng Anh đầu tiên. Gia sư sẽ trả lời, chấm điểm và góp ý."
+          title="Chưa có lượt đối thoại nào"
+          body="Chọn kịch bản, nhập từ vựng cần luyện rồi gửi câu tiếng Anh đầu tiên. Gia sư AI sẽ đóng vai trả lời, chấm điểm và gợi ý sửa lỗi."
         />
       ) : null}
 
       {turns.length > 0 ? (
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col gap-3 max-h-[500px] overflow-y-auto pr-1">
           {turns.map((turn, index) => (
             <li
               key={index}
               className={cn(
-                "max-w-[85%] rounded-card px-4 py-3",
+                "max-w-[85%] rounded-card px-4 py-3 shadow-2xs transition-all",
                 turn.role === "USER"
-                  ? "self-end bg-accent-soft text-ink"
-                  : "self-start border border-line bg-surface",
+                  ? "self-end bg-accent text-accent-fg"
+                  : "self-start border border-line bg-surface text-ink",
               )}
             >
-              <p className="whitespace-pre-line">{turn.content}</p>
+              <div className="flex items-center gap-2 mb-1 text-2xs opacity-75">
+                <span className="font-semibold">
+                  {turn.role === "USER" ? "Bạn" : "Gia sư AI"}
+                </span>
+              </div>
+              <p className="whitespace-pre-line text-sm leading-relaxed">
+                {turn.content}
+              </p>
             </li>
           ))}
         </ul>
       ) : null}
 
-      {pending ? <p className="text-sm text-muted">Gia sư đang trả lời…</p> : null}
+      {pending ? (
+        <div className="flex items-center gap-2 text-sm text-muted animate-pulse">
+          <div className="h-2 w-2 rounded-full bg-accent animate-ping" />
+          Gia sư AI đang nhập câu trả lời & chấm điểm...
+        </div>
+      ) : null}
 
+      {/* Tutor Feedback Card */}
       {feedback ? (
-        <div className="flex flex-col gap-2 rounded-card border border-line bg-surface-2 p-4">
-          <p className="text-sm">
-            Điểm lượt vừa rồi:{" "}
-            <span className="font-mono font-semibold tabular-nums">
-              {feedback.score}/100
+        <div className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3 border-b border-line pb-2.5">
+            <span className="text-sm font-semibold text-ink">
+              Nhận xét lượt vừa rồi
             </span>
-          </p>
-          {feedback.wordsUsed.length > 0 ? (
-            <p className="text-sm text-muted">
-              Đã dùng: {feedback.wordsUsed.join(", ")}
-            </p>
-          ) : null}
-          {feedback.suggestions.length > 0 ? (
-            <ul className="flex list-disc flex-col gap-1 pl-5 text-sm text-muted">
-              {feedback.suggestions.map((s, i) => (
-                <li key={i}>{s}</li>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              Score: {feedback.score}/100
+            </div>
+          </div>
+
+          {feedback.wordsUsed && feedback.wordsUsed.length > 0 ? (
+            <div className="text-xs text-muted flex items-center gap-1.5 flex-wrap">
+              <span className="font-medium text-ink">Từ đã lồng ghép thành công:</span>
+              {feedback.wordsUsed.map((w, i) => (
+                <span
+                  key={i}
+                  className="rounded-md bg-emerald-500/10 px-2 py-0.5 font-semibold text-emerald-700 dark:text-emerald-300"
+                >
+                  ✓ {w}
+                </span>
               ))}
-            </ul>
+            </div>
+          ) : null}
+
+          {feedback.suggestions && feedback.suggestions.length > 0 ? (
+            <div className="flex flex-col gap-1 text-xs">
+              <span className="font-medium text-ink">Gợi ý & Góp ý ngữ pháp:</span>
+              <ul className="flex list-disc flex-col gap-1 pl-4 text-muted">
+                {feedback.suggestions.map((s: string, i: number) => (
+                  <li key={i}>{s}</li>
+                ))}
+              </ul>
+            </div>
           ) : null}
         </div>
       ) : null}
 
+      {/* Input Message Form */}
       <div className="flex items-end gap-3">
-        <Field id="rp-message" label="Câu của bạn" className="min-w-0 flex-1">
+        <Field id="rp-message" label="Câu trả lời bằng Tiếng Anh của bạn" className="min-w-0 flex-1">
           <TextInput
             id="rp-message"
             value={message}
-            placeholder="In my last project, I met the deadline."
+            placeholder="In my last project, I reached a consensus with my team to hit the deadline..."
             onChange={(event) => setMessage(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
@@ -1868,12 +2190,15 @@ function RoleplayPanel() {
               }
             }}
             disabled={pending}
+            className="h-11 text-sm"
           />
         </Field>
-        <Button onClick={send} disabled={pending || !message.trim()}>
-          Gửi
+        <Button onClick={send} disabled={pending || !message.trim()} className="h-11 px-6 font-semibold">
+          Gửi lượt nói
         </Button>
       </div>
     </div>
   );
 }
+
+
