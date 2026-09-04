@@ -6,14 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Field, TextArea, TextInput } from "@/components/ui/field";
 import { FormMessage } from "@/components/auth/form-message";
 import { ApiError } from "@/lib/api/client";
-import {
-  entryPhonetic,
-  isWordNotFound,
-  lookupWord,
-} from "@/lib/api/dictionary";
-import type { CardResponse, CardWriteRequest } from "@/lib/api/types";
+import { aiVocabLookup } from "@/lib/api/ai";
+import type { CardResponse, CardWriteRequest, VocabLookupResponse } from "@/lib/api/types";
 import { Trash } from "@phosphor-icons/react/Trash";
-import { BookOpen } from "@phosphor-icons/react/BookOpen";
+import { MagicWand } from "@phosphor-icons/react/MagicWand";
 
 type CardFiles = { imageFile?: File | null; audioFile?: File | null };
 
@@ -24,12 +20,14 @@ type CardFiles = { imageFile?: File | null; audioFile?: File | null };
 type LookupState =
   | { kind: "idle" }
   | { kind: "loading" }
-  | { kind: "filled"; fields: string[]; entry: string }
-  | { kind: "nothing-to-fill"; entry: string }
+  | { kind: "filled"; fields: string[]; entry: string; alreadyInDeck?: boolean; existingCardId?: number | null }
+  | { kind: "nothing-to-fill"; entry: string; alreadyInDeck?: boolean; existingCardId?: number | null }
   | { kind: "empty" }
+  | { kind: "suggestion"; word: string; suggestion: string }
   | { kind: "error"; message: string };
 
 type CardFormProps = {
+  deckId?: number;
   card?: CardResponse;
   onSubmit: (request: CardWriteRequest, files: CardFiles) => Promise<unknown>;
   onCancel: () => void;
@@ -37,6 +35,7 @@ type CardFormProps = {
 };
 
 export function CardForm({
+  deckId,
   card,
   onSubmit,
   onCancel,
@@ -83,79 +82,116 @@ export function CardForm({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const [lookupState, setLookupState] = useState<LookupState>({ kind: "idle" });
+  const [aiLookupPending, setAiLookupPending] = useState(false);
 
-  /**
-   * Fill the optional fields from the dictionary, without overwriting anything
-   * already typed. Someone who wrote their own meaning should keep it; the
-   * point of this button is to save typing, not to correct the reader.
-   *
-   * Not an effect on purpose. It runs when asked, because each call is a live
-   * round trip to a third party and costs about half a second.
-   */
-  function handleLookup() {
-    const term = word.trim();
-    if (!term || lookupState.kind === "loading") return;
+  async function handleAiLookup(overrideTerm?: string) {
+    const termToUse = (overrideTerm ?? word).trim();
+    if (!termToUse || aiLookupPending) return;
 
+    if (overrideTerm) {
+      setWord(overrideTerm);
+    }
+
+    setAiLookupPending(true);
     setLookupState({ kind: "loading" });
-    lookupWord(term)
-      .then((entries) => {
-        const entry = entries[0];
-        if (!entry) {
-          setLookupState({ kind: "empty" });
-          return;
-        }
+    try {
+      const res = await aiVocabLookup({
+        word: termToUse,
+        context: exampleSentence.trim() || undefined,
+        allowed_deck_ids: deckId ? [deckId] : undefined,
+      });
 
+      if (!res.found) {
+        if (res.suggestion) {
+          setLookupState({
+            kind: "suggestion",
+            word: termToUse,
+            suggestion: res.suggestion,
+          });
+        } else {
+          setLookupState({
+            kind: "error",
+            message: `Không tìm thấy thông tin từ vựng "${termToUse}".`,
+          });
+        }
+        return;
+      }
+
+      if (res.card) {
         const filled: string[] = [];
-        const ipa = entryPhonetic(entry);
-        if (ipa && !phonetic.trim()) {
-          setPhonetic(ipa);
+        if (res.card.meaning) {
+          setMeaning(res.card.meaning);
+          filled.push("meaning (Nghĩa VI)");
+        }
+        if (res.card.phonetic) {
+          setPhonetic(res.card.phonetic);
           filled.push("phonetic");
         }
-
-        const meaningBlock = entry.meanings[0];
-        if (meaningBlock) {
-          if (!partOfSpeech.trim()) {
-            setPartOfSpeech(meaningBlock.partOfSpeech);
-            filled.push("part of speech");
-          }
-          const first = meaningBlock.definitions[0];
-          if (first) {
-            if (!definitionEn.trim()) {
-              setDefinitionEn(first.definition);
-              filled.push("definition");
-            }
-            if (first.example && !exampleSentence.trim()) {
-              setExampleSentence(first.example);
-              filled.push("example");
-            }
-          }
+        if (res.card.part_of_speech) {
+          setPartOfSpeech(res.card.part_of_speech);
+          filled.push("part of speech");
+        }
+        if (res.card.definition_en) {
+          setDefinitionEn(res.card.definition_en);
+          filled.push("definition");
+        }
+        if (res.card.example_sentence) {
+          setExampleSentence(res.card.example_sentence);
+          filled.push("example");
+        }
+        if (res.card.example_meaning) {
+          setExampleMeaning(res.card.example_meaning);
+          filled.push("example meaning");
         }
 
         setLookupState(
           filled.length > 0
-            ? { kind: "filled", fields: filled, entry: entry.word }
-            : { kind: "nothing-to-fill", entry: entry.word },
+            ? {
+                kind: "filled",
+                fields: filled,
+                entry: `${res.card.word} (${res.source})`,
+                alreadyInDeck: res.card.already_in_deck,
+                existingCardId: res.card.existing_card_id,
+              }
+            : {
+                kind: "nothing-to-fill",
+                entry: `${res.card.word} (${res.source})`,
+                alreadyInDeck: res.card.already_in_deck,
+                existingCardId: res.card.existing_card_id,
+              },
         );
-      })
-      .catch((error) => {
-        /*
-          A word that is not in the dictionary comes back as an HTTP 500, not a
-          404, so this has to be classified rather than shown raw. See
-          isWordNotFound in lib/api/dictionary.ts.
-        */
-        if (isWordNotFound(error)) {
-          setLookupState({ kind: "empty" });
-          return;
-        }
-        setLookupState({
-          kind: "error",
-          message:
-            error instanceof ApiError
-              ? error.message
-              : "Could not reach the dictionary.",
-        });
+      }
+    } catch (err) {
+      setLookupState({
+        kind: "error",
+        message: err instanceof ApiError ? err.message : "Không thể kết nối AI Lookup service.",
       });
+    } finally {
+      setAiLookupPending(false);
+    }
   }
+
+  // Live typing debounced lookup (fsoft-ai)
+  const [liveLookup, setLiveLookup] = useState<VocabLookupResponse | null>(null);
+
+  useEffect(() => {
+    const term = word.trim();
+    if (term.length < 2) {
+      setLiveLookup(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      aiVocabLookup({
+        word: term,
+        allowed_deck_ids: deckId ? [deckId] : undefined,
+      })
+        .then((res) => {
+          setLiveLookup(res);
+        })
+        .catch(() => setLiveLookup(null));
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [word, deckId]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -225,20 +261,62 @@ export function CardForm({
               />
               <button
                 type="button"
-                onClick={handleLookup}
+                onClick={() => handleAiLookup()}
                 disabled={
-                  pending || !word.trim() || lookupState.kind === "loading"
+                  pending || !word.trim() || lookupState.kind === "loading" || aiLookupPending
                 }
-                title="Fill phonetic, part of speech and definition from the dictionary"
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-field border border-line px-3 py-2 text-sm text-muted transition-colors hover:border-accent hover:text-accent-text disabled:cursor-not-allowed disabled:opacity-50"
+                title="Tự động điền đầy đủ Nghĩa Tiếng Việt, ví dụ và định nghĩa bằng AI"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-field border border-accent/40 bg-accent/10 px-3 py-2 text-sm font-medium text-accent-text transition-colors hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <BookOpen size={18} />
+                <MagicWand size={18} className="text-accent" />
                 <span className="hidden sm:inline">
-                  {lookupState.kind === "loading" ? "Looking up" : "Look up"}
+                  {aiLookupPending ? "AI đang tra..." : "Tra từ AI"}
                 </span>
               </button>
             </div>
-            <LookupNote state={lookupState} />
+            <LookupNote state={lookupState} onApplySuggestion={(s) => handleAiLookup(s)} />
+
+            {/* Live Typing Autocomplete / Spellcheck Banner */}
+            {liveLookup && !liveLookup.found && liveLookup.suggestion ? (
+              <div className="mt-1 flex items-center justify-between gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-700 dark:text-amber-400 shadow-xs">
+                <div className="flex items-center gap-1.5 font-medium">
+                  <span>Không tìm thấy từ <strong>"{word}"</strong>. Ý bạn có phải là <strong>"{liveLookup.suggestion}"</strong>?</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleAiLookup(liveLookup.suggestion!);
+                    setLiveLookup(null);
+                  }}
+                  className="rounded bg-amber-600 px-2.5 py-1 font-semibold text-white hover:bg-amber-700 transition-colors shrink-0"
+                >
+                  Dùng từ "{liveLookup.suggestion}"
+                </button>
+              </div>
+            ) : liveLookup && liveLookup.found && liveLookup.card ? (
+              <div className="mt-1 flex items-center justify-between gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-2.5 text-xs text-emerald-700 dark:text-emerald-400 shadow-xs">
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-semibold">
+                    Gợi ý AI: {liveLookup.card.meaning} {liveLookup.card.phonetic ? `(${liveLookup.card.phonetic})` : ""}
+                  </span>
+                  {liveLookup.card.already_in_deck ? (
+                    <span className="text-2xs text-amber-600 font-bold">
+                      Từ này đã tồn tại trong bộ thẻ (#{liveLookup.card.existing_card_id})
+                    </span>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleAiLookup(word);
+                    setLiveLookup(null);
+                  }}
+                  className="rounded bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors shrink-0"
+                >
+                  Điền tự động
+                </button>
+              </div>
+            ) : null}
           </div>
         </Field>
 
@@ -420,7 +498,13 @@ export function CardForm({
  * does not carry, and because an upstream outage arrives here looking exactly
  * the same. Neither case is the reader's mistake.
  */
-function LookupNote({ state }: { state: LookupState }) {
+function LookupNote({
+  state,
+  onApplySuggestion,
+}: {
+  state: LookupState;
+  onApplySuggestion?: (suggestion: string) => void;
+}) {
   if (state.kind === "idle") return null;
 
   if (state.kind === "loading") {
@@ -429,19 +513,50 @@ function LookupNote({ state }: { state: LookupState }) {
 
   if (state.kind === "filled") {
     return (
-      <p className="text-sm text-ok">
-        Filled {state.fields.join(", ")} from “{state.entry}”. Edit anything
-        that does not fit.
-      </p>
+      <div className="flex flex-col gap-1.5">
+        {state.alreadyInDeck ? (
+          <div className="rounded-md bg-amber-500/15 p-2.5 text-xs text-amber-700 dark:text-amber-400 border border-amber-500/30 font-semibold flex items-center gap-1.5 shadow-xs">
+            <span>Từ vựng này đã tồn tại trong bộ thẻ của bạn {state.existingCardId ? `(Thẻ bài #${state.existingCardId})` : ""}!</span>
+          </div>
+        ) : null}
+        <p className="text-sm text-ok">
+          Filled {state.fields.join(", ")} from “{state.entry}”. Edit anything that does not fit.
+        </p>
+      </div>
     );
   }
 
   if (state.kind === "nothing-to-fill") {
     return (
-      <p className="text-sm text-muted">
-        Found “{state.entry}”, but every field it could fill already has
-        something in it.
-      </p>
+      <div className="flex flex-col gap-1.5">
+        {state.alreadyInDeck ? (
+          <div className="rounded-md bg-amber-500/15 p-2.5 text-xs text-amber-700 dark:text-amber-400 border border-amber-500/30 font-semibold flex items-center gap-1.5 shadow-xs">
+            <span>⚠️ Từ vựng này đã tồn tại trong bộ thẻ của bạn {state.existingCardId ? `(Thẻ bài #${state.existingCardId})` : ""}!</span>
+          </div>
+        ) : null}
+        <p className="text-sm text-muted">
+          Found “{state.entry}”, but every field it could fill already has something in it.
+        </p>
+      </div>
+    );
+  }
+
+  if (state.kind === "suggestion") {
+    return (
+      <div className="rounded-md bg-amber-500/10 p-2.5 text-sm text-amber-700 dark:text-amber-400 border border-amber-500/20 flex flex-wrap items-center justify-between gap-2">
+        <span>
+          Không tìm thấy từ <strong>"{state.word}"</strong>. Ý bạn có phải là <strong>"{state.suggestion}"</strong>?
+        </span>
+        {onApplySuggestion ? (
+          <button
+            type="button"
+            onClick={() => onApplySuggestion(state.suggestion)}
+            className="rounded bg-amber-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-700 transition-colors shadow-xs"
+          >
+            Dùng từ "{state.suggestion}"
+          </button>
+        ) : null}
+      </div>
     );
   }
 
