@@ -31,6 +31,26 @@ export function getFsrsStudyQueue(
 }
 
 /**
+  Lấy danh sách thẻ đến hạn ôn tập của một Bộ thẻ theo cụm FSRS.
+ */
+export function getDeckDueCards(
+  deckId: number,
+  earlyBufferMinutes = 120,
+  clusterMinutes = 30,
+  signal?: AbortSignal,
+) {
+  const query = new URLSearchParams({
+    earlyBufferMinutes: String(earlyBufferMinutes),
+    clusterMinutes: String(clusterMinutes),
+  });
+  return apiFetch<ReviewCardResponse[]>(`/srs/deck/${deckId}/due?${query.toString()}`, {
+    auth: true,
+    signal,
+  });
+}
+
+
+/**
  * rating is 1 Again, 2 Hard, 3 Good, 4 Easy. Narrowed from number so a stray
  * 0 or 5 is a compile error rather than a 400 at runtime; the server rejects
  * anything outside that range with a field error on `rating`.

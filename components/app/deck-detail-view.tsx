@@ -63,6 +63,7 @@ import {
   setDeckVisibility,
   updateDeck,
 } from "@/lib/api/decks";
+import { getDeckDueCards } from "@/lib/api/fsrs";
 import { listTags } from "@/lib/api/tags";
 import { ApiError } from "@/lib/api/client";
 import type { CardResponse, DeckVisibility } from "@/lib/api/types";
@@ -167,6 +168,13 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
       [deckId],
     ),
     `cards-${deckId}`,
+  );
+  const dueCards = useAsync(
+    useCallback(
+      (signal: AbortSignal) => getDeckDueCards(deckId, 120, 30, signal),
+      [deckId],
+    ),
+    `due-cards-${deckId}`,
   );
   const tags = useAsync(
     useCallback((signal: AbortSignal) => listTags(signal), []),
@@ -511,9 +519,16 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
               </div>
             ) : viewMode === "study" ? (
               <FsrsStudyMode
-                cards={cards.data.content}
-                onFinished={() => setViewMode("single")}
-                onCardReviewed={() => cards.reload()}
+                cards={
+                  dueCards.data && dueCards.data.length > 0
+                    ? dueCards.data.map((item) => item.card)
+                    : cards.data.content
+                }
+                onFinished={() => {
+                  dueCards.reload();
+                  cards.reload();
+                  setViewMode("single");
+                }}
               />
             ) : viewMode === "quiz" ? (
               <AiQuizView deckId={deckId} />
