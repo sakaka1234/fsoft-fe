@@ -980,7 +980,8 @@ export type CommunityPostResponse = {
   deckDescription: string | null;
   deckCoverImageUrl: string | null;
   deckTotalCards: number | null;
-  tags: TagResponse[];
+  /** Live server sends null, not [], when the post has no tag. */
+  tags: TagResponse[] | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -990,6 +991,46 @@ export type PostModerateRequest = {
   status: PostModerationStatus;
   /** Required when status is REJECTED, ignored when APPROVED */
   reason?: string;
+};
+
+/* ---------------------------------------------------------------------------
+   Community Posts (member side)
+   ------------------------------------------------------------------------- */
+
+export type CommunityPostListBy = "latest" | "popular" | "search" | "my-posts";
+
+export type CommunityPostWriteRequest = {
+  title: string;
+  content: string;
+  deckId?: number | null;
+  tagIds?: number[];
+};
+
+export type CommentResponse = {
+  id: number;
+  communityPostId: number;
+  profileId: string;
+  profileName: string;
+  profileAvatar: string | null;
+  parentCommentId: number | null;
+  content: string;
+  replyCount: number;
+  /** Live server sends null, not [], when there are no replies. */
+  replies: CommentResponse[] | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CommentCreateRequest = {
+  content: string;
+  parentCommentId?: number | null;
+};
+
+/** Returned by POST /community-posts/{id}/like, a toggle. */
+export type PostLikeToggleResponse = {
+  postId: number;
+  liked: boolean;
+  likeCount: number;
 };
 
 

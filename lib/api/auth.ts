@@ -65,3 +65,16 @@ export function loginWithGoogle(code: string, signal?: AbortSignal) {
     { method: "POST", signal },
   );
 }
+
+/**
+ * Asks the server whether a token is still valid, without using it to call
+ * anything. Useful for preflight checks before starting flows that must not
+ * fail halfway; cheap enough to call before a sensitive action.
+ */
+export function introspectToken(token: string, signal?: AbortSignal) {
+  return apiFetch<{ result: boolean }>("/auth/introspect", {
+    method: "POST",
+    body: { token },
+    signal,
+  });
+}

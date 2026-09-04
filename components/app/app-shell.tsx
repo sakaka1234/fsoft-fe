@@ -30,6 +30,7 @@ const APP_NAV = [
   { label: "Tags", href: "/tags" },
   { label: "Tra từ", href: "/search" },
   { label: "Công cụ AI", href: "/ai" },
+  { label: "Cộng đồng", href: "/community" },
   { label: "Chơi game", href: "/games" },
   { label: "Profile", href: "/profile" },
 ] as const;

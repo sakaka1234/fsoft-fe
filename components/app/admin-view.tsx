@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Field, TextInput } from "@/components/ui/field";
 import { SelectDropdown } from "@/components/ui/select-dropdown";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState, ErrorState, RowSkeleton } from "@/components/app/states";
 import { ApiError } from "@/lib/api/client";
 import {
@@ -29,7 +30,7 @@ import {
   setDeckVisibility,
   updateAdminUserRoles,
 } from "@/lib/api/admin";
-import type { CommunityPostResponse, DeckVisibility } from "@/lib/api/types";
+import type { DeckVisibility } from "@/lib/api/types";
 import { useAsync } from "@/lib/use-async";
 import { cn } from "@/lib/cn";
 import { ChartBar } from "@phosphor-icons/react/ChartBar";
@@ -615,6 +616,8 @@ function DecksSection() {
   );
 }
 
+/* ------------------------------ game records ------------------------------ */
+
 /* --------------------------------- games --------------------------------- */
 
 function GamesSection() {
@@ -968,16 +971,20 @@ function DecksModeration() {
     `admin-pending-decks-${page}`,
   );
 
+  const [pendingDecision, setPendingDecision] = useState<{
+    deckId: number;
+    title: string;
+    approved: boolean;
+  } | null>(null);
+
   async function decide(deckId: number, approved: boolean, title: string) {
-    if (
-      !window.confirm(
-        approved
-          ? `Duyệt "${title}" cho hiển thị công khai?`
-          : `Từ chối "${title}"?`,
-      )
-    ) {
-      return;
-    }
+    setPendingDecision({ deckId, title, approved });
+  }
+
+  async function applyDeckDecision(approved: boolean) {
+    if (!pendingDecision) return;
+    const { deckId } = pendingDecision;
+    setPendingDecision(null);
     setBusy(true);
     setRowError(null);
     try {
@@ -1060,6 +1067,27 @@ function DecksModeration() {
           </>
         )
       ) : null}
+
+      {pendingDecision ? (
+        pendingDecision.approved ? (
+          <ConfirmDialog
+            mode="confirm"
+            title="Duyệt bộ thẻ?"
+            body={`Bộ thẻ "${pendingDecision.title}" sẽ hiển thị công khai cho mọi thành viên.`}
+            confirmLabel="Duyệt"
+            onResolve={(ok) => (ok ? applyDeckDecision(true) : setPendingDecision(null))}
+          />
+        ) : (
+          <ConfirmDialog
+            mode="confirm"
+            title="Từ chối bộ thẻ?"
+            body={`Bộ thẻ "${pendingDecision.title}" sẽ không được hiển thị công khai.`}
+            confirmLabel="Từ chối"
+            destructive
+            onResolve={(ok) => (ok ? applyDeckDecision(false) : setPendingDecision(null))}
+          />
+        )
+      ) : null}
     </div>
   );
 }
@@ -1078,20 +1106,20 @@ function PostsModeration() {
     `admin-pending-posts-${page}`,
   );
 
+  const [decision, setDecision] = useState<{
+    postId: number;
+    title: string;
+    approved: boolean;
+  } | null>(null);
+
   async function decide(postId: number, approved: boolean, title: string) {
-    let reason: string | undefined = undefined;
-    if (!approved) {
-      const input = window.prompt(
-        `Nhập lý do từ chối bài viết "${title}":`,
-        "Nội dung chưa phù hợp tiêu chuẩn cộng đồng",
-      );
-      if (input === null) return; // Cancelled by admin
-      reason = input.trim() || "Nội dung chưa phù hợp";
-    } else {
-      if (!window.confirm(`Duyệt đăng bài viết "${title}" lên cộng đồng?`)) {
-        return;
-      }
-    }
+    setDecision({ postId, title, approved });
+  }
+
+  async function applyDecision(reason: string | undefined) {
+    if (!decision) return;
+    const { postId, approved } = decision;
+    setDecision(null);
 
     setBusy(true);
     setRowError(null);
@@ -1217,6 +1245,33 @@ function PostsModeration() {
               onChange={setPage}
             />
           </>
+        )
+      ) : null}
+
+      {decision ? (
+        decision.approved ? (
+          <ConfirmDialog
+            mode="confirm"
+            title="Duyệt bài viết?"
+            body={`Bài viết "${decision.title}" sẽ được đăng công khai lên cộng đồng.`}
+            confirmLabel="Duyệt"
+            onResolve={(ok) => (ok ? applyDecision(undefined) : setDecision(null))}
+          />
+        ) : (
+          <ConfirmDialog
+            mode="prompt"
+            title="Từ chối bài viết?"
+            body={`Bài viết "${decision.title}" sẽ không được đăng. Người viết sẽ thấy lý do của bạn.`}
+            confirmLabel="Từ chối"
+            destructive
+            multiline
+            defaultValue="Nội dung chưa phù hợp tiêu chuẩn cộng đồng"
+            onResolve={(ok, value) =>
+              ok
+                ? applyDecision(value.trim() || "Nội dung chưa phù hợp")
+                : setDecision(null)
+            }
+          />
         )
       ) : null}
     </div>
