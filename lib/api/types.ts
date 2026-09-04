@@ -881,6 +881,24 @@ export type AiRoleplayTurn = {
   createdAt: string;
 };
 
+export type AiRoleplayHistoryResponse = AiRoleplayTurn;
+
+export type AiRoleplaySessionResponse = {
+  id: string;
+  title: string;
+  scenario?: string;
+  targetWords?: string[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateAiRoleplaySessionRequest = {
+  title?: string;
+  scenario?: string;
+  targetWords?: string[];
+};
+
+
 /* ---------------------------------------------------------------------------
    Notifications
    ------------------------------------------------------------------------- */
@@ -991,5 +1009,63 @@ export type PostModerateRequest = {
   /** Required when status is REJECTED, ignored when APPROVED */
   reason?: string;
 };
+
+/* ---------------------------------------------------------------------------
+   Vocab Lookup (fsoft-ai trial integration)
+   ------------------------------------------------------------------------- */
+
+export type VocabLookupRequest = {
+  word: string;
+  context?: string;
+  allowed_deck_ids?: number[];
+};
+
+export type CardSuggestionResponse = {
+  query: string;
+  termSuggestions: string[];
+  definitionSuggestions: string[];
+  autoFillCard?: {
+    word?: string;
+    meaning?: string;
+    phonetic?: string;
+    partOfSpeech?: string;
+    definitionEn?: string;
+    exampleSentence?: string;
+    exampleMeaning?: string;
+  } | null;
+};
+
+
+export type VocabCandidate = {
+  word: string;
+  phonetic?: string | null;
+  part_of_speech?: string | null;
+  meaning: string;
+  definition_en?: string | null;
+  example_sentence: string;
+  example_meaning?: string | null;
+  already_in_deck: boolean;
+  existing_card_id?: number | null;
+};
+
+export type VocabLookupStats = {
+  source: "YOUR_DECK" | "CACHE" | "AI" | string;
+  word_chars: number;
+  context_chars: number;
+  llm_calls: number;
+  cache_size: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  latency_ms: number;
+};
+
+export type VocabLookupResponse = {
+  source: string;
+  found: boolean;
+  suggestion?: string | null;
+  card?: VocabCandidate | null;
+  stats?: VocabLookupStats | null;
+};
+
 
 
