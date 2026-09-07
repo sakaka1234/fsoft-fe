@@ -359,16 +359,24 @@ export function listPendingPublicDecks(
  * Approve or reject a deck's public listing.
  *
  * `approved` is a REQUIRED query parameter, not a body field, which is unlike
- * every other write in this file.
+ * every other write in this file. Rejecting (approved=false) additionally
+ * requires a body {"reason": "..."}: the server answers
+ * DECK_REJECTION_REASON_REQUIRED without one. Approving ignores the body.
  */
 export function approvePublicDeck(
   deckId: number,
   approved: boolean,
+  reason?: string,
   signal?: AbortSignal,
 ) {
   return apiFetch<DeckResponse>(
     `/admin/decks/${deckId}/approve-public?approved=${approved}`,
-    { method: "PATCH", auth: true, signal },
+    {
+      method: "PATCH",
+      body: approved ? undefined : { reason },
+      auth: true,
+      signal,
+    },
   );
 }
 

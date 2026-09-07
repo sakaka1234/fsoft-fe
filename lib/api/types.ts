@@ -120,6 +120,10 @@ export type DeckResponse = {
   updatedAt: string;
   tags: TagResponse[];
   official: boolean;
+  /** True while waiting for admin approval after requesting PUBLIC. */
+  pendingPublic: boolean;
+  /** Admin's reason, set when a pending-public request was declined. */
+  rejectionReason: string | null;
 };
 
 /**
@@ -1106,4 +1110,54 @@ export type VocabLookupResponse = {
   suggestion?: string | null;
   card?: VocabCandidate | null;
   stats?: VocabLookupStats | null;
+};
+
+/* ---------------------------------------------------------------------------
+   Admin AI assistant (admin/ai/*)
+   ------------------------------------------------------------------------- */
+
+export type AdminAiChatRequest = {
+  message: string;
+  /** Thread id from the first reply; omit on the first message. */
+  conversationId?: string;
+};
+
+/**
+ * A dangerous action the bot drafted but did NOT run. The admin must confirm
+ * it through /admin/ai/chat/confirm, or cancel it. It expires after 5 minutes.
+ */
+export type AdminAiPendingAction = {
+  actionId: string;
+  tool: string;
+  summary: string;
+  expiresAt: string;
+};
+
+export type AdminAiChatResponse = {
+  conversationId: string;
+  reply: string;
+  pendingAction: AdminAiPendingAction | null;
+  /**
+   * Swagger carries both reply and result. Reading of the two is unresolved
+   * until the backend deploys; treat result as an optional footnote.
+   */
+  result: string;
+};
+
+export type AdminAiChatHistoryMessage = {
+  role: "user" | "assistant" | "system" | string;
+  content: string;
+};
+
+export type AdminAiAuditLogStatus = "EXECUTED" | "CANCELLED" | "FAILED";
+
+export type AdminAiAuditLog = {
+  id: number;
+  action: string;
+  /** Free-form string; usually JSON of the parameters the action ran with. */
+  params: string;
+  status: AdminAiAuditLogStatus | string;
+  resultSummary: string;
+  referenceId: string;
+  createdAt: string;
 };

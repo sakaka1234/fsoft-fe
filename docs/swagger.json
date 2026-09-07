@@ -11,7 +11,7 @@
   },
   "servers": [
     {
-      "url": "https://fsoft-project-production.up.railway.app/fsoft",
+      "url": "http://localhost:8080/fsoft",
       "description": "Generated server url"
     }
   ],
@@ -100,6 +100,10 @@
     {
       "name": "Deck Controller",
       "description": "Quản lý tạo, sửa, xóa, tìm kiếm và chia sẻ Bộ thẻ (Decks)"
+    },
+    {
+      "name": "Admin AI Chat Controller",
+      "description": "Trợ lý AI cho quản trị viên (tra cứu + hành động)"
     },
     {
       "name": "AI Integration Controller",
@@ -302,7 +306,7 @@
       "put": {
         "tags": ["Deck Controller"],
         "summary": "Cập nhật Bộ thẻ",
-        "description": "Cập nhật tên, mô tả, ảnh bìa cho một bộ bài đã tạo.",
+        "description": "Cập nhật tên, mô tả, ảnh bìa cho một bộ bài đã tạo. Lưu ý về visibility: USER yêu cầu PUBLIC trên bộ bài chưa phải Official sẽ đưa bộ bài vào hàng chờ duyệt của Admin (pendingPublic = true, bộ bài vẫn PRIVATE). Bộ bài Official của USER hoặc bất kỳ thao tác nào của ADMIN sẽ áp dụng visibility trực tiếp. Trường isOfficial trong request bị bỏ qua đối với USER (chỉ ADMIN mới được đặt official).",
         "operationId": "updateDeck",
         "parameters": [
           {
@@ -371,7 +375,7 @@
       "put": {
         "tags": ["Deck Controller"],
         "summary": "Đổi quyền riêng tư của bộ thẻ (Công khai / Riêng tư)",
-        "description": "Chuyển một bộ bài từ PRIVATE sang PUBLIC (để chia sẻ cộng đồng) hoặc ngược lại.",
+        "description": "Chuyển một bộ bài từ PRIVATE sang PUBLIC (để chia sẻ cộng đồng) hoặc ngược lại. Khi yêu cầu PUBLIC: bộ bài vào hàng chờ duyệt của Admin (pendingPublic = true), vẫn PRIVATE đến khi được duyệt. Bộ bài fork không thể yêu cầu PUBLIC (FORKED_DECK_CANNOT_BE_PUBLIC). Yêu cầu trùng lặp khi đang chờ duyệt sẽ bị từ chối (DECK_ALREADY_PENDING_PUBLIC). Khi bị Admin từ chối, lý do sẽ được trả về trong trường rejectionReason của DeckResponse.",
         "operationId": "convertDeckVisibility",
         "parameters": [
           {
@@ -2032,6 +2036,34 @@
         }
       }
     },
+    "/api/ai/vocab/lookup": {
+      "post": {
+        "tags": ["AI Integration Controller"],
+        "summary": "Tra từ vựng bằng AI (Nội bộ / Dùng thử)",
+        "description": "Gửi từ vựng (và ngữ cảnh nếu có) tới AI Service để tra nghĩa, phát âm, ví dụ, cờ đã có trong bộ thẻ hay chưa, hoặc gợi ý sửa lỗi chính tả.",
+        "operationId": "lookupVocab",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/VocabLookupRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVocabLookupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ai/story": {
       "post": {
         "tags": ["AI Story Controller"],
@@ -2079,6 +2111,52 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseAiRoleplayResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/roleplay/sessions": {
+      "get": {
+        "tags": ["AI Roleplay Controller"],
+        "summary": "Lấy danh sách tất cả các phiên hội thoại AI Roleplay của người dùng",
+        "operationId": "getUserSessions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListAiRoleplaySessionResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["AI Roleplay Controller"],
+        "summary": "Tạo một phiên hội thoại AI Roleplay mới",
+        "operationId": "createSession",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAiRoleplaySessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAiRoleplaySessionResponse"
                 }
               }
             }
@@ -2421,6 +2499,90 @@
         }
       }
     },
+    "/admin/ai/chat": {
+      "post": {
+        "tags": ["Admin AI Chat Controller"],
+        "summary": "Hỏi trợ lý AI quản trị",
+        "description": "Admin hỏi bằng ngôn ngữ tự nhiên. Bot trả lời dựa trên dữ liệu thật của hệ thống. Khi admin yêu cầu hành động nguy hiểm (duyệt/từ chối/xóa deck, đặt official, đổi roles), response trả về pendingAction chứa actionId — admin phải gọi /confirm để thực thi thật hoặc /confirm/cancel để hủy.",
+        "operationId": "chat_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdminAiChatRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAdminAiChatResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/ai/chat/confirm": {
+      "post": {
+        "tags": ["Admin AI Chat Controller"],
+        "summary": "Xác nhận hành động AI đã soạn (thực thi thật)",
+        "description": "Thực thi hành động đã soạn. Lỗi 462 nếu actionId không tồn tại hoặc đã xử lý, lỗi 463 nếu đã hết hạn 5 phút. Chỉ admin tạo hành động mới xác nhận được. Mỗi actionId chỉ dùng được một lần. Mọi lần thực thi đều được ghi vào audit log.",
+        "operationId": "confirm",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdminAiConfirmRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAdminAiChatResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/ai/chat/confirm/cancel": {
+      "post": {
+        "tags": ["Admin AI Chat Controller"],
+        "summary": "Hủy hành động AI đã soạn",
+        "description": "Hủy hành động chờ xác nhận và ghi audit log với trạng thái CANCELLED.",
+        "operationId": "cancel",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdminAiConfirmRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAdminAiChatResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/notifications/{id}/read": {
       "patch": {
         "tags": ["Notification Controller"],
@@ -2508,7 +2670,8 @@
     "/admin/decks/{deckId}/approve-public": {
       "patch": {
         "tags": ["Admin Deck Controller"],
-        "summary": "Duyệt hoặc Từ chối yêu cầu đưa bộ bài lên Public của Người dùng",
+        "summary": "Duyệt hoặc Từ chối yêu cầu đưa bộ bài lên Public của Người dùng (từ chối bắt buộc phải có lý do)",
+        "description": "Approve (approved=true): bộ bài chuyển sang PUBLIC, xóa lý do từ chối cũ (nếu có), người dùng nhận thông báo 'Bộ bài đã được duyệt'. Reject (approved=false): bắt buộc gửi body {\"reason\": \"...\"}, nếu thiếu sẽ trả lỗi DECK_REJECTION_REASON_REQUIRED. Bộ bài quay lại PRIVATE, lý do được lưu vào rejectionReason và gửi thông báo kèm lý do tới người dùng. Chỉ áp dụng cho bộ bài đang pendingPublic = true, ngược lại trả lỗi DECK_NOT_PENDING.",
         "operationId": "approvePublicDeck",
         "parameters": [
           {
@@ -2524,6 +2687,13 @@
             "schema": { "type": "boolean" }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DeckModerateRequest" }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -3981,6 +4151,90 @@
         }
       }
     },
+    "/admin/ai/chat/history": {
+      "get": {
+        "tags": ["Admin AI Chat Controller"],
+        "summary": "Lấy lịch sử hội thoại AI của admin hiện tại",
+        "description": "Trả về các tin nhắn (role: user/assistant/system) trong thread riêng của admin, bền vững qua JDBC chat memory.",
+        "operationId": "getHistory",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 1 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListAdminAiChatHistoryResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Admin AI Chat Controller"],
+        "summary": "Xóa lịch sử hội thoại AI của admin hiện tại",
+        "description": "Reset thread hội thoại của admin hiện tại (chatMemory.clear).",
+        "operationId": "clearHistory",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/ai/audit-logs": {
+      "get": {
+        "tags": ["Admin AI Chat Controller"],
+        "summary": "Lấy nhật ký các hành động AI đã thực hiện",
+        "description": "Danh sách hành động AI (EXECUTED/CANCELLED/FAILED) của admin hiện tại, mới nhất trước.",
+        "operationId": "getAuditLogs",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 1 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 10 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageResponseAdminAiAuditLogResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/srs/deck/{deckId}/reset": {
       "delete": {
         "tags": ["Card SRS Controller"],
@@ -4122,6 +4376,31 @@
             "name": "conversationId",
             "in": "path",
             "description": "ID phiên hội thoại cần xóa",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/roleplay/sessions/{sessionId}": {
+      "delete": {
+        "tags": ["AI Roleplay Controller"],
+        "summary": "Xóa một phiên hội thoại AI Roleplay",
+        "operationId": "deleteSession",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
             "required": true,
             "schema": { "type": "string" }
           }
@@ -4388,6 +4667,8 @@
             "uniqueItems": true
           },
           "shareToken": { "type": "string" },
+          "pendingPublic": { "type": "boolean" },
+          "rejectionReason": { "type": "string" },
           "official": { "type": "boolean" },
           "shareLinkEnabled": { "type": "boolean" }
         }
@@ -4676,6 +4957,7 @@
             "enum": [
               "SYSTEM",
               "DECK_SHARED",
+              "DECK_MODERATION",
               "STREAK_REMINDER",
               "QUIZ_RESULT",
               "GAME_INVITE",
@@ -4706,6 +4988,7 @@
             "enum": [
               "SYSTEM",
               "DECK_SHARED",
+              "DECK_MODERATION",
               "STREAK_REMINDER",
               "QUIZ_RESULT",
               "GAME_INVITE",
@@ -5179,6 +5462,64 @@
           }
         }
       },
+      "VocabLookupRequest": {
+        "type": "object",
+        "description": "Thông tin từ vựng cần tra",
+        "properties": {
+          "word": { "type": "string", "maxLength": 64, "minLength": 0 },
+          "context": { "type": "string" },
+          "allowed_deck_ids": {
+            "type": "array",
+            "items": { "type": "integer", "format": "int64" }
+          }
+        },
+        "required": ["word"]
+      },
+      "ApiResponseVocabLookupResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/VocabLookupResponse" }
+        }
+      },
+      "VocabCandidate": {
+        "type": "object",
+        "properties": {
+          "word": { "type": "string" },
+          "phonetic": { "type": "string" },
+          "meaning": { "type": "string" },
+          "part_of_speech": { "type": "string" },
+          "definition_en": { "type": "string" },
+          "example_sentence": { "type": "string" },
+          "example_meaning": { "type": "string" },
+          "already_in_deck": { "type": "boolean" },
+          "existing_card_id": { "type": "integer", "format": "int64" }
+        }
+      },
+      "VocabLookupResponse": {
+        "type": "object",
+        "properties": {
+          "source": { "type": "string" },
+          "found": { "type": "boolean" },
+          "suggestion": { "type": "string" },
+          "card": { "$ref": "#/components/schemas/VocabCandidate" },
+          "stats": { "$ref": "#/components/schemas/VocabLookupStats" }
+        }
+      },
+      "VocabLookupStats": {
+        "type": "object",
+        "properties": {
+          "source": { "type": "string" },
+          "word_chars": { "type": "integer", "format": "int32" },
+          "context_chars": { "type": "integer", "format": "int32" },
+          "llm_calls": { "type": "integer", "format": "int32" },
+          "cache_size": { "type": "integer", "format": "int32" },
+          "prompt_tokens": { "type": "integer", "format": "int32" },
+          "completion_tokens": { "type": "integer", "format": "int32" },
+          "latency_ms": { "type": "integer", "format": "int64" }
+        }
+      },
       "AiStoryRequest": {
         "type": "object",
         "description": "Yêu cầu tạo đoạn văn / Email thực tế từ từ vựng SRS nợ",
@@ -5310,6 +5651,33 @@
           "data": { "$ref": "#/components/schemas/AiRoleplayResponse" }
         }
       },
+      "CreateAiRoleplaySessionRequest": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "scenario": { "type": "string" },
+          "targetWords": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "AiRoleplaySessionResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "scenario": { "type": "string" },
+          "targetWords": { "type": "array", "items": { "type": "string" } },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiResponseAiRoleplaySessionResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/AiRoleplaySessionResponse" }
+        }
+      },
       "AiQuizRequest": {
         "type": "object",
         "description": "Yêu cầu tạo quiz (bao gồm số lượng câu hỏi, danh sách thẻ bài cần tạo quiz...)",
@@ -5321,7 +5689,8 @@
             "type": "array",
             "items": { "type": "integer", "format": "int64" }
           },
-          "use_ai_context": { "type": "boolean" }
+          "use_ai_context": { "type": "boolean" },
+          "is_srs_only": { "type": "boolean" }
         }
       },
       "AiMatchingPair": {
@@ -5591,10 +5960,104 @@
           "data": { "$ref": "#/components/schemas/AiAutoDeckResponse" }
         }
       },
+      "AdminAiChatRequest": {
+        "type": "object",
+        "description": "Request hỏi trợ lý AI quản trị",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Câu hỏi bằng ngôn ngữ tự nhiên",
+            "example": "Có bao nhiêu bộ bài đang chờ duyệt?",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "conversationId": {
+            "type": "string",
+            "description": "Bỏ qua — server tự suy ra thread theo admin hiện tại",
+            "example": "admin-ai-3fa85f64-..."
+          }
+        },
+        "required": ["message"]
+      },
+      "AdminAiChatResponse": {
+        "type": "object",
+        "description": "Phản hồi của trợ lý AI quản trị",
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "description": "ID thread hội thoại của admin"
+          },
+          "reply": { "type": "string", "description": "Câu trả lời của AI" },
+          "pendingAction": {
+            "$ref": "#/components/schemas/PendingActionResponse",
+            "description": "Hành động đang chờ xác nhận (null nếu không có)"
+          },
+          "result": {
+            "type": "string",
+            "description": "Kết quả thực thi hành động (chỉ có trong response của confirm, null nếu không có)"
+          }
+        }
+      },
+      "ApiResponseAdminAiChatResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/AdminAiChatResponse" }
+        }
+      },
+      "PendingActionResponse": {
+        "type": "object",
+        "description": "Hành động nguy hiểm đã soạn, chờ admin xác nhận qua /confirm",
+        "properties": {
+          "actionId": {
+            "type": "string",
+            "description": "Dùng cho body của /confirm và /confirm/cancel"
+          },
+          "tool": {
+            "type": "string",
+            "description": "Tên tool soạn hành động",
+            "example": "requestRejectDeck"
+          },
+          "summary": {
+            "type": "string",
+            "description": "Mô tả hành động bằng tiếng Việt",
+            "example": "Từ chối bộ bài #12 với lý do: spam"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Hạn xác nhận (5 phút từ lúc soạn)"
+          }
+        }
+      },
+      "AdminAiConfirmRequest": {
+        "type": "object",
+        "description": "Request xác nhận/hủy hành động AI đã soạn",
+        "properties": {
+          "actionId": {
+            "type": "string",
+            "description": "ID hành động nhận được từ /chat khi có pendingAction",
+            "example": "9b2f6a1e-..."
+          }
+        },
+        "required": ["actionId"]
+      },
       "AdminUpdateDeckOfficialRequest": {
         "type": "object",
         "properties": { "isOfficial": { "type": "boolean" } },
         "required": ["isOfficial"]
+      },
+      "DeckModerateRequest": {
+        "type": "object",
+        "description": "Request duyệt/từ chối yêu cầu công khai bộ bài của Admin",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "Lý do từ chối (BẮT BUỘC khi approved=false, bị bỏ qua khi approved=true)",
+            "example": "Bộ bài chứa nội dung không phù hợp với tiêu chuẩn cộng đồng"
+          }
+        }
       },
       "ApiResponseListTagResponse": {
         "type": "object",
@@ -6097,6 +6560,19 @@
           "data": { "$ref": "#/components/schemas/AiSearchResponse" }
         }
       },
+      "ApiResponseListAiRoleplaySessionResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AiRoleplaySessionResponse"
+            }
+          }
+        }
+      },
       "AiRoleplayHistoryResponse": {
         "type": "object",
         "description": "Chi tiết một tin nhắn trong lịch sử hội thoại đối thoại nhập vai",
@@ -6249,6 +6725,62 @@
           "status": { "type": "integer", "format": "int32" },
           "message": { "type": "string" },
           "data": { "$ref": "#/components/schemas/AdminDashboardStatsResponse" }
+        }
+      },
+      "AdminAiChatHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "role": { "type": "string" },
+          "content": { "type": "string" }
+        }
+      },
+      "ApiResponseListAdminAiChatHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminAiChatHistoryResponse"
+            }
+          }
+        }
+      },
+      "AdminAiAuditLogResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int64" },
+          "action": { "type": "string" },
+          "params": { "type": "string" },
+          "status": { "type": "string" },
+          "resultSummary": { "type": "string" },
+          "referenceId": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiResponsePageResponseAdminAiAuditLogResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": {
+            "$ref": "#/components/schemas/PageResponseAdminAiAuditLogResponse"
+          }
+        }
+      },
+      "PageResponseAdminAiAuditLogResponse": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AdminAiAuditLogResponse" }
+          },
+          "pageNo": { "type": "integer", "format": "int32" },
+          "pageSize": { "type": "integer", "format": "int32" },
+          "totalElements": { "type": "integer", "format": "int64" },
+          "totalPages": { "type": "integer", "format": "int32" },
+          "last": { "type": "boolean" }
         }
       }
     },
