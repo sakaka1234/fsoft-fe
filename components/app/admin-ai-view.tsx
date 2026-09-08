@@ -227,6 +227,8 @@ type PendingActionCardProps = {
   action: AdminAiPendingAction;
   outcome?: "confirmed" | "cancelled" | "expired";
   error?: string;
+  /** A confirm/cancel request for this card is in flight. */
+  resolving: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -235,6 +237,7 @@ function PendingActionCard({
   action,
   outcome,
   error,
+  resolving,
   onConfirm,
   onCancel,
 }: PendingActionCardProps) {
@@ -299,18 +302,20 @@ function PendingActionCard({
                 <Button
                   variant="secondary"
                   onClick={onCancel}
+                  disabled={resolving}
                   className="h-8 px-3 text-xs"
                 >
                   Huỷ
                 </Button>
                 <Button
                   onClick={onConfirm}
+                  disabled={resolving}
                   className={cn(
                     "h-8 px-3 text-xs",
                     "bg-amber-600 text-white hover:bg-amber-700",
                   )}
                 >
-                  Xác nhận
+                  {resolving ? "Đang xử lý..." : "Xác nhận"}
                 </Button>
                 <span className="ml-auto font-mono text-xs tabular-nums text-muted">
                   Hết hạn sau {formatClock(secondsLeft)}
@@ -329,6 +334,7 @@ function AdminAiChatPanel() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
   const conversationIdRef = useRef<string | undefined>(undefined);
   const threadRef = useRef<HTMLDivElement>(null);
 
@@ -343,7 +349,7 @@ function AdminAiChatPanel() {
 
   const [confirmClear, setConfirmClear] = useState(false);
 
-  /* Hydrate the thread once, from the paged history. */
+  /* Hydrate the thread once. Live-verified: chronological, oldest first. */
   useEffect(() => {
     if (history.status !== "success") return;
     setTurns((current) => {
@@ -408,6 +414,7 @@ function AdminAiChatPanel() {
     action: AdminAiPendingAction,
     mode: "confirm" | "cancel",
   ) {
+    setResolvingId(action.actionId);
     setTurns((value) =>
       value.map((turn, idx) =>
         idx === turnIndex ? { ...turn, actionError: undefined } : turn,
@@ -427,8 +434,8 @@ function AdminAiChatPanel() {
                 pendingAction: undefined,
                 actionOutcome: mode === "confirm" ? "confirmed" : "cancelled",
                 content:
-                  mode === "confirm" && answer.reply
-                    ? answer.reply
+                  mode === "confirm" && (answer.reply || answer.result)
+                    ? answer.result || answer.reply
                     : turn.content,
               }
             : turn,
@@ -448,6 +455,8 @@ function AdminAiChatPanel() {
             : turn,
         ),
       );
+    } finally {
+      setResolvingId(null);
     }
   }
 
@@ -548,6 +557,7 @@ function AdminAiChatPanel() {
                     action={turn.pendingAction}
                     outcome={turn.actionOutcome}
                     error={turn.actionError}
+                    resolving={resolvingId === turn.pendingAction.actionId}
                     onConfirm={() =>
                       resolveAction(turnIndex, turn.pendingAction!, "confirm")
                     }

@@ -10,22 +10,24 @@ import type {
 /*
   Admin AI assistant endpoints.
 
-  NOT YET DEPLOYED: verified live on 2026-09-08, every /admin/ai/* path on
-  production answers 500 "No static resource admin/ai/chat..." while
-  /admin/users answers 200 on the same server, so the controller simply is
-  not there yet. The shapes below follow docs/swagger.json exactly; revisit
-  the marked assumptions once the backend ships.
+  Verified live 2026-09-08 against production:
 
-  Pagination on the two GET endpoints defaults page=1 in swagger, but this
-  backend has shipped contradictory page bases before (decks are 1-based,
-  pending-public is 0-based, pageable decks shift by one). Both GETs here
-  send page as given, 1-based per the swagger default; if the live server
-  turns out 0-based the fix is in these two functions only, the UI is
-  unaffected.
+  - Both GET endpoints are truly ONE based. page=0 clamps to page 1 and the
+    response echoes pageNo=1, so a 0-based UI page must shift by +1 here.
+  - History answers a plain chronological array (oldest first), not a
+    PageResponse; hydrate the thread in order.
+  - Confirm answers HTTP 400 with envelope status 462 for an unknown or
+    already used actionId, and 463 once the 5 minute window lapses; both
+    surface here as ApiError.message. Execution results come back in
+    AdminAiChatResponse.result.
+  - A non admin token is refused with HTTP 403 "You do not have permission
+    to perform this action"; isAccessDeniedMessage covers it.
 
-  Confirm answers 462 when the actionId is unknown or already used and 463
-  when it expired (5 minutes). Both arrive through apiFetch as ApiError with
-  the server's message, which the UI surfaces verbatim.
+  The bot answers from live system data through Groq function calling. A
+  dangerous action (approve/reject/delete deck, official flag, role change)
+  arrives as pendingAction and is NOT executed until /confirm runs; cancel
+  writes a CANCELLED audit row, and business violations (e.g. approving a
+  deck that is not pending) execute as FAILED audit rows with a 460 error.
 */
 
 /** Ask the admin assistant a question; conversation persists per admin. */
@@ -59,8 +61,8 @@ export function adminAiConfirmCancel(actionId: string, signal?: AbortSignal) {
 }
 
 /**
- * Chat history of the current admin. Swagger defaults page to 1, so the
- * caller's 0-based pages are shifted here; the UI passes 1-based pages.
+ * Chat history of the current admin, oldest first, plain array. The UI's
+ * 0-based pages shift to the server's 1-based pages here.
  */
 export function adminAiChatHistory(
   page = 1,
@@ -83,8 +85,8 @@ export function adminAiClearChatHistory(signal?: AbortSignal) {
 }
 
 /**
- * Audit trail of AI actions by the current admin, newest first. Swagger
- * defaults page to 1.
+ * Audit trail of AI actions by the current admin, newest first. One-based
+ * pages, verified live: page=0 clamps to page 1.
  */
 export function adminAiAuditLogs(
   page = 1,

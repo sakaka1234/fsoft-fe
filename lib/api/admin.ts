@@ -70,7 +70,12 @@ export function isAccessDenied(error: unknown): boolean {
  * place.
  */
 export function isAccessDeniedMessage(message: string): boolean {
-  return message.includes("Access Denied");
+  return (
+    message.includes("Access Denied") ||
+    /* Verified live 2026-09-08: admin AI endpoints answer HTTP 403 with
+       "You do not have permission to perform this action". */
+    message.includes("do not have permission")
+  );
 }
 
 /**

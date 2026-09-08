@@ -1138,8 +1138,8 @@ export type AdminAiChatResponse = {
   reply: string;
   pendingAction: AdminAiPendingAction | null;
   /**
-   * Swagger carries both reply and result. Reading of the two is unresolved
-   * until the backend deploys; treat result as an optional footnote.
+   * Execution result after /confirm runs (live-verified 2026-09-08: the
+   * confirm answer carries the underlying service result here).
    */
   result: string;
 };
