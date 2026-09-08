@@ -118,9 +118,10 @@ export function joinAudioReflexRoom(roomCode: string) {
   );
 }
 
-export function startAudioReflexRoomGame(roomCode: string) {
+export function startAudioReflexRoomGame(roomCode: string, questionCount?: number) {
+  const query = questionCount ? `?questionCount=${questionCount}` : "";
   return apiFetch<AudioReflexRoomState>(
-    `/games/audio-reflex/rooms/${roomCode}/start`,
+    `/games/audio-reflex/rooms/${roomCode}/start${query}`,
     { method: "POST", auth: true },
   );
 }
@@ -229,9 +230,10 @@ export function joinSpaceStrikerRoom(roomCode: string) {
   );
 }
 
-export function startSpaceStrikerRoomGame(roomCode: string) {
+export function startSpaceStrikerRoomGame(roomCode: string, questionCount?: number) {
+  const query = questionCount ? `?questionCount=${questionCount}` : "";
   return apiFetch<SpaceStrikerRoomState>(
-    `/games/space-striker/rooms/${roomCode}/start`,
+    `/games/space-striker/rooms/${roomCode}/start${query}`,
     { method: "POST", auth: true },
   );
 }

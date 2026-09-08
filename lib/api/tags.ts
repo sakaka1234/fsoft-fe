@@ -11,8 +11,7 @@ import type { TagResponse } from "@/lib/api/types";
 
   They moved to /admin/tags/{id}, so editing and deleting a tag is an admin
   action now. renameAdminTag and deleteAdminTag in lib/api/admin.ts are the
-  replacements, and components/app/tags-view.tsx offers those two controls only
-  to an admin for that reason.
+  replacements.
 
   Anyone can still read every tag and create one.
 */

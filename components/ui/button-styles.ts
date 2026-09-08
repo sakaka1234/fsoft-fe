@@ -1,7 +1,7 @@
 import { cn } from "@/lib/cn";
 
 export type ButtonVariant = "primary" | "secondary";
-export type ButtonSize = "md" | "lg";
+export type ButtonSize = "sm" | "md" | "lg";
 
 /*
   Contrast audit (WCAG AA), both directions, because a button has to clear its
@@ -17,6 +17,7 @@ const VARIANTS: Record<ButtonVariant, string> = {
 };
 
 const SIZES: Record<ButtonSize, string> = {
+  sm: "h-8 px-3.5 text-xs",
   md: "h-10 px-5 text-sm",
   lg: "h-12 px-7 text-[0.95rem]",
 };

@@ -27,7 +27,6 @@ const APP_NAV = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Decks", href: "/decks" },
   { label: "Explore", href: "/explore" },
-  { label: "Tags", href: "/tags" },
   { label: "Tra từ", href: "/search" },
   { label: "Công cụ AI", href: "/ai" },
   { label: "Cộng đồng", href: "/community" },

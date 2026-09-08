@@ -38,6 +38,7 @@ import type { DeckResponse } from "@/lib/api/types";
 import { API_BASE_URL } from "@/lib/api/client";
 import { getSession } from "@/lib/auth/session-store";
 import { useSession } from "@/lib/auth/use-session";
+import { QuestionCountSelector } from "@/components/app/question-count-selector";
 import { cn } from "@/lib/cn";
 
 /* ---------------------------------------------------------------------------
@@ -238,6 +239,7 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
   const [loadingMyDecks, setLoadingMyDecks] = useState(false);
   const [showDeckModal, setShowDeckModal] = useState(false);
   const [deckSearchQuery, setDeckSearchQuery] = useState("");
+  const [questionCountInput, setQuestionCountInput] = useState<number>(10);
 
   /* --- Gameplay state --- */
   const [timeLeft, setTimeLeft] = useState(QUESTION_TIME_LIMIT);
@@ -326,8 +328,17 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
           onConnect: () => {
             client.subscribe(`/topic/space-room/${roomCode}`, (msg) => {
               try {
-                const payload = JSON.parse(msg.body) as SpaceStrikerSocketPayload;
-                socketEventRef.current(payload);
+                const raw = JSON.parse(msg.body);
+                if (typeof raw.questionCount === "number") {
+                  setQuestionCountInput(raw.questionCount);
+                  setRoom((prev) => (prev ? { ...prev, questionCount: raw.questionCount } : prev));
+                }
+                if (raw.room) {
+                  if (typeof raw.room.questionCount === "number") {
+                    setQuestionCountInput(raw.room.questionCount);
+                  }
+                  socketEventRef.current(raw as SpaceStrikerSocketPayload);
+                }
               } catch {
                 // ignore parse error
               }
@@ -477,7 +488,7 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const state = await createSpaceStrikerRoom(deckId, 10);
+      const state = await createSpaceStrikerRoom(deckId, questionCountInput);
       setRoom(state);
       setupWebSocket(state.roomCode);
       loadMyDecks();
@@ -499,6 +510,9 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
     try {
       const state = await joinSpaceStrikerRoom(code);
       setRoom(state);
+      if (typeof state.questionCount === "number") {
+        setQuestionCountInput(state.questionCount);
+      }
       setupWebSocket(state.roomCode);
       loadMyDecks();
     } catch (err: unknown) {
@@ -536,7 +550,7 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const updated = await startSpaceStrikerRoomGame(room.roomCode);
+      const updated = await startSpaceStrikerRoomGame(room.roomCode, questionCountInput);
       setRoom(updated);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Không thể bắt đầu. Cần ít nhất 2 người!");
@@ -808,6 +822,23 @@ export function SpaceStrikerMultiplayer({ deckId, onBackToSolo }: Props) {
               </button>
             )}
           </div>
+
+          {/* Cấu hình số lượng câu hỏi & Tổng số thẻ trong phòng */}
+          <QuestionCountSelector
+            value={questionCountInput}
+            onChange={(newCount) => {
+              setQuestionCountInput(newCount);
+              if (isHost && stompClientRef.current?.connected && room?.roomCode) {
+                stompClientRef.current.publish({
+                  destination: `/topic/space-room/${room.roomCode}`,
+                  body: JSON.stringify({ questionCount: newCount }),
+                });
+              }
+            }}
+            totalCards={playersList.reduce((acc, p) => acc + (p.selectedDeckCardCount || 0), 0)}
+            isHost={isHost}
+            configuredCount={room.questionCount}
+          />
         </div>
 
         <div className="rounded-3xl border border-line bg-surface overflow-hidden shadow-lg">
