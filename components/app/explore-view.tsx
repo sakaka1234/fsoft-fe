@@ -7,6 +7,7 @@ import { CaretRight } from "@phosphor-icons/react/CaretRight";
 import { GitFork } from "@phosphor-icons/react/GitFork";
 import { MagnifyingGlass } from "@phosphor-icons/react/MagnifyingGlass";
 
+import { useSession } from "@/lib/auth/use-session";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Field, TextInput } from "@/components/ui/field";
@@ -34,6 +35,7 @@ const LANGUAGES = [
 
 export function ExploreView() {
   const router = useRouter();
+  const session = useSession();
   const [keywordInput, setKeywordInput] = useState("");
   const [keyword, setKeyword] = useState("");
   const [tagId, setTagId] = useState<number | undefined>();
@@ -76,6 +78,9 @@ export function ExploreView() {
   }
 
   async function onFork(deck: DeckResponse) {
+    if (session?.user?.id && String(session.user.id) === String(deck.profileId)) {
+      return;
+    }
     setForkingId(deck.id);
     setForkError(null);
     try {
@@ -229,24 +234,35 @@ export function ExploreView() {
         {hasResults ? (
           <>
             <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {decks.data.content.map((deck) => (
-                <li key={deck.id}>
-                  <DeckCard
-                    deck={deck}
-                    footer={
-                      <Button
-                        variant="secondary"
-                        onClick={() => onFork(deck)}
-                        disabled={forkingId === deck.id}
-                        className="w-full"
-                      >
-                        <GitFork aria-hidden size={15} />
-                        {forkingId === deck.id ? "Copying" : "Copy to my decks"}
-                      </Button>
-                    }
-                  />
-                </li>
-              ))}
+              {decks.data.content.map((deck) => {
+                const isMyDeck = Boolean(
+                  session?.user?.id &&
+                  String(session.user.id) === String(deck.profileId),
+                );
+
+                return (
+                  <li key={deck.id}>
+                    <DeckCard
+                      deck={deck}
+                      footer={
+                        <Button
+                          variant="secondary"
+                          onClick={() => onFork(deck)}
+                          disabled={isMyDeck || forkingId === deck.id}
+                          className="w-full"
+                        >
+                          <GitFork aria-hidden size={15} />
+                          {isMyDeck
+                            ? "Bộ thẻ của bạn"
+                            : forkingId === deck.id
+                              ? "Copying"
+                              : "Copy to my decks"}
+                        </Button>
+                      }
+                    />
+                  </li>
+                );
+              })}
             </ul>
 
             {totalPages > 1 ? (
