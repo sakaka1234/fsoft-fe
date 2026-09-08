@@ -7,10 +7,22 @@ import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { List } from "@phosphor-icons/react/List";
 import { X } from "@phosphor-icons/react/X";
+import { UserCircle } from "@phosphor-icons/react/UserCircle";
+import { SignOut } from "@phosphor-icons/react/SignOut";
+import { ChartBar } from "@phosphor-icons/react/ChartBar";
 
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Spinner } from "@/components/ui/spinner";
+import { Avatar } from "@/components/app/community-post-card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { NotificationBell } from "@/components/app/notification-bell";
 import { site } from "@/content/site";
@@ -31,7 +43,6 @@ const APP_NAV = [
   { label: "Công cụ AI", href: "/ai" },
   { label: "Cộng đồng", href: "/community" },
   { label: "Chơi game", href: "/games" },
-  { label: "Profile", href: "/profile" },
 ] as const;
 
 /**
@@ -226,18 +237,48 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="flex shrink-0 items-center gap-2">
               <NotificationBell />
               <ThemeToggle />
-              {/* Only from xl: at lg the six links plus a name plus a button is
-                  already the width of the bar. */}
-              <span className="hidden max-w-40 truncate text-sm text-muted xl:block">
-                {displayName}
-              </span>
-              <Button
-                variant="secondary"
-                onClick={onLogout}
-                className="hidden lg:inline-flex"
-              >
-                Log out
-              </Button>
+              {/* Avatar menu: picture beside the name, opens the account
+                  dropdown. Replaces the plain name + Log out pair so the
+                  account identity is clickable in one place. */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Menu tài khoản"
+                    className="flex items-center gap-2 rounded-full border border-line bg-surface py-1 pl-1 pr-2.5 transition-colors hover:bg-surface-2 focus:outline-none focus:ring-2 focus:ring-accent"
+                  >
+                    <Avatar
+                      name={displayName}
+                      src={session.user.avatar}
+                      className="size-8"
+                    />
+                    <span className="hidden max-w-32 truncate text-sm font-medium text-ink xl:block">
+                      {displayName}
+                    </span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuLabel className="truncate">
+                    {displayName}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => router.push("/profile")}>
+                    <UserCircle size={16} className="text-muted" />
+                    Hồ sơ
+                  </DropdownMenuItem>
+                  {isAdmin(session) ? (
+                    <DropdownMenuItem onClick={() => router.push("/admin")}>
+                      <ChartBar size={16} className="text-muted" />
+                      Quản trị
+                    </DropdownMenuItem>
+                  ) : null}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={onLogout} className="text-danger focus:text-danger">
+                    <SignOut size={16} className="text-danger" />
+                    Đăng xuất
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <button
                 type="button"

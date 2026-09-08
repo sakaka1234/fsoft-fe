@@ -1,20 +1,53 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Brain } from "@phosphor-icons/react/Brain";
 import { Play } from "@phosphor-icons/react/Play";
 import { CheckCircle } from "@phosphor-icons/react/CheckCircle";
-import { Clock } from "@phosphor-icons/react/Clock";
+import { ClockCountdown } from "@phosphor-icons/react/ClockCountdown";
 import { Lightning } from "@phosphor-icons/react/Lightning";
-import { Cards } from "@phosphor-icons/react/Cards";
 
 import { getFsrsStudyQueue } from "@/lib/api/fsrs";
 import { FsrsStudyMode } from "@/components/app/fsrs-study-mode";
 import { CardSkeleton, ErrorState } from "@/components/app/states";
 import { useAsync } from "@/lib/use-async";
 
+/**
+ * The live server answers date-only ("2026-09-09") for LEARNING cards, while
+ * the OpenAPI document says dateTime, so both shapes are parsed here. A bare
+ * date means the card is due at the start of that local day.
+ */
+function parseReviewDate(value: string | undefined): number | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(trimmed);
+  const iso = dateOnly ? `${trimmed}T00:00:00` : trimmed;
+  const time = new Date(iso).getTime();
+  return Number.isNaN(time) ? null : time;
+}
+
+/** Formats a millisecond gap as HH:MM:SS, clamped at zero. */
+function formatCountdown(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+/** Re-renders once a second so countdown text stays live. */
+function useNow(intervalMs = 1000): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), intervalMs);
+    return () => window.clearInterval(id);
+  }, [intervalMs]);
+  return now;
+}
+
 export function FsrsVocabularyReviewView() {
   const [isStudying, setIsStudying] = useState(false);
+  const now = useNow(1000);
 
   const queueState = useAsync(
     useCallback((signal: AbortSignal) => getFsrsStudyQueue(undefined, 120, 30, signal), []),
@@ -24,6 +57,18 @@ export function FsrsVocabularyReviewView() {
   const cards = queueState.status === "success" && queueState.data
     ? queueState.data.map((item) => item.card)
     : [];
+
+  // The cluster's next review moment rides on the first queue element.
+  const nextReviewAt = useMemo(() => {
+    const first =
+      queueState.status === "success" && queueState.data
+        ? queueState.data[0]
+        : undefined;
+    return parseReviewDate(first?.nextReviewDate);
+  }, [queueState.status, queueState.data]);
+
+  const due = nextReviewAt !== null && nextReviewAt <= now;
+  const countdown = nextReviewAt !== null ? formatCountdown(nextReviewAt - now) : null;
 
   if (queueState.status === "loading") {
     return (
@@ -119,36 +164,35 @@ export function FsrsVocabularyReviewView() {
           </div>
         </div>
 
-        {/* Stats Grid Bar */}
-        <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 border-t border-line">
-          <div className="flex items-center gap-3.5 p-4 rounded-2xl border border-line bg-surface-2/60">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/15 text-accent">
-              <Cards size={22} weight="fill" />
-            </div>
-            <div>
-              <p className="text-[0.7rem] font-extrabold uppercase tracking-wider text-muted">Từ vựng cần ôn</p>
-              <p className="text-lg font-black text-ink font-mono">{cards.length} từ</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3.5 p-4 rounded-2xl border border-line bg-surface-2/60">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/15 text-amber-500">
-              <Clock size={22} weight="fill" />
-            </div>
-            <div>
-              <p className="text-[0.7rem] font-extrabold uppercase tracking-wider text-muted">Cụm thời gian</p>
-              <p className="text-lg font-black text-ink font-mono">30 Phút Gần Nhất</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3.5 p-4 rounded-2xl border border-line bg-surface-2/60">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-500">
-              <Lightning size={22} weight="fill" />
-            </div>
-            <div>
-              <p className="text-[0.7rem] font-extrabold uppercase tracking-wider text-muted">Mức độ ưu tiên</p>
-              <p className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">Đến Hạn Ôn Tập</p>
-            </div>
+        {/* Real-time countdown: when the cluster comes due, in place of the old
+            three stat boxes. Due state takes the danger tint so it reads as an
+            action prompt rather than passive info. */}
+        <div className="mt-8 border-t border-line pt-6">
+          <div
+            className={
+              due
+                ? "flex items-center justify-center gap-3 rounded-2xl border border-danger/30 bg-danger/10 px-5 py-4"
+                : "flex items-center justify-center gap-3 rounded-2xl border border-line bg-surface-2/60 px-5 py-4"
+            }
+            role="timer"
+            aria-live="off"
+          >
+            <ClockCountdown
+              size={22}
+              weight={due ? "fill" : "regular"}
+              className={due ? "text-danger" : "text-accent"}
+            />
+            <p
+              className={
+                due
+                  ? "text-base font-extrabold text-danger"
+                  : "text-base font-bold text-ink"
+              }
+            >
+              {due
+                ? "Đã đến hạn ôn tập ngay!"
+                : `Lượt ôn tập tiếp theo sau: ${countdown ?? "--:--:--"}`}
+            </p>
           </div>
         </div>
       </div>
