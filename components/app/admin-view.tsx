@@ -9,6 +9,7 @@ import { Field, TextInput } from "@/components/ui/field";
 import { SelectDropdown } from "@/components/ui/select-dropdown";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState, ErrorState, RowSkeleton } from "@/components/app/states";
+import { AdminAiSection } from "@/components/app/admin-ai-view";
 import { ApiError } from "@/lib/api/client";
 import {
   approvePublicDeck,
@@ -45,6 +46,7 @@ import { ChatCircleText } from "@phosphor-icons/react/ChatCircleText";
 import { Check } from "@phosphor-icons/react/Check";
 import { X } from "@phosphor-icons/react/X";
 import { CreditCard } from "@phosphor-icons/react/CreditCard";
+import { Robot } from "@phosphor-icons/react/Robot";
 
 /*
   The admin console.
@@ -59,7 +61,14 @@ import { CreditCard } from "@phosphor-icons/react/CreditCard";
   client check is a courtesy, not security.
 */
 
-type Section = "stats" | "users" | "decks" | "games" | "tags" | "moderation";
+type Section =
+  | "stats"
+  | "users"
+  | "decks"
+  | "games"
+  | "tags"
+  | "moderation"
+  | "ai";
 
 const SECTIONS: { key: Section; label: string; Icon: typeof ChartBar }[] = [
   { key: "stats", label: "Tổng quan", Icon: ChartBar },
@@ -68,6 +77,7 @@ const SECTIONS: { key: Section; label: string; Icon: typeof ChartBar }[] = [
   { key: "games", label: "Lịch sử game", Icon: GameController },
   { key: "tags", label: "Tag", Icon: Tag },
   { key: "moderation", label: "Chờ duyệt", Icon: SealCheck },
+  { key: "ai", label: "Trợ lý AI", Icon: Robot },
 ];
 
 const PAGE_SIZE = 10;
@@ -80,8 +90,8 @@ export function AdminView() {
       <header className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Quản trị</h1>
         <p className="max-w-prose text-muted">
-          Số liệu toàn hệ thống, tài khoản, bộ thẻ và lịch sử chơi. Mọi thao tác
-          ở đây áp dụng cho tất cả người dùng.
+          Số liệu toàn hệ thống, tài khoản, bộ thẻ, lịch sử chơi và trợ lý AI.
+          Mọi thao tác ở đây áp dụng cho tất cả người dùng.
         </p>
       </header>
 
@@ -111,6 +121,7 @@ export function AdminView() {
       {section === "games" ? <GamesSection /> : null}
       {section === "tags" ? <TagsSection /> : null}
       {section === "moderation" ? <ModerationSection /> : null}
+      {section === "ai" ? <AdminAiSection /> : null}
     </Container>
   );
 }
@@ -125,7 +136,7 @@ export function AdminView() {
  *
  * Retry is offered only for real faults. Retrying a refusal just fails again.
  */
-function SectionError({ error, onRetry }: { error: string; onRetry: () => void }) {
+export function SectionError({ error, onRetry }: { error: string; onRetry: () => void }) {
   const denied = isAccessDeniedMessage(error);
   return (
     <ErrorState
@@ -742,7 +753,7 @@ function GamesSection() {
  * `last` is the end-of-list test rather than comparing pageNo to totalPages,
  * for the reason spelled out on PageResponse in lib/api/types.ts.
  */
-function Pager({
+export function Pager({
   page,
   last,
   total,
@@ -981,14 +992,14 @@ function DecksModeration() {
     setPendingDecision({ deckId, title, approved });
   }
 
-  async function applyDeckDecision(approved: boolean) {
+  async function applyDeckDecision(approved: boolean, reason?: string) {
     if (!pendingDecision) return;
     const { deckId } = pendingDecision;
     setPendingDecision(null);
     setBusy(true);
     setRowError(null);
     try {
-      await approvePublicDeck(deckId, approved);
+      await approvePublicDeck(deckId, approved, reason);
       pending.reload();
     } catch (error) {
       setRowError(
@@ -1079,12 +1090,18 @@ function DecksModeration() {
           />
         ) : (
           <ConfirmDialog
-            mode="confirm"
+            mode="prompt"
             title="Từ chối bộ thẻ?"
-            body={`Bộ thẻ "${pendingDecision.title}" sẽ không được hiển thị công khai.`}
+            body={`Bộ thẻ "${pendingDecision.title}" sẽ không được hiển thị công khai. Người đăng sẽ thấy lý do của bạn.`}
             confirmLabel="Từ chối"
             destructive
-            onResolve={(ok) => (ok ? applyDeckDecision(false) : setPendingDecision(null))}
+            multiline
+            defaultValue="Nội dung chưa phù hợp tiêu chuẩn cộng đồng"
+            onResolve={(ok, value) =>
+              ok
+                ? applyDeckDecision(false, value.trim() || "Nội dung chưa phù hợp")
+                : setPendingDecision(null)
+            }
           />
         )
       ) : null}

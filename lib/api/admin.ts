@@ -70,7 +70,12 @@ export function isAccessDenied(error: unknown): boolean {
  * place.
  */
 export function isAccessDeniedMessage(message: string): boolean {
-  return message.includes("Access Denied");
+  return (
+    message.includes("Access Denied") ||
+    /* Verified live 2026-09-08: admin AI endpoints answer HTTP 403 with
+       "You do not have permission to perform this action". */
+    message.includes("do not have permission")
+  );
 }
 
 /**
@@ -359,16 +364,24 @@ export function listPendingPublicDecks(
  * Approve or reject a deck's public listing.
  *
  * `approved` is a REQUIRED query parameter, not a body field, which is unlike
- * every other write in this file.
+ * every other write in this file. Rejecting (approved=false) additionally
+ * requires a body {"reason": "..."}: the server answers
+ * DECK_REJECTION_REASON_REQUIRED without one. Approving ignores the body.
  */
 export function approvePublicDeck(
   deckId: number,
   approved: boolean,
+  reason?: string,
   signal?: AbortSignal,
 ) {
   return apiFetch<DeckResponse>(
     `/admin/decks/${deckId}/approve-public?approved=${approved}`,
-    { method: "PATCH", auth: true, signal },
+    {
+      method: "PATCH",
+      body: approved ? undefined : { reason },
+      auth: true,
+      signal,
+    },
   );
 }
 

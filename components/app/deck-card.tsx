@@ -86,6 +86,11 @@ export function DeckCard({ deck, actions, footer }: DeckCardProps) {
         <span className="rounded-full border border-line px-2.5 py-0.5 text-xs">
           {VISIBILITY_LABEL[deck.visibility] ?? deck.visibility}
         </span>
+        {deck.pendingPublic ? (
+          <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+            Chờ duyệt
+          </span>
+        ) : null}
         <span className="inline-flex items-center gap-1.5">
           <Cards aria-hidden size={15} />
           <span className="font-mono tabular-nums">{deck.totalCards}</span>

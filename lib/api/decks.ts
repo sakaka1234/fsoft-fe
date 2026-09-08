@@ -93,16 +93,17 @@ export function forkDeck(id: number) {
 /**
  * Changes visibility on its own, without resending the whole deck.
  *
- * The value goes in the query string even though the OpenAPI document declares
- * a DeckVisibilityRequest body. Verified live: a JSON body answers 400 and the
- * error shows the server writing `visibility=null`, because the controller
- * reads a request parameter that was never sent. The query form answers 200.
+ * The OpenAPI document declares a DeckVisibilityRequest JSON body and the live
+ * server enforces it: the query-string form now answers 400 with
+ * "Required request body is missing". Requesting PUBLIC puts the deck in the
+ * admin approval queue (pendingPublic) and it stays PRIVATE until approved.
  */
 export function setDeckVisibility(id: number, visibility: DeckVisibility) {
-  return apiFetch<void>(
-    `/decks/${id}/visibility?visibility=${encodeURIComponent(visibility)}`,
-    { method: "PUT", auth: true },
-  );
+  return apiFetch<void>(`/decks/${id}/visibility`, {
+    method: "PUT",
+    body: { visibility },
+    auth: true,
+  });
 }
 
 /*

@@ -350,6 +350,11 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                   <span className="rounded-full border border-line bg-surface-2 px-2.5 py-0.5 text-xs font-medium text-muted">
                     {VISIBILITY_LABEL[deck.data.visibility] ?? deck.data.visibility}
                   </span>
+                  {deck.data.pendingPublic ? (
+                    <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                      Chờ duyệt
+                    </span>
+                  ) : null}
                 </div>
 
                 <h1 className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl md:text-4xl">
@@ -372,6 +377,12 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                         {tag.name}
                       </span>
                     ))}
+                  </div>
+                ) : null}
+
+                {deck.data.rejectionReason ? (
+                  <div className="mt-1 max-w-2xl rounded-field border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                    Yêu cầu công khai bị từ chối: {deck.data.rejectionReason}
                   </div>
                 ) : null}
               </div>
