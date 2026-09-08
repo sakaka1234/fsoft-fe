@@ -25,11 +25,7 @@ const LANGUAGES = [
   { code: "fr", label: "French" },
 ] as const;
 
-const VISIBILITIES: { value: DeckVisibility; label: string; hint: string }[] = [
-  { value: "PRIVATE", label: "Private", hint: "Only you can open it." },
-  { value: "SHARED", label: "Shared", hint: "Anyone with the link." },
-  { value: "PUBLIC", label: "Public", hint: "Listed for everyone." },
-];
+
 
 type DeckFormProps = {
   /** Present when editing, absent when creating. */
@@ -132,7 +128,7 @@ export function DeckForm({
     <form
       onSubmit={handleSubmit}
       noValidate
-      className="flex flex-col gap-5 rounded-card border border-line bg-surface p-6 md:p-7"
+      className="flex flex-col gap-5"
     >
       {formError ? <FormMessage>{formError}</FormMessage> : null}
 
@@ -190,36 +186,7 @@ export function DeckForm({
         </Field>
       </div>
 
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-2 text-sm font-medium text-ink">Visibility</legend>
-        <div className="grid gap-2 sm:grid-cols-3">
-          {VISIBILITIES.map((option) => (
-            <label
-              key={option.value}
-              className={cn(
-                "flex cursor-pointer flex-col gap-1 rounded-field border p-3.5 transition-colors",
-                visibility === option.value
-                  ? "border-accent bg-accent-soft"
-                  : "border-line hover:border-ink/25",
-              )}
-            >
-              <span className="flex items-center gap-2 text-sm font-medium">
-                <input
-                  type="radio"
-                  name="visibility"
-                  value={option.value}
-                  checked={visibility === option.value}
-                  onChange={() => setVisibility(option.value)}
-                  disabled={pending}
-                  className="accent-accent"
-                />
-                {option.label}
-              </span>
-              <span className="text-sm text-muted">{option.hint}</span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+
 
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-2 text-sm font-medium text-ink">Tags</legend>
