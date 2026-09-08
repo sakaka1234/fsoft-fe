@@ -3,7 +3,6 @@
 import { useSession } from "@/lib/auth/use-session";
 import { useCallback, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ArrowDown } from "@phosphor-icons/react/ArrowDown";
 import { ArrowLeft } from "@phosphor-icons/react/ArrowLeft";
 import { ArrowUp } from "@phosphor-icons/react/ArrowUp";
@@ -15,27 +14,17 @@ import { Star } from "@phosphor-icons/react/Star";
 import { Trash } from "@phosphor-icons/react/Trash";
 import { Cards as CardsIcon } from "@phosphor-icons/react/Cards";
 import { List } from "@phosphor-icons/react/List";
-import { GameController } from "@phosphor-icons/react/GameController";
-import { Users } from "@phosphor-icons/react/Users";
 import { Brain } from "@phosphor-icons/react/Brain";
 import { Sparkle } from "@phosphor-icons/react/Sparkle";
 import { ChatCircleDots } from "@phosphor-icons/react/ChatCircleDots";
-import { CaretRight } from "@phosphor-icons/react/CaretRight";
 import { UserPlus } from "@phosphor-icons/react/UserPlus";
-import { Rocket } from "@phosphor-icons/react/Rocket";
 
-
-import { AudioReflexGame } from "@/components/app/audio-reflex-game";
-import { AudioReflexMultiplayer } from "@/components/app/audio-reflex-multiplayer";
 import { FsrsStudyMode } from "@/components/app/fsrs-study-mode";
-import { SpaceStrikerMultiplayer } from "@/components/app/space-striker-multiplayer";
-
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Modal } from "@/components/ui/modal";
 import { CardForm } from "@/components/app/card-form";
 import { CardImportPanel } from "@/components/app/card-import-panel";
-import { DeckForm } from "@/components/app/deck-form";
 import { SingleCardView } from "@/components/app/single-card-view";
 import { CardContextBlock } from "@/components/app/card-context-block";
 import { DeckSharePanel } from "@/components/app/deck-share-panel";
@@ -46,7 +35,6 @@ import {
   type DeckMode,
   type DeckViewMode,
 } from "@/components/app/deck-mode-switcher";
-import { VISIBILITY_LABEL } from "@/components/app/deck-card";
 import { EmptyState, ErrorState, RowSkeleton, SingleCardSkeleton } from "@/components/app/states";
 import {
   createCard,
@@ -57,69 +45,11 @@ import {
   toggleCardStar,
   updateCard,
 } from "@/lib/api/cards";
-import {
-  deleteDeck,
-  getDeck,
-  setDeckVisibility,
-  updateDeck,
-} from "@/lib/api/decks";
+import { getDeck } from "@/lib/api/decks";
 import { getDeckDueCards } from "@/lib/api/fsrs";
-import { listTags } from "@/lib/api/tags";
 import { ApiError } from "@/lib/api/client";
-import type { CardResponse, DeckVisibility } from "@/lib/api/types";
+import type { CardResponse } from "@/lib/api/types";
 import { useAsync } from "@/lib/use-async";
-
-function DeckDetailCover({ src, alt }: { src: string; alt: string }) {
-  const [hasError, setHasError] = useState(false);
-  const cleanSrc = src?.trim();
-  if (
-    hasError ||
-    !cleanSrc ||
-    cleanSrc === "" ||
-    cleanSrc === "null" ||
-    cleanSrc === "undefined"
-  ) {
-    return null;
-  }
-
-  return (
-    <div className="h-28 w-28 sm:h-36 sm:w-36 shrink-0 overflow-hidden rounded-2xl border border-line bg-surface-2 shadow-sm">
-      <img
-        src={cleanSrc}
-        alt={alt}
-        onError={() => setHasError(true)}
-        className="h-full w-full object-cover"
-      />
-    </div>
-  );
-}
-
-/**
- * The two ways to play, as data rather than two hand written tiles.
- * They read as one list because they are one choice; giving each its own
- * colour would have put a third and fourth brand hue on a page that has
- * exactly one accent.
- */
-const GAME_MODES = [
-  {
-    key: "solo" as const,
-    title: "Chơi một mình",
-    body: "Luyện phản xạ nghe, cộng điểm combo và leo bảng xếp hạng.",
-    Icon: GameController,
-  },
-  {
-    key: "multiplayer" as const,
-    title: "Thi đấu với bạn bè",
-    body: "Tạo phòng sáu ký tự hoặc nhập mã để đấu trực tiếp.",
-    Icon: Users,
-  },
-  {
-    key: "space-striker" as const,
-    title: "Space Striker",
-    body: "Lái phi thuyền bắn từ vựng, ai bắn trúng trước thì ghi điểm.",
-    Icon: Rocket,
-  },
-];
 
 /** One row per mode. The switcher renders from this and nothing else. */
 const DECK_MODES: DeckMode[] = [
@@ -128,22 +58,15 @@ const DECK_MODES: DeckMode[] = [
   { key: "study", label: "Ôn tập", Icon: Brain },
   { key: "quiz", label: "Quiz AI", Icon: Sparkle },
   { key: "ask", label: "Hỏi AI", Icon: ChatCircleDots },
-  { key: "game", label: "Chơi game", Icon: GameController, accent: true },
 ];
 
 export function DeckDetailView({ deckId }: { deckId: number }) {
-  const router = useRouter();
   const session = useSession();
-  const [editingDeck, setEditingDeck] = useState(false);
   const [addingCard, setAddingCard] = useState(false);
   const [editingCardId, setEditingCardId] = useState<number | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<DeckViewMode>("single");
-  const [gameSubMode, setGameSubMode] = useState<
-    null | "solo" | "multiplayer" | "space-striker"
-  >(null);
   const [singleCardIndex, setSingleCardIndex] = useState(0);
   const [rowError, setRowError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -176,10 +99,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
     ),
     `due-cards-${deckId}`,
   );
-  const tags = useAsync(
-    useCallback((signal: AbortSignal) => listTags(signal), []),
-    "tags",
-  );
+
 
   const isOwner = Boolean(
     session?.user?.id &&
@@ -228,13 +148,6 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
     });
   }
 
-  async function onVisibilityChange(visibility: DeckVisibility) {
-    await run(async () => {
-      await setDeckVisibility(deckId, visibility);
-      deck.reload();
-    });
-  }
-
   /*
     The only endpoint in the API that answers a file rather than the envelope,
     so it goes through apiDownload. The Excel sibling is broken server side
@@ -272,17 +185,6 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
     });
   }
 
-  async function onDeleteDeck() {
-    if (deck.status !== "success") return;
-    if (!window.confirm(`Delete "${deck.data.title}" and every card in it?`)) {
-      return;
-    }
-    await run(async () => {
-      await deleteDeck(deckId);
-      router.replace("/decks");
-    });
-  }
-
   return (
     <Container size="wide">
       {deck.status === "error" ? (
@@ -291,107 +193,7 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
         </div>
       ) : null}
 
-      {deck.status === "success" && editingDeck ? (
-        <div className="mb-6">
-          <DeckForm
-            deck={deck.data}
-            tags={tags.data ?? []}
-            submitLabel="Save deck"
-            onCancel={() => setEditingDeck(false)}
-            onSubmit={async (request, coverImage) => {
-              await updateDeck(deckId, request, coverImage);
-              setEditingDeck(false);
-              deck.reload();
-            }}
-          />
-        </div>
-      ) : null}
-
-      {deck.status === "success" && !editingDeck ? (
-        <div className="relative mb-8 md:mb-10 overflow-hidden rounded-3xl border border-line bg-surface p-5 sm:p-6 md:p-7 shadow-sm">
-          {/* Top-right action icons for Owner */}
-          {isOwner ? (
-            <div className="absolute top-4 right-4 flex items-center gap-1 z-10">
-              <button
-                type="button"
-                onClick={() => setEditingDeck(true)}
-                className="inline-flex size-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-                title="Chỉnh sửa thông tin bộ thẻ"
-                aria-label="Chỉnh sửa thông tin bộ thẻ"
-              >
-                <PencilSimple size={18} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsDeleteModalOpen(true)}
-                className="inline-flex size-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-danger/10 hover:text-danger"
-                title="Xóa bộ thẻ này"
-                aria-label="Xóa bộ thẻ này"
-              >
-                <Trash size={18} />
-              </button>
-            </div>
-          ) : null}
-
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 pr-24 sm:pr-24">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-              {deck.data.coverImageUrl ? (
-                <DeckDetailCover
-                  src={deck.data.coverImageUrl}
-                  alt={deck.data.title}
-                />
-              ) : null}
-
-              <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-line bg-surface-2 px-2.5 py-0.5 text-xs font-mono font-semibold uppercase text-muted">
-                    {deck.data.sourceLanguage} to {deck.data.targetLanguage}
-                  </span>
-                  <span className="rounded-full border border-line bg-surface-2 px-2.5 py-0.5 text-xs font-medium text-muted">
-                    {VISIBILITY_LABEL[deck.data.visibility] ?? deck.data.visibility}
-                  </span>
-                  {deck.data.pendingPublic ? (
-                    <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
-                      Chờ duyệt
-                    </span>
-                  ) : null}
-                </div>
-
-                <h1 className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl md:text-4xl">
-                  {deck.data.title}
-                </h1>
-
-                {deck.data.description ? (
-                  <p className="max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
-                    {deck.data.description}
-                  </p>
-                ) : null}
-
-                {deck.data.tags.length > 0 ? (
-                  <div className="mt-1 flex flex-wrap gap-1.5">
-                    {deck.data.tags.map((tag) => (
-                      <span
-                        key={tag.id}
-                        className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent-text"
-                      >
-                        {tag.name}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-
-                {deck.data.rejectionReason ? (
-                  <div className="mt-1 max-w-2xl rounded-field border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
-                    Yêu cầu công khai bị từ chối: {deck.data.rejectionReason}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      <section className="mt-2 md:mt-4" aria-labelledby="cards-title">
+      <section className="mt-0" aria-labelledby="cards-title">
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           {/* Tiêu đề & All Decks navigation - trái */}
           <div className="flex items-center gap-3">
@@ -456,7 +258,6 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
           onChange={(mode) => {
             setAddingCard(false);
             setViewMode(mode);
-            setGameSubMode(null);
           }}
         />
 
@@ -561,91 +362,6 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                   }
                 }}
               />
-            ) : viewMode === "game" ? (
-              gameSubMode === "solo" ? (
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => setGameSubMode(null)}
-                    className="mb-4 inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-                  >
-                    <ArrowLeft aria-hidden size={15} />
-                    Đổi chế độ chơi
-                  </button>
-                  <AudioReflexGame
-                    deckId={deckId}
-                    deckTitle={deck.data?.title ?? ""}
-                  />
-                </div>
-              ) : gameSubMode === "multiplayer" ? (
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => setGameSubMode(null)}
-                    className="mb-4 inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-                  >
-                    <ArrowLeft aria-hidden size={15} />
-                    Đổi chế độ chơi
-                  </button>
-                  <AudioReflexMultiplayer
-                    deckId={deckId}
-                    deckTitle={deck.data?.title ?? ""}
-                    onBackToSolo={() => setGameSubMode(null)}
-                  />
-                </div>
-              ) : gameSubMode === "space-striker" ? (
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => setGameSubMode(null)}
-                    className="mb-4 inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-                  >
-                    <ArrowLeft aria-hidden size={15} />
-                    Đổi chế độ chơi
-                  </button>
-                  <SpaceStrikerMultiplayer
-                    deckId={deckId}
-                    deckTitle={deck.data?.title ?? ""}
-                    onBackToSolo={() => setGameSubMode(null)}
-                  />
-                </div>
-              ) : (
-                <div className="mx-auto max-w-lg py-4">
-                  <h3 className="text-xl font-semibold tracking-tight">
-                    Chọn cách chơi
-                  </h3>
-                  <p className="mt-2 text-base text-muted">
-                    Cùng một bộ thẻ, nghe rồi chọn nghĩa thật nhanh.
-                  </p>
-
-                  <ul className="mt-6 divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
-                    {GAME_MODES.map(({ key, title, body, Icon }) => (
-                      <li key={key}>
-                        <button
-                          type="button"
-                          onClick={() => setGameSubMode(key)}
-                          className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-surface-2"
-                        >
-                          <span className="flex size-11 shrink-0 items-center justify-center rounded-field bg-accent-soft text-accent-text">
-                            <Icon aria-hidden size={22} weight="fill" />
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block font-semibold">{title}</span>
-                            <span className="mt-0.5 block text-sm text-muted">
-                              {body}
-                            </span>
-                          </span>
-                          <CaretRight
-                            aria-hidden
-                            size={16}
-                            className="shrink-0 text-muted"
-                          />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )
             ) : viewMode === "single" ? (
 
               <SingleCardView
@@ -795,51 +511,6 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
           Chỉ chủ sở hữu bộ card mới có thể phân quyền chia sẻ.
         </p>
       )}
-    </Modal>
-
-    {/* Delete Deck Modal */}
-    <Modal
-      isOpen={isDeleteModalOpen}
-      onClose={() => setIsDeleteModalOpen(false)}
-      title="Xác nhận xóa bộ thẻ"
-    >
-      <div className="flex flex-col gap-4 py-2">
-        <p className="text-sm leading-relaxed text-muted">
-          Bạn có chắc chắn muốn xóa bộ thẻ{" "}
-          <strong className="text-ink font-semibold">
-            &quot;{deck.status === "success" ? deck.data.title : ""}&quot;
-          </strong>{" "}
-          cùng toàn bộ các thẻ từ vựng bên trong không? Hành động này{" "}
-          <strong className="text-danger font-semibold">không thể hoàn tác</strong>.
-        </p>
-
-        <div className="mt-4 flex justify-end gap-3">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setIsDeleteModalOpen(false)}
-            disabled={busy}
-          >
-            Hủy
-          </Button>
-          <button
-            type="button"
-            onClick={async () => {
-              if (deck.status !== "success") return;
-              await run(async () => {
-                await deleteDeck(deckId);
-                setIsDeleteModalOpen(false);
-                router.replace("/decks");
-              });
-            }}
-            disabled={busy}
-            className="inline-flex items-center gap-2 rounded-full bg-danger px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-danger/90 disabled:opacity-50"
-          >
-            <Trash size={16} />
-            {busy ? "Đang xóa..." : "Xóa bộ thẻ"}
-          </button>
-        </div>
-      </div>
     </Modal>
   </Container>
 );
