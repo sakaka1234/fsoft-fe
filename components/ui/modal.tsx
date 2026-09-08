@@ -33,11 +33,11 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 md:p-6 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="relative my-8 w-full max-w-2xl rounded-3xl border border-line bg-surface p-6 md:p-8 shadow-2xl transition-all"
+        className="relative my-auto flex max-h-[calc(100vh-3rem)] w-full max-w-2xl flex-col rounded-3xl border border-line bg-surface p-6 md:p-8 shadow-2xl transition-all overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

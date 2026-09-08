@@ -41,6 +41,7 @@ import type { DeckResponse } from "@/lib/api/types";
 import { API_BASE_URL } from "@/lib/api/client";
 import { getSession } from "@/lib/auth/session-store";
 import { useSession } from "@/lib/auth/use-session";
+import { QuestionCountSelector } from "@/components/app/question-count-selector";
 import { cn } from "@/lib/cn";
 
 /* ---------------------------------------------------------------------------
@@ -89,6 +90,7 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
   const [loadingMyDecks, setLoadingMyDecks] = useState(false);
   const [showDeckModal, setShowDeckModal] = useState(false);
   const [deckSearchQuery, setDeckSearchQuery] = useState("");
+  const [questionCountInput, setQuestionCountInput] = useState<number>(10);
 
   /* Playing state */
   const [selectedOptionId, setSelectedOptionId] = useState<number | null>(null);
@@ -135,6 +137,13 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
               const payload = JSON.parse(msg.body);
               if (payload.room) {
                 setRoom(payload.room);
+                if (typeof payload.room.questionCount === "number") {
+                  setQuestionCountInput(payload.room.questionCount);
+                }
+              }
+              if (typeof payload.questionCount === "number") {
+                setQuestionCountInput(payload.questionCount);
+                setRoom((prev) => (prev ? { ...prev, questionCount: payload.questionCount } : prev));
               }
             } catch {
               // Ignore parse error
@@ -231,7 +240,7 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
     setLoading(true);
     setError(null);
     try {
-      const state = await createAudioReflexRoom(deckId, 10);
+      const state = await createAudioReflexRoom(deckId, questionCountInput);
       setRoom(state);
       setupWebSocket(state.roomCode);
       loadMyDecks();
@@ -255,6 +264,9 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
     try {
       const state = await joinAudioReflexRoom(code);
       setRoom(state);
+      if (typeof state.questionCount === "number") {
+        setQuestionCountInput(state.questionCount);
+      }
       setupWebSocket(state.roomCode);
       loadMyDecks();
     } catch (err: unknown) {
@@ -297,7 +309,7 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
     setLoading(true);
     setError(null);
     try {
-      const updated = await startAudioReflexRoomGame(room.roomCode);
+      const updated = await startAudioReflexRoomGame(room.roomCode, questionCountInput);
       setRoom(updated);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Không thể bắt đầu. Cần ít nhất 2 người!";
@@ -562,6 +574,23 @@ export function AudioReflexMultiplayer({ deckId, deckTitle, onBackToSolo }: Prop
               </button>
             )}
           </div>
+
+          {/* Cấu hình số lượng câu hỏi & Tổng số thẻ trong phòng */}
+          <QuestionCountSelector
+            value={questionCountInput}
+            onChange={(newCount) => {
+              setQuestionCountInput(newCount);
+              if (isHost && stompClientRef.current?.connected && room?.roomCode) {
+                stompClientRef.current.publish({
+                  destination: `/topic/room/${room.roomCode}`,
+                  body: JSON.stringify({ questionCount: newCount }),
+                });
+              }
+            }}
+            totalCards={playersList.reduce((acc, p) => acc + (p.selectedDeckCardCount || 0), 0)}
+            isHost={isHost}
+            configuredCount={room.questionCount}
+          />
         </div>
 
         {/* Danh sách Người Chơi trong Phòng */}

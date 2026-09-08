@@ -9,14 +9,12 @@ export type DeckViewMode =
   | "single"
   | "study"
   | "quiz"
-  | "ask"
-  | "game";
+  | "ask";
 
 export type DeckMode = {
   key: DeckViewMode;
   label: string;
   Icon: Icon;
-  /** Filled accent instead of the plain active pill. For the game only. */
   accent?: boolean;
 };
 
@@ -46,7 +44,7 @@ export function DeckModeSwitcher({
   onChange,
 }: DeckModeSwitcherProps) {
   return (
-    <div className="mt-4 flex justify-center overflow-x-auto">
+    <div className="mt-2.5 flex justify-center overflow-x-auto">
       <div
         role="tablist"
         aria-label="Chế độ xem bộ thẻ"

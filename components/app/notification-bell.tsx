@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { ApiError } from "@/lib/api/client";
+import { Client } from "@stomp/stompjs";
+import { useSession } from "@/lib/auth/use-session";
+import { getSession } from "@/lib/auth/session-store";
+import { API_BASE_URL, ApiError } from "@/lib/api/client";
 import {
   deleteNotification,
   getUnreadNotificationCount,
@@ -14,36 +17,74 @@ import type { NotificationResponse } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 import { Bell } from "@phosphor-icons/react/Bell";
 import { Trash } from "@phosphor-icons/react/Trash";
-
-/*
-  The notification bell.
-
-  What this component can and cannot show is decided by the backend, not by
-  taste:
-
-  - The unread COUNT is accurate and is what the badge uses.
-  - The per notification `read` flag is hardcoded false in every response, even
-    right after marking one read and even though the change persists. So rows
-    are NOT drawn as read or unread; doing that would show everything as unread
-    forever. Marking read is still offered, and the badge answers correctly
-    afterwards, which is the honest half of the feature.
-  - The list is a flat array with no total, so there is no page count and no
-    "load more" beyond asking for a bigger page. A short page means the end.
-*/
+import { X } from "@phosphor-icons/react/X";
 
 const PAGE_SIZE = 15;
 
 export function NotificationBell() {
+  const session = useSession();
+  const userId = session?.user?.id ? String(session.user.id) : null;
+
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(0);
   const [items, setItems] = useState<NotificationResponse[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const [toastNotification, setToastNotification] = useState<NotificationResponse | null>(null);
 
-  /* setState inside .then rather than after an await, matching the pattern in
-     lib/use-async.ts: the set-state-in-effect rule reads the effect body
-     statically and cannot see that an await defers the call. */
+  const panelRef = useRef<HTMLDivElement>(null);
+  const stompClientRef = useRef<Client | null>(null);
+
+  /* Real-time STOMP WebSocket notifications */
+  useEffect(() => {
+    if (!userId) return;
+
+    try {
+      const token = getSession()?.token.accessToken;
+      const wsUrl = API_BASE_URL.replace(/^http/, "ws") + "/ws-notification";
+
+      const client = new Client({
+        brokerURL: wsUrl,
+        connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
+        reconnectDelay: 5000,
+        heartbeatIncoming: 4000,
+        heartbeatOutgoing: 4000,
+        onConnect: () => {
+          client.subscribe(`/topic/notifications/${userId}`, (msg) => {
+            try {
+              const newNotification: NotificationResponse = JSON.parse(msg.body);
+              setCount((prev) => prev + 1);
+              setItems((prev) => {
+                if (!prev) return [newNotification];
+                if (prev.some((n) => n.id === newNotification.id)) return prev;
+                return [newNotification, ...prev];
+              });
+              setToastNotification(newNotification);
+              setTimeout(() => {
+                setToastNotification(null);
+              }, 6000);
+            } catch {
+              // Ignore parse error
+            }
+          });
+        },
+      });
+
+      client.activate();
+      stompClientRef.current = client;
+    } catch {
+      // Fallback polling takes over
+    }
+
+    return () => {
+      if (stompClientRef.current) {
+        stompClientRef.current.deactivate();
+        stompClientRef.current = null;
+      }
+    };
+  }, [userId]);
+
+  /* setState inside .then rather than after an await */
   const refreshCount = useCallback(() => {
     getUnreadNotificationCount()
       .then((value) => setCount(value))
@@ -183,6 +224,26 @@ export function NotificationBell() {
               </ul>
             )}
           </div>
+        </div>
+      ) : null}
+
+      {toastNotification ? (
+        <div className="fixed top-20 right-6 z-50 flex max-w-sm items-start gap-3 rounded-2xl border border-accent/40 bg-surface p-4 shadow-card backdrop-blur-md transition-all duration-300">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent-text">
+            <Bell size={20} weight="fill" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-ink">{toastNotification.title}</p>
+            <p className="mt-0.5 text-xs text-muted leading-relaxed">{toastNotification.content}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setToastNotification(null)}
+            className="rounded-full p-1 text-muted hover:bg-surface-2 hover:text-ink"
+            aria-label="Đóng thông báo"
+          >
+            <X size={16} />
+          </button>
         </div>
       ) : null}
     </div>

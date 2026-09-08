@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 // CSR entry: every caller of this card is a client component.
 import { Cards } from "@phosphor-icons/react/Cards";
+import { SealCheck } from "@phosphor-icons/react/SealCheck";
 
+import { listCards } from "@/lib/api/cards";
 import type { DeckResponse } from "@/lib/api/types";
 
 export const VISIBILITY_LABEL: Record<string, string> = {
@@ -46,6 +48,26 @@ function DeckCardCover({ src, alt }: { src: string; alt: string }) {
 
 /** Shared by the dashboard, the deck list and the public catalogue. */
 export function DeckCard({ deck, actions, footer }: DeckCardProps) {
+  const isOfficial = Boolean(deck.official || (deck as { isOfficial?: boolean }).isOfficial);
+
+  const [realTotal, setRealTotal] = useState<number | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    listCards(deck.id, 0, 1)
+      .then((res) => {
+        if (active && res && typeof res.totalElements === "number") {
+          setRealTotal(res.totalElements);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [deck.id]);
+
+  const displayTotal = realTotal ?? deck.totalCards;
+
   return (
     <article className="card-lift group relative flex h-full flex-col gap-4 overflow-hidden rounded-card border border-line bg-surface p-6 cursor-pointer">
       {/* Full card clickable overlay link */}
@@ -80,6 +102,12 @@ export function DeckCard({ deck, actions, footer }: DeckCardProps) {
       ) : null}
 
       <div className="mt-auto relative z-10 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted pointer-events-none">
+        {isOfficial ? (
+          <span className="inline-flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/10 px-2.5 py-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
+            <SealCheck aria-hidden size={14} weight="fill" className="text-blue-500" />
+            Chính thức
+          </span>
+        ) : null}
         <span className="font-mono uppercase">
           {deck.sourceLanguage} to {deck.targetLanguage}
         </span>
@@ -93,7 +121,7 @@ export function DeckCard({ deck, actions, footer }: DeckCardProps) {
         ) : null}
         <span className="inline-flex items-center gap-1.5">
           <Cards aria-hidden size={15} />
-          <span className="font-mono tabular-nums">{deck.totalCards}</span>
+          <span className="font-mono tabular-nums">{displayTotal}</span>
         </span>
       </div>
 

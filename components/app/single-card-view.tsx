@@ -299,9 +299,7 @@ export function SingleCardView({
           </button>
         </div>
 
-        <span className="text-xs font-medium text-muted">
-          ← → chuyển từ · Space lật thẻ
-        </span>
+
       </div>
     </div>
   );

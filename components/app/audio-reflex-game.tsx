@@ -12,6 +12,7 @@ import { GameController } from "@phosphor-icons/react/GameController";
 import { Ranking } from "@phosphor-icons/react/Ranking";
 import { Timer } from "@phosphor-icons/react/Timer";
 import { Lightbulb } from "@phosphor-icons/react/Lightbulb";
+import { Clock } from "@phosphor-icons/react/Clock";
 import { WarningCircle } from "@phosphor-icons/react/WarningCircle";
 import { Waveform } from "@phosphor-icons/react/Waveform";
 
@@ -23,6 +24,8 @@ import {
   startAudioReflexGame,
   submitAudioReflexResult,
 } from "@/lib/api/games";
+import { listCards } from "@/lib/api/cards";
+import { QuestionCountSelector } from "@/components/app/question-count-selector";
 import { cn } from "@/lib/cn";
 
 /* ---------------------------------------------------------------------------
@@ -167,6 +170,23 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
   const [gameError, setGameError] = useState<string | null>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
 
+  const [deckTotalCards, setDeckTotalCards] = useState<number | null>(null);
+  const [questionCountInput, setQuestionCountInput] = useState<number>(10);
+
+  useEffect(() => {
+    let active = true;
+    listCards(deckId, 0, 1)
+      .then((res) => {
+        if (active && res && typeof res.totalElements === "number") {
+          setDeckTotalCards(res.totalElements);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [deckId]);
+
   const [gs, setGs] = useState<GameState | null>(null);
   const [showHint, setShowHint] = useState(false);
 
@@ -275,7 +295,7 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
     setGameError(null);
     setShowHint(false);
     try {
-      const data = await startAudioReflexGame(deckId);
+      const data = await startAudioReflexGame(deckId, questionCountInput);
       setGameData(data);
       const first = data.questions[0];
       gameStartTime.current = Date.now();
@@ -407,6 +427,15 @@ export function AudioReflexGame({ deckId, deckTitle }: Props) {
               </span>
             ))}
           </div>
+
+          {/* Cấu hình số câu hỏi Solo */}
+          <QuestionCountSelector
+            value={questionCountInput}
+            onChange={setQuestionCountInput}
+            totalCards={deckTotalCards}
+            label="Số lượng câu hỏi luyện tập:"
+            className="mt-3 bg-surface"
+          />
 
           {gameError && (
             <div className="mt-2 rounded-field border border-danger/30 bg-danger/5 px-4 py-2 text-xs font-medium text-danger">
