@@ -18,6 +18,9 @@ import { Brain } from "@phosphor-icons/react/Brain";
 import { Sparkle } from "@phosphor-icons/react/Sparkle";
 import { ChatCircleDots } from "@phosphor-icons/react/ChatCircleDots";
 import { UserPlus } from "@phosphor-icons/react/UserPlus";
+import { Globe } from "@phosphor-icons/react/Globe";
+import { Lock } from "@phosphor-icons/react/Lock";
+import { Clock } from "@phosphor-icons/react/Clock";
 
 import { FsrsStudyMode } from "@/components/app/fsrs-study-mode";
 import { Button } from "@/components/ui/button";
@@ -45,7 +48,7 @@ import {
   toggleCardStar,
   updateCard,
 } from "@/lib/api/cards";
-import { getDeck } from "@/lib/api/decks";
+import { getDeck, setDeckVisibility } from "@/lib/api/decks";
 import { getDeckDueCards } from "@/lib/api/fsrs";
 import { ApiError } from "@/lib/api/client";
 import type { CardResponse } from "@/lib/api/types";
@@ -185,6 +188,13 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
     });
   }
 
+  async function onChangeVisibility(targetVisibility: "PUBLIC" | "PRIVATE") {
+    await run(async () => {
+      await setDeckVisibility(deckId, targetVisibility);
+      deck.reload();
+    });
+  }
+
   return (
     <Container size="wide">
       {deck.status === "error" ? (
@@ -217,8 +227,46 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
           </div>
 
 
-          {/* Action buttons (Share card luôn có; Add card nằm cạnh khi ở Quản lý card) — phải */}
+          {/* Action buttons (Chuyển trạng thái / Share card / PDF / Add card) — phải */}
           <div className="flex items-center gap-2">
+            {isOwner && deck.status === "success" && !deck.data.parentDeckId ? (
+              deck.data.pendingPublic ? (
+                <Button
+                  variant="secondary"
+                  disabled
+                  className="cursor-not-allowed border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 opacity-90"
+                  title={
+                    deck.data.rejectionReason
+                      ? `Lần xin trước bị từ chối với lý do: ${deck.data.rejectionReason}`
+                      : "Đã gửi yêu cầu lên Public, đang chờ Admin duyệt"
+                  }
+                >
+                  <Clock aria-hidden size={15} weight="bold" />
+                  Đã gửi yêu cầu lên Public
+                </Button>
+              ) : deck.data.visibility === "PUBLIC" ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => onChangeVisibility("PRIVATE")}
+                  disabled={busy}
+                  title="Chuyển bộ bài về chế độ Riêng tư (Private)"
+                >
+                  <Lock aria-hidden size={15} weight="bold" />
+                  Làm Private
+                </Button>
+              ) : (
+                <Button
+                  variant="secondary"
+                  onClick={() => onChangeVisibility("PUBLIC")}
+                  disabled={busy}
+                  title="Gửi yêu cầu đưa bộ bài lên Công khai (Public)"
+                >
+                  <Globe aria-hidden size={15} weight="bold" />
+                  Yêu cầu Public
+                </Button>
+              )
+            ) : null}
+
             <Button
               variant="secondary"
               onClick={() => setIsShareModalOpen(true)}
