@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { AiStudioView } from "@/components/app/ai-studio-view";
 
 export const metadata: Metadata = {
-  title: "Agent User",
+  title: "Công cụ AI",
 };
 
 export default function AiStudioPage() {
