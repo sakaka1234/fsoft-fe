@@ -6,11 +6,19 @@ import { Cards } from "@phosphor-icons/react/Cards";
 import { ChatCircleDots } from "@phosphor-icons/react/ChatCircleDots";
 import { Heart } from "@phosphor-icons/react/Heart";
 import { HeartStraight } from "@phosphor-icons/react/HeartStraight";
+import { Paperclip } from "@phosphor-icons/react/Paperclip";
+import { PaperPlaneTilt } from "@phosphor-icons/react/PaperPlaneTilt";
 import { ShareFat } from "@phosphor-icons/react/ShareFat";
 import { Trash } from "@phosphor-icons/react/Trash";
 
 import { Button } from "@/components/ui/button";
 import { RowSkeleton } from "@/components/app/states";
+import {
+  AttachmentPicker,
+  AttachmentPreview,
+  ServerAttachment,
+} from "@/components/app/attachment-picker";
+import { isAdmin } from "@/lib/auth/roles";
 import {
   createComment,
   deleteComment,
@@ -97,9 +105,41 @@ export function CommunityPostItem({
   onDeleted,
 }: CommunityPostItemProps) {
   const session = useSession();
-  const [liked, setLiked] = useState(post.likedByCurrentUser);
-  const [likeCount, setLikeCount] = useState(post.likeCount);
-  const [commentCount, setCommentCount] = useState(post.commentCount);
+  /* Local optimistic counters. The key trick for reload-persistence: when the
+     server view changes underneath (list refetch after reload), the component
+     is keyed by post id + liked state, so React resets local state via the
+     derived-key pattern below instead of an effect setState. */
+  const [likedState, setLikedState] = useState<{
+    key: string;
+    liked: boolean;
+    likeCount: number;
+    commentCount: number;
+  }>({
+    key: `${post.id}:${post.likedByCurrentUser}`,
+    liked: post.likedByCurrentUser,
+    likeCount: post.likeCount,
+    commentCount: post.commentCount,
+  });
+
+  /* Derive-from-props reset: when the fetched post flips like state, the key
+     changes and the next render re-seeds local state from the server values.
+     No effect, no cascading render. */
+  const serverKey = `${post.id}:${post.likedByCurrentUser}`;
+  const [shownLiked, shownLikeCount, shownCommentCount] =
+    likedState.key === serverKey
+      ? [likedState.liked, likedState.likeCount, likedState.commentCount]
+      : [post.likedByCurrentUser, post.likeCount, post.commentCount];
+  if (likedState.key !== serverKey) {
+    setLikedState({
+      key: serverKey,
+      liked: post.likedByCurrentUser,
+      likeCount: post.likeCount,
+      commentCount: post.commentCount,
+    });
+  }
+  const liked = shownLiked;
+  const likeCount = shownLikeCount;
+  const commentCount = shownCommentCount;
   const [commentsOpen, setCommentsOpen] = useState(defaultCommentsOpen);
   const [pendingLike, setPendingLike] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -116,8 +156,12 @@ export function CommunityPostItem({
     setPendingLike(true);
     togglePostLike(post.id)
       .then((result) => {
-        setLiked(result.liked);
-        setLikeCount(result.likeCount);
+        setLikedState({
+          key: `${post.id}:${result.liked}`,
+          liked: result.liked,
+          likeCount: result.likeCount,
+          commentCount,
+        });
       })
       .catch(() => undefined)
       .finally(() => setPendingLike(false));
@@ -211,6 +255,14 @@ export function CommunityPostItem({
         </ul>
       ) : null}
 
+      {post.attachmentUrl ? (
+        <ServerAttachment
+          url={post.attachmentUrl}
+          name={post.attachmentName}
+          className="relative z-10"
+        />
+      ) : null}
+
       {/* Counts row */}
       <div className="flex items-center justify-between px-1 pt-1 text-xs text-muted">
         <span className="inline-flex items-center gap-1">
@@ -267,7 +319,15 @@ export function CommunityPostItem({
       {commentsOpen ? (
         <PostComments
           postId={post.id}
-          onCountChanged={(delta) => setCommentCount((c) => Math.max(0, c + delta))}
+          postOwnerId={post.profileId}
+          onCountChanged={(delta) =>
+            setLikedState({
+              key: `${post.id}:${liked}`,
+              liked,
+              likeCount,
+              commentCount: Math.max(0, commentCount + delta),
+            })
+          }
         />
       ) : null}
     </article>
@@ -278,16 +338,21 @@ export function CommunityPostItem({
 
 function PostComments({
   postId,
+  postOwnerId,
   onCountChanged,
 }: {
   postId: number;
+  postOwnerId: string;
   onCountChanged: (delta: number) => void;
 }) {
   const session = useSession();
   const me = session?.user;
+  const admin = isAdmin(session);
+  const canModerate = admin || session?.user.id === postOwnerId;
   const [comments, setComments] = useState<CommentResponse[] | null>(null);
   const [error, setError] = useState(false);
   const [draft, setDraft] = useState("");
+  const [attachment, setAttachment] = useState<File | null>(null);
   const [pending, setPending] = useState(false);
   const [nonce, setNonce] = useState(0);
 
@@ -306,9 +371,10 @@ function PostComments({
   function submit() {
     if (!draft.trim() || pending) return;
     setPending(true);
-    createComment(postId, { content: draft.trim() })
+    createComment(postId, { content: draft.trim() }, attachment ?? undefined)
       .then(() => {
         setDraft("");
+        setAttachment(null);
         setPending(false);
         onCountChanged(1);
         setNonce((n) => n + 1);
@@ -331,6 +397,7 @@ function PostComments({
             <CommentRow
               key={comment.id}
               comment={comment}
+              canDelete={canModerate || session?.user.id === comment.profileId}
               onRemoved={() => {
                 onCountChanged(-1);
                 setNonce((n) => n + 1);
@@ -340,24 +407,34 @@ function PostComments({
         </ul>
       ) : null}
 
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-start gap-2.5">
         <Avatar
           name={me?.fullName?.trim() || me?.email || "Bạn"}
           src={me?.avatar}
           className="h-8 w-8"
         />
-        <textarea
-          rows={1}
-          value={draft}
-          placeholder="Viết bình luận..."
-          onChange={(e) => setDraft(e.target.value)}
-          disabled={pending}
-          aria-label="Viết bình luận"
-          className="max-h-28 flex-1 resize-y rounded-full border border-line bg-surface-2 px-4 py-2 text-sm text-ink placeholder:text-muted transition-colors hover:border-ink/25 focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-60"
-        />
-        <Button onClick={submit} disabled={pending || !draft.trim()} className="h-9 px-4">
-          {pending ? "..." : "Gửi"}
-        </Button>
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <textarea
+            rows={1}
+            value={draft}
+            placeholder="Viết bình luận..."
+            onChange={(e) => setDraft(e.target.value)}
+            disabled={pending}
+            aria-label="Viết bình luận"
+            className="max-h-28 resize-y rounded-field border border-line bg-surface-2 px-4 py-2 text-sm text-ink placeholder:text-muted transition-colors hover:border-ink/25 focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-60"
+          />
+          <div className="flex items-center justify-between gap-2">
+            <AttachmentPicker
+              file={attachment}
+              onFileChange={setAttachment}
+              disabled={pending}
+              label="Đính kèm file vào bình luận"
+            />
+            <Button onClick={submit} disabled={pending || !draft.trim()} className="h-9 px-4">
+              {pending ? "..." : "Gửi"}
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -365,17 +442,19 @@ function PostComments({
 
 function CommentRow({
   comment,
+  canDelete,
   onRemoved,
 }: {
   comment: CommentResponse;
+  canDelete: boolean;
   onRemoved: () => void;
 }) {
   const session = useSession();
-  const own = session?.user.id === comment.profileId;
   const [replies, setReplies] = useState<CommentResponse[] | null>(null);
   const [repliesOpen, setRepliesOpen] = useState(false);
   const [replyDraft, setReplyDraft] = useState("");
   const [pending, setPending] = useState(false);
+  const [replyFile, setReplyFile] = useState<File | null>(null);
 
   function loadReplies() {
     setRepliesOpen((v) => !v);
@@ -388,21 +467,29 @@ function CommentRow({
   function submitReply() {
     if (!replyDraft.trim() || pending) return;
     setPending(true);
-    createComment(comment.communityPostId, {
-      content: replyDraft.trim(),
-      parentCommentId: comment.id,
-    })
+    createComment(
+      comment.communityPostId,
+      { content: replyDraft.trim(), parentCommentId: comment.id },
+      replyFile ?? undefined,
+    )
       .then(() => listCommentReplies(comment.id))
       .then((res) => {
         setReplies(res.content);
         setReplyDraft("");
+        setReplyFile(null);
         setPending(false);
       })
       .catch(() => setPending(false));
   }
 
+  function removeReply(replyId: number) {
+    deleteComment(replyId)
+      .then(() => listCommentReplies(comment.id))
+      .then((res) => setReplies(res.content))
+      .catch(() => undefined);
+  }
+
   function remove() {
-    if (!window.confirm("Xoá bình luận này?")) return;
     deleteComment(comment.id)
       .then(onRemoved)
       .catch(() => undefined);
@@ -417,6 +504,13 @@ function CommentRow({
           <p className="whitespace-pre-line text-sm leading-relaxed text-ink/90">
             {comment.content}
           </p>
+          {comment.attachmentUrl ? (
+            <ServerAttachment
+              url={comment.attachmentUrl}
+              name={comment.attachmentName}
+              className="mt-1.5"
+            />
+          ) : null}
         </div>
         <div className="mt-1 flex items-center gap-3 pl-1 text-xs text-muted">
           <span>{formatDay(comment.createdAt)}</span>
@@ -436,7 +530,7 @@ function CommentRow({
               {comment.replyCount} trả lời
             </button>
           ) : null}
-          {own ? (
+          {canDelete ? (
             <button
               type="button"
               onClick={remove}
@@ -452,25 +546,40 @@ function CommentRow({
             {replies === null ? (
               <p className="pl-1 text-xs text-muted">Đang tải trả lời...</p>
             ) : (
-              replies.map((reply) => <ReplyBubble key={reply.id} reply={reply} />)
+              replies.map((reply) => (
+                <ReplyBubble
+                  key={reply.id}
+                  reply={reply}
+                  canDelete={canDelete || session?.user.id === reply.profileId}
+                  onRemoved={() => removeReply(reply.id)}
+                />
+              ))
             )}
-            <div className="flex items-center gap-2">
-              <textarea
-                rows={1}
-                value={replyDraft}
-                placeholder="Trả lời..."
-                onChange={(e) => setReplyDraft(e.target.value)}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <textarea
+                  rows={1}
+                  value={replyDraft}
+                  placeholder="Trả lời..."
+                  onChange={(e) => setReplyDraft(e.target.value)}
+                  disabled={pending}
+                  aria-label="Trả lời bình luận"
+                  className="flex-1 resize-none rounded-full border border-line bg-surface-2 px-3.5 py-1.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-60"
+                />
+                <Button
+                  onClick={submitReply}
+                  disabled={pending || !replyDraft.trim()}
+                  className="h-8 px-3 text-xs"
+                >
+                  {pending ? "..." : "Gửi"}
+                </Button>
+              </div>
+              <AttachmentPicker
                 disabled={pending}
-                aria-label="Trả lời bình luận"
-                className="flex-1 resize-none rounded-full border border-line bg-surface-2 px-3.5 py-1.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-60"
+                file={replyFile}
+                onFileChange={setReplyFile}
+                label="Đính kèm file vào trả lời"
               />
-              <Button
-                onClick={submitReply}
-                disabled={pending || !replyDraft.trim()}
-                className="h-8 px-3 text-xs"
-              >
-                {pending ? "..." : "Gửi"}
-              </Button>
             </div>
           </div>
         ) : null}
@@ -479,7 +588,15 @@ function CommentRow({
   );
 }
 
-function ReplyBubble({ reply }: { reply: CommentResponse }) {
+function ReplyBubble({
+  reply,
+  canDelete,
+  onRemoved,
+}: {
+  reply: CommentResponse;
+  canDelete: boolean;
+  onRemoved: () => void;
+}) {
   return (
     <div className="flex gap-2">
       <Avatar name={reply.profileName} src={reply.profileAvatar} className="h-6 w-6" />
@@ -488,6 +605,23 @@ function ReplyBubble({ reply }: { reply: CommentResponse }) {
         <p className="whitespace-pre-line text-sm leading-relaxed text-ink/90">
           {reply.content}
         </p>
+        {reply.attachmentUrl ? (
+          <ServerAttachment
+            url={reply.attachmentUrl}
+            name={reply.attachmentName}
+            className="mt-1"
+          />
+        ) : null}
+        {canDelete ? (
+          <button
+            type="button"
+            onClick={onRemoved}
+            aria-label="Xoá trả lời"
+            className="ml-2 align-middle text-xs text-muted transition-colors hover:text-danger"
+          >
+            Xoá
+          </button>
+        ) : null}
       </div>
     </div>
   );

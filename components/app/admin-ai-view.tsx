@@ -7,11 +7,13 @@ import { Trash } from "@phosphor-icons/react/Trash";
 import { Warning } from "@phosphor-icons/react/Warning";
 import { Scroll } from "@phosphor-icons/react/Scroll";
 import { CaretRight } from "@phosphor-icons/react/CaretRight";
+import { UserCircle } from "@phosphor-icons/react/UserCircle";
 
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TextInput } from "@/components/ui/field";
 import { EmptyState, ErrorState, RowSkeleton } from "@/components/app/states";
+import { UserAgentPanel } from "@/components/app/user-agent-view";
 import { Pager, SectionError } from "@/components/app/admin-view";
 import { ApiError } from "@/lib/api/client";
 import {
@@ -771,7 +773,7 @@ function AdminAiAuditLogPanel() {
   );
 }
 
-type AiTab = "chat" | "audit";
+type AiTab = "chat" | "agent-user" | "audit";
 
 export function AdminAiSection() {
   const [tab, setTab] = useState<AiTab>("chat");
@@ -790,7 +792,20 @@ export function AdminAiSection() {
           )}
         >
           <Robot size={16} />
-          Trợ lý
+          Agent Admin
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("agent-user")}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+            tab === "agent-user"
+              ? "bg-accent text-accent-fg shadow-2xs"
+              : "text-muted hover:text-ink",
+          )}
+        >
+          <UserCircle size={16} />
+          Agent User
         </button>
         <button
           type="button"
@@ -807,7 +822,9 @@ export function AdminAiSection() {
         </button>
       </div>
 
-      {tab === "chat" ? <AdminAiChatPanel /> : <AdminAiAuditLogPanel />}
+      {tab === "chat" ? <AdminAiChatPanel /> : null}
+      {tab === "agent-user" ? <UserAgentPanel /> : null}
+      {tab === "audit" ? <AdminAiAuditLogPanel /> : null}
     </div>
   );
 }

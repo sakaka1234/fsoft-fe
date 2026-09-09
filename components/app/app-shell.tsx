@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { List } from "@phosphor-icons/react/List";
 import { X } from "@phosphor-icons/react/X";
@@ -38,6 +38,7 @@ import { FsrsNotificationToast } from "@/components/app/fsrs-notification-toast"
 const APP_NAV = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Decks", href: "/decks" },
+  { label: "Ôn tập", href: "/decks?tab=srs" },
   { label: "Explore", href: "/explore" },
   { label: "Tra từ", href: "/search" },
   { label: "Công cụ AI", href: "/ai" },
@@ -73,7 +74,20 @@ function DueBadge({ count }: { count: number }) {
 }
 
 function isActive(pathname: string, href: string) {
+  // "/decks?tab=srs" shares the /decks pathname; the query is what picks the
+  // tab, so it must never count as a child segment of /decks.
+  if (href.includes("?")) return false;
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function isReviewActive(
+  pathname: string,
+  search: string | null,
+  href: string,
+) {
+  if (!href.includes("?")) return false;
+  const [path, query] = href.split("?");
+  return pathname === path && search === query.replace("tab=", "srs");
 }
 
 /**
@@ -107,6 +121,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchTab = searchParams?.get("tab") ?? null;
   const reduce = useReducedMotion();
   const [open, setOpen] = useState(false);
 
@@ -130,7 +146,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .catch(() => {
         // A background reminder is not worth surfacing an error for.
       });
-  }, [lastDismissedCount]);
+  }, [lastDismissedCount, setIsToastOpen]);
 
   useEffect(() => {
     if (!getSession()) {
@@ -213,7 +229,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 className="hidden items-center gap-6 lg:flex"
               >
                 {nav.map((item) => {
-                  const active = isActive(pathname, item.href);
+                  const active = item.href.includes("?")
+                    ? isReviewActive(pathname, searchTab, item.href)
+                    : isActive(pathname, item.href);
                   return (
                     <Link
                       key={item.href}
@@ -225,7 +243,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       )}
                     >
                       {item.label}
-                      {item.href === "/decks" ? (
+                      {item.href === "/decks?tab=srs" ? (
                         <DueBadge count={dueCount} />
                       ) : null}
                     </Link>
@@ -314,7 +332,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   className="flex max-h-[calc(100dvh-4rem)] flex-col overflow-y-auto py-4 md:max-h-[calc(100dvh-4.25rem)]"
                 >
                   {nav.map((item) => {
-                    const active = isActive(pathname, item.href);
+                    const active = item.href.includes("?")
+                      ? isReviewActive(pathname, searchTab, item.href)
+                      : isActive(pathname, item.href);
                     return (
                       <Link
                         key={item.href}
@@ -329,7 +349,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         )}
                       >
                         {item.label}
-                        {item.href === "/decks" ? (
+                        {item.href === "/decks?tab=srs" ? (
                           <DueBadge count={dueCount} />
                         ) : null}
                       </Link>

@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CaretLeft } from "@phosphor-icons/react/CaretLeft";
-import { CaretRight } from "@phosphor-icons/react/CaretRight";
 import { GitFork } from "@phosphor-icons/react/GitFork";
 import { MagnifyingGlass } from "@phosphor-icons/react/MagnifyingGlass";
 
@@ -12,6 +10,16 @@ import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Field, TextInput } from "@/components/ui/field";
 import { SelectDropdown } from "@/components/ui/select-dropdown";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { pageRange } from "@/lib/page-range";
 import { DeckCard } from "@/components/app/deck-card";
 import { CardSkeleton, EmptyState, ErrorState } from "@/components/app/states";
 import { ApiError } from "@/lib/api/client";
@@ -266,31 +274,52 @@ export function ExploreView() {
             </ul>
 
             {totalPages > 1 ? (
-              <nav
-                aria-label="Pagination"
-                className="mt-10 flex items-center justify-center gap-4"
-              >
-                <Button
-                  variant="secondary"
-                  onClick={() => setPage((value) => Math.max(1, value - 1))}
-                  disabled={page <= 1}
-                >
-                  <CaretLeft aria-hidden size={15} />
-                  Previous
-                </Button>
-                <p aria-live="polite" className="text-sm text-muted">
-                  Page <span className="font-mono tabular-nums">{page}</span> of{" "}
-                  <span className="font-mono tabular-nums">{totalPages}</span>
-                </p>
-                <Button
-                  variant="secondary"
-                  onClick={() => setPage((value) => value + 1)}
-                  disabled={page >= totalPages}
-                >
-                  Next
-                  <CaretRight aria-hidden size={15} />
-                </Button>
-              </nav>
+              <Pagination className="mt-10">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      aria-disabled={page <= 1}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page > 1) setPage((value) => Math.max(1, value - 1));
+                      }}
+                    />
+                  </PaginationItem>
+
+                  {pageRange(page, totalPages).map((value) =>
+                    value === "ellipsis" ? (
+                      <PaginationItem key={`e-${value}`}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    ) : (
+                      <PaginationItem key={value}>
+                        <PaginationLink
+                          href="#"
+                          isActive={value === page}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPage(value);
+                          }}
+                        >
+                          {value}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ),
+                  )}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      aria-disabled={page >= totalPages}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page < totalPages) setPage((value) => value + 1);
+                      }}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             ) : null}
           </>
         ) : null}

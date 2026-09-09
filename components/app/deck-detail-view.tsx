@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "@/lib/auth/use-session";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowDown } from "@phosphor-icons/react/ArrowDown";
 import { ArrowLeft } from "@phosphor-icons/react/ArrowLeft";
@@ -44,6 +44,7 @@ import {
   deleteCard,
   exportDeckPdf,
   listCards,
+  listStarredCards,
   reorderCards,
   toggleCardStar,
   updateCard,
@@ -58,6 +59,7 @@ import { useAsync } from "@/lib/use-async";
 const DECK_MODES: DeckMode[] = [
   { key: "list", label: "Quản lý card", Icon: List },
   { key: "single", label: "Xem card", Icon: CardsIcon },
+  { key: "starred", label: "Đã sao", Icon: Star },
   { key: "study", label: "Ôn tập", Icon: Brain },
   { key: "quiz", label: "Quiz AI", Icon: Sparkle },
   { key: "ask", label: "Hỏi AI", Icon: ChatCircleDots },
@@ -75,14 +77,12 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
   const [busy, setBusy] = useState(false);
 
   /*
-    Star state has to be tracked here because CardResponse carries no starred
-    flag: the list endpoint simply does not return one. So the page starts with
-    nothing marked and fills in as the reader toggles. A page reload forgets
-    it. Fixing that properly needs the flag on CardResponse, or a second call
-    to /cards/starred and an intersection, which is a request per deck view for
-    a decoration.
+    Star state used to be local-only: CardResponse carries no starred flag, so
+    the page started blank and a reload forgot every star. The truth now lives
+    in the starredCards fetch, and localStarred holds only the deltas the
+    reader made since that fetch, so reload persistence is server-backed.
   */
-  const [starred, setStarred] = useState<Set<number>>(new Set());
+  const [localStarred, setLocalStarred] = useState<Record<number, boolean>>({});
 
   const deck = useAsync(
     useCallback((signal: AbortSignal) => getDeck(deckId, signal), [deckId]),
@@ -95,6 +95,13 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
     ),
     `cards-${deckId}`,
   );
+  const starredCards = useAsync(
+    useCallback(
+      (signal: AbortSignal) => listStarredCards(0, 500, deckId, signal),
+      [deckId],
+    ),
+    `starred-cards-${deckId}`,
+  );
   const dueCards = useAsync(
     useCallback(
       (signal: AbortSignal) => getDeckDueCards(deckId, 120, 30, signal),
@@ -102,6 +109,20 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
     ),
     `due-cards-${deckId}`,
   );
+
+  /* Server truth plus the reader's local deltas, derived during render: no
+     effect, no cascading setState. */
+  const starredSet = useMemo(() => {
+    const set = new Set<number>();
+    if (starredCards.status === "success") {
+      starredCards.data.content.forEach((card) => set.add(card.id));
+    }
+    for (const [id, isStarred] of Object.entries(localStarred)) {
+      if (isStarred) set.add(Number(id));
+      else set.delete(Number(id));
+    }
+    return set;
+  }, [starredCards.status, starredCards.data, localStarred]);
 
 
   const isOwner = Boolean(
@@ -171,12 +192,11 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
   async function onToggleStar(card: CardResponse) {
     await run(async () => {
       const result = await toggleCardStar(card.id);
-      setStarred((current) => {
-        const next = new Set(current);
-        if (result.isStarred) next.add(card.id);
-        else next.delete(card.id);
-        return next;
-      });
+      setLocalStarred((current) => ({
+        ...current,
+        [card.id]: result.isStarred,
+      }));
+      starredCards.reload();
     });
   }
 
@@ -379,6 +399,63 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                   }}
                 />
               </div>
+            ) : viewMode === "starred" ? (
+              /* Starred read-only listing: no FSRS review entry here, per
+                 spec. Stars stay toggleable and the list follows the set. */
+              starredCards.status === "loading" ? (
+                <RowSkeleton count={3} />
+              ) : starredCards.status === "error" ? (
+                <ErrorState
+                  message={starredCards.error}
+                  onRetry={starredCards.reload}
+                />
+              ) : starredCards.data.content.filter((card) =>
+                  starredSet.has(card.id),
+                ).length === 0 ? (
+                <EmptyState
+                  title="Chưa có card nào được sao"
+                  body="Bấm hình ngôi sao ở danh sách card hoặc card đơn để ghim lại những từ quan trọng."
+                />
+              ) : (
+                <ul className="flex flex-col gap-3">
+                  {starredCards.data.content
+                    .filter((card) => starredSet.has(card.id))
+                    .map((card) => (
+                      <li key={card.id}>
+                        <article className="flex items-start gap-4 rounded-card border border-line bg-surface p-5">
+                          <button
+                            type="button"
+                            onClick={() => onToggleStar(card)}
+                            disabled={busy}
+                            aria-pressed={starredSet.has(card.id)}
+                            aria-label={`Bỏ sao ${card.word}`}
+                            className="shrink-0 rounded-full p-1 text-accent transition-colors hover:text-accent-text disabled:opacity-40"
+                          >
+                            <Star size={17} weight="fill" />
+                          </button>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                              <h3 className="text-lg font-semibold tracking-tight break-words">
+                                {card.word}
+                              </h3>
+                              {card.phonetic ? (
+                                <span className="font-mono text-sm break-all text-muted">
+                                  {card.phonetic}
+                                </span>
+                              ) : null}
+                              {card.partOfSpeech ? (
+                                <span className="rounded-full border border-line px-2 py-0.5 text-xs text-muted">
+                                  {card.partOfSpeech}
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="mt-1 text-base">{card.meaning}</p>
+                          </div>
+                        </article>
+                      </li>
+                    ))}
+                </ul>
+              )
             ) : viewMode === "study" ? (
               <FsrsStudyMode
                 cards={
@@ -437,9 +514,9 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                         type="button"
                         onClick={() => onToggleStar(card)}
                         disabled={busy}
-                        aria-pressed={starred.has(card.id)}
+                        aria-pressed={starredSet.has(card.id)}
                         aria-label={
-                          starred.has(card.id)
+                          starredSet.has(card.id)
                             ? `Bỏ sao ${card.word}`
                             : `Gắn sao ${card.word}`
                         }
@@ -447,8 +524,8 @@ export function DeckDetailView({ deckId }: { deckId: number }) {
                       >
                         <Star
                           size={17}
-                          weight={starred.has(card.id) ? "fill" : "regular"}
-                          className={starred.has(card.id) ? "text-accent" : undefined}
+                          weight={starredSet.has(card.id) ? "fill" : "regular"}
+                          className={starredSet.has(card.id) ? "text-accent" : undefined}
                         />
                       </button>
 

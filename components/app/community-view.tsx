@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MagnifyingGlass } from "@phosphor-icons/react/MagnifyingGlass";
 import { CaretLeft } from "@phosphor-icons/react/CaretLeft";
-import { CaretRight } from "@phosphor-icons/react/CaretRight";
 import { PencilSimpleLine } from "@phosphor-icons/react/PencilSimpleLine";
 import { ImagesSquare } from "@phosphor-icons/react/ImagesSquare";
 import { ListChecks } from "@phosphor-icons/react/ListChecks";
@@ -16,9 +15,18 @@ import { TextInput } from "@/components/ui/field";
 import { SelectDropdown } from "@/components/ui/select-dropdown";
 import { Spinner } from "@/components/ui/spinner";
 import {
-  Avatar,
-  CommunityPostItem,
-} from "@/components/app/community-post-card";
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { pageRange } from "@/lib/page-range";
+import { Avatar } from "@/components/app/community-post-card";
+import { CommunityPostItem } from "@/components/app/community-post-card";
+import { AttachmentPicker } from "@/components/app/attachment-picker";
 import { EmptyState, ErrorState, RowSkeleton } from "@/components/app/states";
 import { ApiError } from "@/lib/api/client";
 import {
@@ -31,6 +39,7 @@ import {
 import { listTags } from "@/lib/api/tags";
 import { listMyDecks } from "@/lib/api/decks";
 import { useSession } from "@/lib/auth/use-session";
+import { useCommunityPostsSocket } from "@/lib/community-ws";
 import type { CommunityPostResponse, TagResponse } from "@/lib/api/types";
 
 type Tab = "latest" | "popular" | "my-posts";
@@ -84,10 +93,31 @@ export function CommunityView() {
 
   const [posts, setPosts] = useState<CommunityPostResponse[]>([]);
   const [lastPage, setLastPage] = useState(true);
-  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
+
+  /* Live counters from the STOMP broker: patch the matching row in place so
+     likes and comment counts move without a reload. */
+  useCommunityPostsSocket({
+    enabled: true,
+    onPostEvent: (event) => {
+      setPosts((current) =>
+        current.map((post) =>
+          post.id === event.postId
+            ? {
+                ...post,
+                likeCount: event.likeCount ?? post.likeCount,
+                commentCount: event.commentCount ?? post.commentCount,
+                likedByCurrentUser:
+                  event.likedByCurrentUser ?? post.likedByCurrentUser,
+              }
+            : post,
+        ),
+      );
+    },
+  });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -98,7 +128,7 @@ export function CommunityView() {
         if (controller.signal.aborted) return;
         setPosts(res.content);
         setLastPage(res.last);
-        setTotal(res.totalElements);
+        setTotalPages(res.totalPages);
         setStatus("success");
       })
       .catch((e: unknown) => {
@@ -308,34 +338,54 @@ export function CommunityView() {
               ))}
 
               {/* Pager, hidden while everything fits on one page */}
-              {lastPage && page === 0 ? null : (
-                <div className="flex items-center justify-between text-sm text-muted">
-                  <span>
-                    Trang {page + 1}
-                    {total > 0 ? ` · ${total.toLocaleString("vi-VN")} bài` : ""}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() => setPage((p) => Math.max(0, p - 1))}
-                      disabled={page === 0}
-                      aria-label="Trang trước"
-                      className="h-9 w-9 p-0"
-                    >
-                      <CaretLeft size={15} />
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => setPage((p) => p + 1)}
-                      disabled={lastPage}
-                      aria-label="Trang sau"
-                      className="h-9 w-9 p-0"
-                    >
-                      <CaretRight size={15} />
-                    </Button>
-                  </div>
-                </div>
-              )}
+              {totalPages > 1 ? (
+                <Pagination className="mt-2">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href="#"
+                        aria-disabled={page === 0}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (page > 0) setPage((p) => Math.max(0, p - 1));
+                        }}
+                      />
+                    </PaginationItem>
+
+                    {pageRange(page + 1, totalPages).map((value) =>
+                      value === "ellipsis" ? (
+                        <PaginationItem key={`e-${value}`}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      ) : (
+                        <PaginationItem key={value}>
+                          <PaginationLink
+                            href="#"
+                            isActive={value === page + 1}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setPage(value - 1);
+                            }}
+                          >
+                            {value}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ),
+                    )}
+
+                    <PaginationItem>
+                      <PaginationNext
+                        href="#"
+                        aria-disabled={lastPage}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (!lastPage) setPage((p) => p + 1);
+                        }}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              ) : null}
             </>
           ) : null}
         </div>
@@ -412,6 +462,7 @@ function PostComposer({
   const [content, setContent] = useState("");
   const [deckId, setDeckId] = useState("");
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [attachment, setAttachment] = useState<File | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -429,12 +480,15 @@ function PostComposer({
     if (!title.trim() || !content.trim() || pending) return;
     setPending(true);
     setError(null);
-    createCommunityPost({
-      title: title.trim(),
-      content: content.trim(),
-      deckId: deckId ? Number(deckId) : undefined,
-      tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
-    })
+    createCommunityPost(
+      {
+        title: title.trim(),
+        content: content.trim(),
+        deckId: deckId ? Number(deckId) : undefined,
+        tagIds: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+      },
+      attachment ?? undefined,
+    )
       .then(() => onCreated())
       .catch((e: unknown) => {
         setPending(false);
@@ -535,6 +589,18 @@ function PostComposer({
                 <p className="text-sm text-muted">Chưa có tag nào.</p>
               ) : null}
             </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-ink">
+              File đính kèm <span className="font-normal text-muted">(không bắt buộc)</span>
+            </span>
+            <AttachmentPicker
+              file={attachment}
+              onFileChange={setAttachment}
+              disabled={pending}
+              label="Đính kèm file vào bài viết"
+            />
           </div>
 
           {error ? (

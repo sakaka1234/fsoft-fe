@@ -29,6 +29,8 @@ import {
   listAdminUsers,
   setDeckOfficial,
   setDeckVisibility,
+  banAdminUser,
+  unbanAdminUser,
   updateAdminUserRoles,
 } from "@/lib/api/admin";
 import type { DeckVisibility } from "@/lib/api/types";
@@ -46,6 +48,7 @@ import { ChatCircleText } from "@phosphor-icons/react/ChatCircleText";
 import { Check } from "@phosphor-icons/react/Check";
 import { X } from "@phosphor-icons/react/X";
 import { CreditCard } from "@phosphor-icons/react/CreditCard";
+import { Warning } from "@phosphor-icons/react/Warning";
 import { Robot } from "@phosphor-icons/react/Robot";
 
 /*
@@ -77,7 +80,7 @@ const SECTIONS: { key: Section; label: string; Icon: typeof ChartBar }[] = [
   { key: "games", label: "Lịch sử game", Icon: GameController },
   { key: "tags", label: "Tag", Icon: Tag },
   { key: "moderation", label: "Chờ duyệt", Icon: SealCheck },
-  { key: "ai", label: "Trợ lý AI", Icon: Robot },
+  { key: "ai", label: "Agent Admin", Icon: Robot },
 ];
 
 const PAGE_SIZE = 10;
@@ -283,6 +286,13 @@ function UsersSection() {
     `admin-users-${page}-${keyword}-${role}`,
   );
 
+  /* Ban dialog state: null = closed. Prompt mode asks for a reason. */
+  const [banDecision, setBanDecision] = useState<{
+    userId: string;
+    name: string;
+    banned: boolean;
+  } | null>(null);
+
   /*
     Roles arrive here as plain strings, unlike the session user's roles, which
     are objects with a name. Both shapes are real; see lib/api/types.ts.
@@ -291,15 +301,6 @@ function UsersSection() {
     const next = roles.includes("ADMIN")
       ? roles.filter((r) => r !== "ADMIN")
       : [...roles, "ADMIN"];
-    if (
-      !window.confirm(
-        next.includes("ADMIN")
-          ? "Cấp quyền quản trị cho tài khoản này?"
-          : "Thu hồi quyền quản trị của tài khoản này?",
-      )
-    ) {
-      return;
-    }
     setBusy(true);
     setRowError(null);
     try {
@@ -308,6 +309,29 @@ function UsersSection() {
     } catch (error) {
       setRowError(
         error instanceof ApiError ? error.message : "Không đổi được quyền.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function applyBanWithReason(reason: string, days: number | undefined) {
+    if (!banDecision) return;
+    const { userId, banned } = banDecision;
+    setBanDecision(null);
+    setBusy(true);
+    setRowError(null);
+    try {
+      if (banned) await unbanAdminUser(userId);
+      else
+        await banAdminUser(userId, {
+          reason: reason.trim() || "Vi phạm tiêu chuẩn cộng đồng",
+          banDurationDays: days,
+        });
+      users.reload();
+    } catch (error) {
+      setRowError(
+        error instanceof ApiError ? error.message : "Không khoá/mở được tài khoản.",
       );
     } finally {
       setBusy(false);
@@ -371,6 +395,14 @@ function UsersSection() {
                       {user.fullName || user.email}
                     </p>
                     <p className="truncate text-sm text-muted">{user.email}</p>
+                    {user.banned ? (
+                      <p className="mt-1 text-xs text-danger">
+                        Bị khoá{user.banReason ? `: ${user.banReason}` : ""}
+                        {user.bannedUntil
+                          ? ` (đến ${new Date(user.bannedUntil).toLocaleDateString("vi-VN")})`
+                          : " (vô thời hạn)"}
+                      </p>
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-2">
                     {user.roles.map((name) => (
@@ -386,12 +418,30 @@ function UsersSection() {
                         {name}
                       </span>
                     ))}
+                    {user.banned ? (
+                      <span className="rounded-full bg-danger/10 px-2.5 py-1 text-xs font-semibold text-danger">
+                        Bị khoá
+                      </span>
+                    ) : null}
                     <Button
                       variant="secondary"
                       disabled={busy}
                       onClick={() => toggleAdmin(user.id, user.roles)}
                     >
                       {user.roles.includes("ADMIN") ? "Bỏ quản trị" : "Cấp quản trị"}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() =>
+                        setBanDecision({
+                          userId: user.id,
+                          name: user.fullName || user.email,
+                          banned: Boolean(user.banned),
+                        })
+                      }
+                    >
+                      {user.banned ? "Mở khoá" : "Khoá"}
                     </Button>
                   </div>
                 </li>
@@ -404,6 +454,27 @@ function UsersSection() {
               onChange={setPage}
             />
           </>
+        )
+      ) : null}
+
+      {banDecision ? (
+        banDecision.banned ? (
+          <ConfirmDialog
+            mode="confirm"
+            title="Mở khoá tài khoản?"
+            body={`Tài khoản "${banDecision.name}" sẽ đăng nhập lại được bình thường.`}
+            confirmLabel="Mở khoá"
+            onResolve={(ok) => (ok ? applyBanWithReason("", undefined) : setBanDecision(null))}
+          />
+        ) : (
+          <BanDialog
+            name={banDecision.name}
+            onResolve={(ok, reason, days) =>
+              ok
+                ? applyBanWithReason(reason, days)
+                : setBanDecision(null)
+            }
+          />
         )
       ) : null}
     </div>
@@ -1291,6 +1362,102 @@ function PostsModeration() {
           />
         )
       ) : null}
+    </div>
+  );
+}
+
+/* ------------------------------- ban dialog ------------------------------ */
+
+/**
+ * Ban needs two inputs (reason + duration), more than ConfirmDialog's prompt
+ * mode carries, so it gets its own small dialog built on the same backdrop.
+ */
+function BanDialog({
+  name,
+  onResolve,
+}: {
+  name: string;
+  onResolve: (accepted: boolean, reason: string, days: number | undefined) => void;
+}) {
+  const [reason, setReason] = useState("Vi phạm tiêu chuẩn cộng đồng");
+  const [days, setDays] = useState("");
+
+  const parsedDays =
+    days.trim() === "" ? undefined : Number(days.trim());
+  const invalidDays =
+    parsedDays !== undefined &&
+    (!Number.isFinite(parsedDays) || parsedDays < 1 || !Number.isInteger(parsedDays));
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Khoá tài khoản"
+    >
+      <div className="w-full max-w-md rounded-card border border-line bg-paper p-6 shadow-2xl">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-danger/10">
+            <Warning size={20} weight="fill" className="text-danger" />
+          </span>
+          <div className="flex flex-col gap-1.5 min-w-0">
+            <h2 className="text-lg font-semibold tracking-tight text-ink">
+              Khoá tài khoản?
+            </h2>
+            <p className="text-sm leading-relaxed text-muted">
+              &quot;{name}&quot; sẽ không đăng nhập được trong thời gian khoá.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="ban-reason" className="text-sm font-medium text-ink">
+              Lý do
+            </label>
+            <textarea
+              id="ban-reason"
+              rows={2}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              autoFocus
+              className="w-full rounded-field border border-line bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="ban-days" className="text-sm font-medium text-ink">
+              Số ngày <span className="font-normal text-muted">(bỏ trống để khoá vô thời hạn)</span>
+            </label>
+            <input
+              id="ban-days"
+              type="number"
+              min={1}
+              value={days}
+              placeholder="ví dụ: 7"
+              onChange={(e) => setDays(e.target.value)}
+              className="h-10 w-full rounded-field border border-line bg-surface px-3.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+            {invalidDays ? (
+              <p role="alert" className="text-xs text-danger">
+                Số ngày phải là số nguyên dương.
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => onResolve(false, "", undefined)}>
+            Huỷ
+          </Button>
+          <Button
+            onClick={() => onResolve(true, reason, parsedDays)}
+            disabled={invalidDays}
+            className="bg-danger text-white hover:bg-danger/85"
+          >
+            Khoá tài khoản
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -658,6 +658,15 @@ export type AdminUserResponse = {
   roles: string[];
   createTime?: string;
   updateTime?: string;
+  banned?: boolean;
+  bannedAt?: string | null;
+  bannedUntil?: string | null;
+  banReason?: string | null;
+};
+
+export type AdminBanUserRequest = {
+  reason: string;
+  banDurationDays?: number;
 };
 
 export type AdminUpdateUserRolesRequest = {
@@ -1004,6 +1013,8 @@ export type CommunityPostResponse = {
   deckTotalCards: number | null;
   /** Live server sends null, not [], when the post has no tag. */
   tags: TagResponse[] | null;
+  attachmentUrl?: string | null;
+  attachmentName?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -1039,6 +1050,8 @@ export type CommentResponse = {
   replyCount: number;
   /** Live server sends null, not [], when there are no replies. */
   replies: CommentResponse[] | null;
+  attachmentUrl?: string | null;
+  attachmentName?: string | null;
   createdAt: string;
   updatedAt: string;
 };

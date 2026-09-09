@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, apiUpload } from "@/lib/api/client";
 import type {
   CommentCreateRequest,
   CommentResponse,
@@ -85,23 +85,29 @@ export function getCommunityPost(postId: number, signal?: AbortSignal) {
 /**
  * Create a post. New posts start PENDING; they only appear publicly after an
  * admin approves them, so the UI must say that instead of promising a listing.
+ *
+ * Multipart per the current spec: one JSON part literally named "request"
+ * plus an optional binary "file" attachment.
  */
-export function createCommunityPost(body: CommunityPostWriteRequest) {
-  return apiFetch<CommunityPostResponse>("/community-posts", {
-    method: "POST",
-    body,
-    auth: true,
+export function createCommunityPost(
+  request: CommunityPostWriteRequest,
+  file?: File,
+) {
+  return apiUpload<CommunityPostResponse>("/community-posts", {
+    request,
+    files: { file: file ?? null },
   });
 }
 
 export function updateCommunityPost(
   postId: number,
-  body: CommunityPostWriteRequest,
+  request: CommunityPostWriteRequest,
+  file?: File,
 ) {
-  return apiFetch<CommunityPostResponse>(`/community-posts/${postId}`, {
+  return apiUpload<CommunityPostResponse>(`/community-posts/${postId}`, {
     method: "PUT",
-    body,
-    auth: true,
+    request,
+    files: { file: file ?? null },
   });
 }
 
@@ -132,11 +138,14 @@ export function listPostComments(
   );
 }
 
-export function createComment(postId: number, body: CommentCreateRequest) {
-  return apiFetch<CommentResponse>(`/community-posts/${postId}/comments`, {
-    method: "POST",
-    body,
-    auth: true,
+export function createComment(
+  postId: number,
+  request: CommentCreateRequest,
+  file?: File,
+) {
+  return apiUpload<CommentResponse>(`/community-posts/${postId}/comments`, {
+    request,
+    files: { file: file ?? null },
   });
 }
 

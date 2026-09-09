@@ -9,6 +9,7 @@ import { Field, TextArea, TextInput } from "@/components/ui/field";
 import { SelectDropdown } from "@/components/ui/select-dropdown";
 import { FormMessage } from "@/components/auth/form-message";
 import { EmptyState, RowSkeleton } from "@/components/app/states";
+import { UserAgentPanel } from "@/components/app/user-agent-view";
 import { ApiError } from "@/lib/api/client";
 import {
   AUTO_DECK_MAX_CARDS,
@@ -77,13 +78,14 @@ import {
   bar or a countdown, because neither could be honest.
 */
 
-type Tool = "deck" | "story" | "situation" | "roleplay";
+type Tool = "deck" | "story" | "situation" | "roleplay" | "agent";
 
 const TOOLS: { key: Tool; label: string; Icon: typeof MagicWand }[] = [
   { key: "deck", label: "Tạo bộ thẻ", Icon: MagicWand },
   { key: "story", label: "Viết đoạn văn", Icon: BookOpenText },
   { key: "situation", label: "Học theo tình huống", Icon: MapPin },
   { key: "roleplay", label: "Luyện hội thoại", Icon: ChatsCircle },
+  { key: "agent", label: "Agent User", Icon: ChatsCircle },
 ];
 
 const STORY_CONTEXT_LABELS: Record<StoryContextType, string> = {
@@ -131,6 +133,7 @@ export function AiStudioView() {
       {tool === "story" ? <StoryPanel /> : null}
       {tool === "situation" ? <SituationPanel /> : null}
       {tool === "roleplay" ? <RoleplayPanel /> : null}
+      {tool === "agent" ? <UserAgentPanel /> : null}
     </Container>
   );
 }

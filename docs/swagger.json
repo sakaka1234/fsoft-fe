@@ -26,6 +26,10 @@
       "description": "Tự động sinh bộ bài Flashcard hoàn chỉnh từ chủ đề bằng AI"
     },
     {
+      "name": "User AI Chatbot Controller",
+      "description": "Trợ lý AI Gia sư cho học viên (hỏi đáp + tự động tạo/thêm bộ bài học tập)"
+    },
+    {
       "name": "Community Post Controller",
       "description": "Quản lý bài viết, bảng tin, kiểm duyệt, thả tim và bình luận trong cộng đồng"
     },
@@ -504,7 +508,7 @@
       "put": {
         "tags": ["Community Post Controller"],
         "summary": "Cập nhật bài viết",
-        "description": "Chỉnh sửa tiêu đề, nội dung, bộ thẻ đính kèm hoặc danh sách nhãn của bài viết. Chỉ tác giả bài viết mới có quyền cập nhật.",
+        "description": "Chỉnh sửa tiêu đề, nội dung, bộ thẻ đính kèm, danh sách nhãn hoặc tải lên tệp/ảnh đính kèm mới. Chỉ tác giả bài viết mới có quyền cập nhật.",
         "operationId": "updatePost",
         "parameters": [
           {
@@ -517,13 +521,20 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/CommunityPostUpdateRequest"
-              }
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "$ref": "#/components/schemas/CommunityPostUpdateRequest"
+                  },
+                  "file": { "type": "string", "format": "binary" }
+                },
+                "required": ["request"]
+              },
+              "encoding": { "request": { "contentType": "application/json" } }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -746,6 +757,33 @@
         }
       }
     },
+    "/admin/users/{userId}/unban": {
+      "put": {
+        "tags": ["Admin User Controller"],
+        "summary": "Mở khóa tài khoản người dùng (Unban User)",
+        "operationId": "unbanUser",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAdminUserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/users/{userId}/roles": {
       "put": {
         "tags": ["Admin User Controller"],
@@ -765,6 +803,41 @@
               "schema": {
                 "$ref": "#/components/schemas/AdminUpdateUserRolesRequest"
               }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAdminUserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users/{userId}/ban": {
+      "put": {
+        "tags": ["Admin User Controller"],
+        "summary": "Khóa tài khoản người dùng (Ban User)",
+        "operationId": "banUser",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdminBanUserRequest" }
             }
           },
           "required": true
@@ -1453,17 +1526,24 @@
       "post": {
         "tags": ["Community Post Controller"],
         "summary": "Tạo bài viết mới trong cộng đồng",
-        "description": "Tạo một bài viết mới với nội dung (Markdown), có thể đính kèm một bộ thẻ Deck công khai (tùy chọn) và gắn nhiều nhãn Tags (tùy chọn). Bài viết của USER sẽ ở trạng thái PENDING chờ ADMIN duyệt.",
+        "description": "Tạo một bài viết mới với nội dung (Markdown), có thể đính kèm một file/ảnh (tùy chọn), bộ thẻ Deck công khai (tùy chọn) và gắn nhiều nhãn Tags (tùy chọn). Bài viết của USER sẽ ở trạng thái PENDING chờ ADMIN duyệt.",
         "operationId": "createPost",
         "requestBody": {
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/CommunityPostCreateRequest"
-              }
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "$ref": "#/components/schemas/CommunityPostCreateRequest"
+                  },
+                  "file": { "type": "string", "format": "binary" }
+                },
+                "required": ["request"]
+              },
+              "encoding": { "request": { "contentType": "application/json" } }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -1551,7 +1631,7 @@
       "post": {
         "tags": ["Community Post Controller"],
         "summary": "Gửi bình luận vào bài viết",
-        "description": "Đăng bình luận mới cho bài viết. Nếu muốn trả lời (Reply) một bình luận khác, hãy truyền thêm parentCommentId.",
+        "description": "Đăng bình luận mới cho bài viết, có thể đính kèm tệp/ảnh (file). Nếu muốn trả lời (Reply) một bình luận khác, hãy truyền thêm parentCommentId.",
         "operationId": "createComment",
         "parameters": [
           {
@@ -1564,11 +1644,20 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/CommentCreateRequest" }
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "$ref": "#/components/schemas/CommentCreateRequest"
+                  },
+                  "file": { "type": "string", "format": "binary" }
+                },
+                "required": ["request"]
+              },
+              "encoding": { "request": { "contentType": "application/json" } }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -2036,6 +2125,34 @@
         }
       }
     },
+    "/api/user/ai/chat": {
+      "post": {
+        "tags": ["User AI Chatbot Controller"],
+        "summary": "Trò chuyện với Trợ lý AI gia sư học viên",
+        "description": "Gửi câu hỏi bằng ngôn ngữ tự nhiên. AI có thể tự động gọi tool tạo bộ bài, thêm từ vựng, xem bộ bài của học viên hiện tại. Không cần truyền conversationId, server tự quản lý theo ID học viên.",
+        "operationId": "chat",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UserAiChatRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseUserAiChatResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/ai/vocab/lookup": {
       "post": {
         "tags": ["AI Integration Controller"],
@@ -2299,7 +2416,7 @@
         "tags": ["AI Integration Controller"],
         "summary": "Chat với AI gia sư",
         "description": "Mở một phiên trò chuyện với AI gia sư. Người dùng có thể hỏi về các khái niệm khó hiểu, yêu cầu giải thích ngữ pháp, hoặc nhờ AI lấy ví dụ thực tế liên quan đến thẻ bài đang học.",
-        "operationId": "chat",
+        "operationId": "chat_1",
         "requestBody": {
           "content": {
             "application/json": {
@@ -2418,10 +2535,25 @@
             "schema": { "type": "string", "enum": ["PUBLIC", "PRIVATE"] }
           },
           {
-            "name": "pageable",
+            "name": "page",
             "in": "query",
-            "required": true,
-            "schema": { "$ref": "#/components/schemas/Pageable" }
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": { "type": "integer", "default": 0, "minimum": 0 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": { "type": "integer", "default": 20, "minimum": 1 }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "schema": { "type": "array", "items": { "type": "string" } }
           }
         ],
         "responses": {
@@ -2476,7 +2608,7 @@
         "tags": ["Admin AI Chat Controller"],
         "summary": "Hỏi trợ lý AI quản trị",
         "description": "Admin hỏi bằng ngôn ngữ tự nhiên. Bot trả lời dựa trên dữ liệu thật của hệ thống (thống kê, users, decks, tags, game records) qua function calling trên Groq (qwen/qwen3.8-27b). Khi admin yêu cầu hành động nguy hiểm (duyệt/từ chối/xóa deck, đặt official, đổi roles), response trả về pendingAction chứa actionId — admin phải gọi /confirm để thực thi thật hoặc /confirm/cancel để hủy. Hành động chờ xác nhận có hiệu lực 5 phút. Lịch sử hội thoại bền vững theo từng admin (JDBC chat memory).",
-        "operationId": "chat_1",
+        "operationId": "chat_2",
         "requestBody": {
           "content": {
             "application/json": {
@@ -3861,6 +3993,56 @@
         }
       }
     },
+    "/api/user/ai/chat/history": {
+      "get": {
+        "tags": ["User AI Chatbot Controller"],
+        "summary": "Lấy lịch sử hội thoại AI của học viên hiện tại",
+        "description": "Lấy danh sách lịch sử tin nhắn hội thoại trước đó của học viên hiện tại.",
+        "operationId": "getHistory",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 1 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "format": "int32", "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListUserAiChatHistoryResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["User AI Chatbot Controller"],
+        "summary": "Reset lịch sử hội thoại AI của học viên hiện tại",
+        "description": "Clear bộ nhớ chat memory của phiên trò chuyện học viên hiện tại.",
+        "operationId": "clearHistory",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": { "$ref": "#/components/schemas/ApiResponseVoid" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/dictionary/lookup": {
       "get": {
         "tags": ["dictionary-controller"],
@@ -4084,10 +4266,25 @@
         "operationId": "getPendingPublicDecks",
         "parameters": [
           {
-            "name": "pageable",
+            "name": "page",
             "in": "query",
-            "required": true,
-            "schema": { "$ref": "#/components/schemas/Pageable" }
+            "description": "Zero-based page index (0..N)",
+            "required": false,
+            "schema": { "type": "integer", "default": 0, "minimum": 0 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "The size of the page to be returned",
+            "required": false,
+            "schema": { "type": "integer", "default": 20, "minimum": 1 }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sorting criteria in the format: property,(asc|desc). Default sort order is ascending. Multiple sort criteria are supported.",
+            "required": false,
+            "schema": { "type": "array", "items": { "type": "string" } }
           }
         ],
         "responses": {
@@ -4128,7 +4325,7 @@
         "tags": ["Admin AI Chat Controller"],
         "summary": "Lấy lịch sử hội thoại AI của admin hiện tại",
         "description": "Trả về các tin nhắn (role: user/assistant/system) trong thread riêng của admin, bền vững qua JDBC chat memory.",
-        "operationId": "getHistory",
+        "operationId": "getHistory_1",
         "parameters": [
           {
             "name": "page",
@@ -4160,7 +4357,7 @@
         "tags": ["Admin AI Chat Controller"],
         "summary": "Xóa lịch sử hội thoại AI của admin hiện tại",
         "description": "Reset thread hội thoại của admin hiện tại (chatMemory.clear).",
-        "operationId": "clearHistory",
+        "operationId": "clearHistory_1",
         "responses": {
           "200": {
             "description": "OK",
@@ -4549,7 +4746,12 @@
               "$ref": "#/components/schemas/PlayerState"
             }
           },
-          "questionResolved": { "type": "boolean" }
+          "questionResolved": { "type": "boolean" },
+          "answeredUserIds": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true
+          }
         }
       },
       "ApiResponseAudioReflexRoomState": {
@@ -4715,6 +4917,8 @@
             "items": { "$ref": "#/components/schemas/TagResponse" },
             "uniqueItems": true
           },
+          "attachmentUrl": { "type": "string" },
+          "attachmentName": { "type": "string" },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" }
         }
@@ -4783,17 +4987,6 @@
           "newPosition": { "type": "integer", "format": "int32" }
         }
       },
-      "AdminUpdateUserRolesRequest": {
-        "type": "object",
-        "properties": {
-          "roleNames": {
-            "type": "array",
-            "items": { "type": "string" },
-            "uniqueItems": true
-          }
-        },
-        "required": ["roleNames"]
-      },
       "AdminUserResponse": {
         "type": "object",
         "properties": {
@@ -4808,7 +5001,11 @@
             "uniqueItems": true
           },
           "createTime": { "type": "string", "format": "date-time" },
-          "updateTime": { "type": "string", "format": "date-time" }
+          "updateTime": { "type": "string", "format": "date-time" },
+          "bannedAt": { "type": "string", "format": "date-time" },
+          "bannedUntil": { "type": "string", "format": "date-time" },
+          "banReason": { "type": "string" },
+          "banned": { "type": "boolean" }
         }
       },
       "ApiResponseAdminUserResponse": {
@@ -4818,6 +5015,25 @@
           "message": { "type": "string" },
           "data": { "$ref": "#/components/schemas/AdminUserResponse" }
         }
+      },
+      "AdminUpdateUserRolesRequest": {
+        "type": "object",
+        "properties": {
+          "roleNames": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true
+          }
+        },
+        "required": ["roleNames"]
+      },
+      "AdminBanUserRequest": {
+        "type": "object",
+        "properties": {
+          "reason": { "type": "string" },
+          "banDurationDays": { "type": "integer", "format": "int32" }
+        },
+        "required": ["reason"]
       },
       "TagRequest": {
         "type": "object",
@@ -4974,7 +5190,10 @@
       },
       "SubmitAnswerRequest": {
         "type": "object",
-        "properties": { "cardId": { "type": "integer", "format": "int64" } }
+        "properties": {
+          "cardId": { "type": "integer", "format": "int64" },
+          "questionIndex": { "type": "integer", "format": "int32" }
+        }
       },
       "AudioReflexSubmitRequest": {
         "type": "object",
@@ -5098,6 +5317,8 @@
             "type": "array",
             "items": { "$ref": "#/components/schemas/CommentResponse" }
           },
+          "attachmentUrl": { "type": "string" },
+          "attachmentName": { "type": "string" },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" }
         }
@@ -5431,6 +5652,47 @@
             "type": "array",
             "description": "Danh sách thẻ từ vựng (Flashcards) rút ra từ bài học, sẵn sàng để Frontend lưu vào Deck",
             "items": { "$ref": "#/components/schemas/CardCreationRequest" }
+          }
+        }
+      },
+      "UserAiChatRequest": {
+        "type": "object",
+        "description": "Request trò chuyện với Trợ lý AI cho học viên",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Nội dung câu hỏi hoặc yêu cầu học tập của học viên",
+            "example": "Tạo cho tôi bộ bài từ vựng phỏng vấn IT ReactJS 10 từ",
+            "maxLength": 2000,
+            "minLength": 0
+          }
+        },
+        "required": ["message"]
+      },
+      "ApiResponseUserAiChatResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": { "$ref": "#/components/schemas/UserAiChatResponse" }
+        }
+      },
+      "UserAiChatResponse": {
+        "type": "object",
+        "description": "Phản hồi trò chuyện với Trợ lý AI cho học viên",
+        "properties": {
+          "conversationId": {
+            "type": "string",
+            "description": "ID phiên trò chuyện của học viên"
+          },
+          "reply": {
+            "type": "string",
+            "description": "Nội dung phản hồi từ AI"
+          },
+          "toolsCalled": {
+            "type": "array",
+            "description": "Danh sách tên các tool AI đã gọi (nếu có)",
+            "items": { "type": "string" }
           }
         }
       },
@@ -6439,6 +6701,35 @@
           "recentResults": {
             "type": "array",
             "items": { "$ref": "#/components/schemas/QuizResultResponse" }
+          }
+        }
+      },
+      "ApiResponseListUserAiChatHistoryResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "format": "int32" },
+          "message": { "type": "string" },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserAiChatHistoryResponse"
+            }
+          }
+        }
+      },
+      "UserAiChatHistoryResponse": {
+        "type": "object",
+        "description": "Một tin nhắn trong lịch sử hội thoại AI của học viên",
+        "properties": {
+          "role": {
+            "type": "string",
+            "description": "Vai trò gửi tin nhắn: user / assistant / system",
+            "example": "user"
+          },
+          "content": {
+            "type": "string",
+            "description": "Nội dung tin nhắn",
+            "example": "Tạo cho tôi một bộ bài từ vựng IELTS"
           }
         }
       },

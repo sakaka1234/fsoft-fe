@@ -1,5 +1,6 @@
 import { ApiError, apiFetch, apiUpload, cardPageQuery } from "@/lib/api/client";
 import type {
+  AdminBanUserRequest,
   AdminDashboardStats,
   AdminGameRecord,
   AdminUpdateDeckOfficialRequest,
@@ -157,6 +158,29 @@ export function updateAdminUserRoles(
   return apiFetch<AdminUserResponse>(`/admin/users/${userId}/roles`, {
     method: "PUT",
     body,
+    auth: true,
+    signal,
+  });
+}
+
+/** Ban a user. `reason` is required by the backend, duration optional. */
+export function banAdminUser(
+  userId: string,
+  body: AdminBanUserRequest,
+  signal?: AbortSignal,
+) {
+  return apiFetch<AdminUserResponse>(`/admin/users/${userId}/ban`, {
+    method: "PUT",
+    body,
+    auth: true,
+    signal,
+  });
+}
+
+/** Lift an existing ban. No body, verified against the current spec. */
+export function unbanAdminUser(userId: string, signal?: AbortSignal) {
+  return apiFetch<AdminUserResponse>(`/admin/users/${userId}/unban`, {
+    method: "PUT",
     auth: true,
     signal,
   });
