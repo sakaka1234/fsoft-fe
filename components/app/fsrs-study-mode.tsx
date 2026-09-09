@@ -172,8 +172,18 @@ export function FsrsStudyMode({ cards, onFinished, onCardReviewed }: FsrsStudyMo
     if (busy || !currentCard) return;
     setBusy(true);
 
-    // Fire API call in background
-    reviewFsrsCard(currentCard.id, rating).catch(() => {});
+    const isLastCard = currentIndex >= cardList.length - 1 && rating !== 1;
+
+    try {
+      if (isLastCard) {
+        await reviewFsrsCard(currentCard.id, rating);
+      } else {
+        reviewFsrsCard(currentCard.id, rating).catch(() => {});
+      }
+    } catch {
+      // ignore
+    }
+
     if (onCardReviewed) onCardReviewed();
 
     // Immediately reset states and jump to next card
