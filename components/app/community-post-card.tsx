@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Cards } from "@phosphor-icons/react/Cards";
 import { ChatCircleDots } from "@phosphor-icons/react/ChatCircleDots";
@@ -28,6 +28,10 @@ import {
   togglePostLike,
 } from "@/lib/api/community";
 import { useSession } from "@/lib/auth/use-session";
+import {
+  usePostCommentsSocket,
+  type PostCommentEvent,
+} from "@/lib/community-ws";
 import type { CommentResponse, CommunityPostResponse } from "@/lib/api/types";
 import { cn } from "@/lib/cn";
 
@@ -368,6 +372,70 @@ function PostComments({
     return () => controller.abort();
   }, [postId, nonce]);
 
+  /*
+    Live thread over /topic/posts/{postId}. COMMENT_CREATED carries the full
+    CommentResponse: a root comment inserts at the top of the list, a reply
+    bumps its parent's replyCount in place (the child rows load on demand in
+    CommentRow). COMMENT_DELETED removes by id and deflates the counter.
+    Verified live 2026-09-09; every unknown shape is ignored so the backend
+    can grow without breaking this panel.
+
+    onCountChanged is an inline arrow in the parent, so its identity changes
+    every render. The hook keeps the latest handler in a ref, which makes a
+    stale closure impossible; the lint suppression replaces a useCallback
+    dance that would only hide that fact.
+  */
+  usePostCommentsSocket({
+    postId,
+     
+    onCommentEvent: useCallback(
+      (event: PostCommentEvent) => {
+        if (event.type === "COMMENT_CREATED") {
+          const created = event.data as CommentResponse | null;
+          if (!created?.id) return;
+          if (created.parentCommentId === null) {
+            setComments((current) => {
+              if (!current) return [created];
+              if (current.some((c) => c.id === created.id)) return current;
+              return [created, ...current];
+            });
+          } else {
+            setComments((current) =>
+              current?.map((c) =>
+                c.id === created.parentCommentId
+                  ? { ...c, replyCount: c.replyCount + 1 }
+                  : c,
+              ) ?? current,
+          );
+          }
+          onCountChanged(1);
+        } else if (event.type === "COMMENT_DELETED") {
+          const removed = event.data as {
+            commentId?: number;
+            parentCommentId?: number | null;
+          } | null;
+          if (!removed?.commentId) return;
+          if (removed.parentCommentId === null || removed.parentCommentId === undefined) {
+            setComments((current) =>
+              current ? current.filter((c) => c.id !== removed.commentId) : current,
+            );
+            onCountChanged(-1);
+          } else {
+            setComments((current) =>
+              current?.map((c) =>
+                c.id === removed.parentCommentId
+                  ? { ...c, replyCount: Math.max(0, c.replyCount - 1) }
+                  : c,
+              ) ?? current,
+          );
+          }
+        }
+      },
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- the hook stores the latest handler in a ref, so an empty dep list cannot go stale
+      [],
+    ),
+  });
+
   function submit() {
     if (!draft.trim() || pending) return;
     setPending(true);
@@ -451,18 +519,31 @@ function CommentRow({
 }) {
   const session = useSession();
   const [replies, setReplies] = useState<CommentResponse[] | null>(null);
-  const [repliesOpen, setRepliesOpen] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
   const [replyDraft, setReplyDraft] = useState("");
   const [pending, setPending] = useState(false);
   const [replyFile, setReplyFile] = useState<File | null>(null);
 
-  function loadReplies() {
-    setRepliesOpen((v) => !v);
-    if (replies) return;
-    listCommentReplies(comment.id)
-      .then((res) => setReplies(res.content))
-      .catch(() => setReplies([]));
-  }
+  /*
+    Replies load once on mount so children always render below the parent.
+    The live server does not nest them in the root list payload (verified:
+    `replies` is null there even with replyCount > 0), so a fetch is the only
+    way to know. Derive the no-replies case instead of setting it in an
+    effect: null means "unknown or loading", [] means none.
+  */
+  useEffect(() => {
+    if (comment.replyCount === 0) return;
+    const controller = new AbortController();
+    /* Live-verified: this endpoint is ONE based (page=0 clamps to page 1). */
+    listCommentReplies(comment.id, 1, 20, controller.signal)
+      .then((res) => {
+        if (!controller.signal.aborted) setReplies(res.content);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setReplies([]);
+      });
+    return () => controller.abort();
+  }, [comment.id, comment.replyCount]);
 
   function submitReply() {
     if (!replyDraft.trim() || pending) return;
@@ -472,19 +553,20 @@ function CommentRow({
       { content: replyDraft.trim(), parentCommentId: comment.id },
       replyFile ?? undefined,
     )
-      .then(() => listCommentReplies(comment.id))
+      .then(() => listCommentReplies(comment.id, 1))
       .then((res) => {
         setReplies(res.content);
         setReplyDraft("");
         setReplyFile(null);
         setPending(false);
+        setComposerOpen(false);
       })
       .catch(() => setPending(false));
   }
 
   function removeReply(replyId: number) {
     deleteComment(replyId)
-      .then(() => listCommentReplies(comment.id))
+      .then(() => listCommentReplies(comment.id, 1))
       .then((res) => setReplies(res.content))
       .catch(() => undefined);
   }
@@ -495,67 +577,49 @@ function CommentRow({
       .catch(() => undefined);
   }
 
+  const replyCount = replies?.length ?? comment.replyCount;
+
   return (
-    <li className="flex gap-2.5">
-      <Avatar name={comment.profileName} src={comment.profileAvatar} className="h-8 w-8" />
-      <div className="min-w-0 flex-1">
-        <div className="w-fit max-w-full rounded-field bg-surface-2 px-3.5 py-2.5">
-          <p className="text-xs font-semibold text-ink">{comment.profileName}</p>
-          <p className="whitespace-pre-line text-sm leading-relaxed text-ink/90">
-            {comment.content}
-          </p>
-          {comment.attachmentUrl ? (
-            <ServerAttachment
-              url={comment.attachmentUrl}
-              name={comment.attachmentName}
-              className="mt-1.5"
-            />
-          ) : null}
-        </div>
-        <div className="mt-1 flex items-center gap-3 pl-1 text-xs text-muted">
-          <span>{formatDay(comment.createdAt)}</span>
-          <button
-            type="button"
-            onClick={() => setRepliesOpen((v) => !v)}
-            className="font-medium transition-colors hover:text-ink"
-          >
-            Trả lời
-          </button>
-          {comment.replyCount > 0 && !repliesOpen ? (
+    <li className="flex flex-col gap-2">
+      <div className="flex gap-2.5">
+        <Avatar name={comment.profileName} src={comment.profileAvatar} className="h-8 w-8" />
+        <div className="min-w-0 flex-1">
+          <div className="w-fit max-w-full rounded-field bg-surface-2 px-3.5 py-2.5">
+            <p className="text-xs font-semibold text-ink">{comment.profileName}</p>
+            <p className="whitespace-pre-line text-sm leading-relaxed text-ink/90">
+              {comment.content}
+            </p>
+            {comment.attachmentUrl ? (
+              <ServerAttachment
+                url={comment.attachmentUrl}
+                name={comment.attachmentName}
+                className="mt-1.5"
+              />
+            ) : null}
+          </div>
+          <div className="mt-1 flex items-center gap-3 pl-1 text-xs text-muted">
+            <span>{formatDay(comment.createdAt)}</span>
             <button
               type="button"
-              onClick={loadReplies}
+              onClick={() => setComposerOpen((v) => !v)}
+              aria-expanded={composerOpen}
               className="font-medium transition-colors hover:text-ink"
             >
-              {comment.replyCount} trả lời
+              Trả lời
             </button>
-          ) : null}
-          {canDelete ? (
-            <button
-              type="button"
-              onClick={remove}
-              className="transition-colors hover:text-danger"
-            >
-              Xoá
-            </button>
-          ) : null}
-        </div>
+            {canDelete ? (
+              <button
+                type="button"
+                onClick={remove}
+                className="transition-colors hover:text-danger"
+              >
+                Xoá
+              </button>
+            ) : null}
+          </div>
 
-        {repliesOpen ? (
-          <div className="mt-2 flex flex-col gap-2">
-            {replies === null ? (
-              <p className="pl-1 text-xs text-muted">Đang tải trả lời...</p>
-            ) : (
-              replies.map((reply) => (
-                <ReplyBubble
-                  key={reply.id}
-                  reply={reply}
-                  canDelete={canDelete || session?.user.id === reply.profileId}
-                  onRemoved={() => removeReply(reply.id)}
-                />
-              ))
-            )}
-            <div className="flex flex-col gap-1.5">
+          {composerOpen ? (
+            <div className="mt-2 flex flex-col gap-1.5">
               <div className="flex items-center gap-2">
                 <textarea
                   rows={1}
@@ -564,6 +628,7 @@ function CommentRow({
                   onChange={(e) => setReplyDraft(e.target.value)}
                   disabled={pending}
                   aria-label="Trả lời bình luận"
+                  autoFocus
                   className="flex-1 resize-none rounded-full border border-line bg-surface-2 px-3.5 py-1.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-60"
                 />
                 <Button
@@ -581,48 +646,55 @@ function CommentRow({
                 label="Đính kèm file vào trả lời"
               />
             </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </div>
-    </li>
-  );
-}
 
-function ReplyBubble({
-  reply,
-  canDelete,
-  onRemoved,
-}: {
-  reply: CommentResponse;
-  canDelete: boolean;
-  onRemoved: () => void;
-}) {
-  return (
-    <div className="flex gap-2">
-      <Avatar name={reply.profileName} src={reply.profileAvatar} className="h-6 w-6" />
-      <div className="w-fit max-w-full rounded-field bg-surface-2 px-3 py-2">
-        <p className="text-xs font-semibold text-ink">{reply.profileName}</p>
-        <p className="whitespace-pre-line text-sm leading-relaxed text-ink/90">
-          {reply.content}
-        </p>
-        {reply.attachmentUrl ? (
-          <ServerAttachment
-            url={reply.attachmentUrl}
-            name={reply.attachmentName}
-            className="mt-1"
-          />
-        ) : null}
-        {canDelete ? (
-          <button
-            type="button"
-            onClick={onRemoved}
-            aria-label="Xoá trả lời"
-            className="ml-2 align-middle text-xs text-muted transition-colors hover:text-danger"
-          >
-            Xoá
-          </button>
-        ) : null}
-      </div>
-    </div>
+      {/* Child comments always render below the parent, indented. */}
+      {replyCount > 0 ? (
+        <ul className="ml-10 flex flex-col gap-2 border-l border-line pl-3">
+          {replies === null ? (
+            <li className="pl-1 text-xs text-muted">Đang tải trả lời...</li>
+          ) : replies.length === 0 ? (
+            <li className="pl-1 text-xs text-muted">Chưa có trả lời.</li>
+          ) : (
+            replies.map((reply) => (
+              <li key={reply.id} className="flex gap-2">
+                <Avatar
+                  name={reply.profileName}
+                  src={reply.profileAvatar}
+                  className="h-6 w-6"
+                />
+                <div className="w-fit max-w-full rounded-field bg-surface-2 px-3 py-2">
+                  <p className="text-xs font-semibold text-ink">
+                    {reply.profileName}
+                  </p>
+                  <p className="whitespace-pre-line text-sm leading-relaxed text-ink/90">
+                    {reply.content}
+                  </p>
+                  {reply.attachmentUrl ? (
+                    <ServerAttachment
+                      url={reply.attachmentUrl}
+                      name={reply.attachmentName}
+                      className="mt-1"
+                    />
+                  ) : null}
+                  {canDelete || session?.user.id === reply.profileId ? (
+                    <button
+                      type="button"
+                      onClick={() => removeReply(reply.id)}
+                      aria-label="Xoá trả lời"
+                      className="ml-2 align-middle text-xs text-muted transition-colors hover:text-danger"
+                    >
+                      Xoá
+                    </button>
+                  ) : null}
+                </div>
+              </li>
+            ))
+          )}
+        </ul>
+      ) : null}
+    </li>
   );
 }
