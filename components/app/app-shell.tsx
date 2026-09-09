@@ -41,7 +41,7 @@ const APP_NAV = [
   { label: "Ôn tập", href: "/decks?tab=srs" },
   { label: "Explore", href: "/explore" },
   { label: "Tra từ", href: "/search" },
-  { label: "Công cụ AI", href: "/ai" },
+  { label: "Agent User", href: "/ai" },
   { label: "Cộng đồng", href: "/community" },
   { label: "Chơi game", href: "/games" },
 ] as const;
