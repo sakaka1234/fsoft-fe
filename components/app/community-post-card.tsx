@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { CaretDown } from "@phosphor-icons/react/CaretDown";
+import { CaretUp } from "@phosphor-icons/react/CaretUp";
 import { Cards } from "@phosphor-icons/react/Cards";
 import { ChatCircleDots } from "@phosphor-icons/react/ChatCircleDots";
 import { Heart } from "@phosphor-icons/react/Heart";
 import { HeartStraight } from "@phosphor-icons/react/HeartStraight";
-import { Paperclip } from "@phosphor-icons/react/Paperclip";
-import { PaperPlaneTilt } from "@phosphor-icons/react/PaperPlaneTilt";
 import { ShareFat } from "@phosphor-icons/react/ShareFat";
 import { Trash } from "@phosphor-icons/react/Trash";
 
@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { RowSkeleton } from "@/components/app/states";
 import {
   AttachmentPicker,
-  AttachmentPreview,
   ServerAttachment,
 } from "@/components/app/attachment-picker";
 import { isAdmin } from "@/lib/auth/roles";
@@ -427,7 +426,8 @@ function PostComments({
                   ? { ...c, replyCount: Math.max(0, c.replyCount - 1) }
                   : c,
               ) ?? current,
-          );
+            );
+            onCountChanged(-1);
           }
         }
       },
@@ -465,7 +465,10 @@ function PostComments({
             <CommentRow
               key={comment.id}
               comment={comment}
-              canDelete={canModerate || session?.user.id === comment.profileId}
+              postId={postId}
+              canModerate={canModerate}
+              depth={0}
+              onCountChanged={onCountChanged}
               onRemoved={() => {
                 onCountChanged(-1);
                 setNonce((n) => n + 1);
@@ -508,33 +511,46 @@ function PostComments({
   );
 }
 
+function renderCommentContent(content: string) {
+  const mentionMatch = content.match(/^(@[^\n:]+?)(?:\s|:|$)/);
+  if (!mentionMatch) return content;
+
+  const mention = mentionMatch[1];
+  const rest = content.slice(mention.length);
+  return (
+    <>
+      <span className="font-semibold text-accent-text">{mention}</span>
+      {rest}
+    </>
+  );
+}
+
 function CommentRow({
   comment,
-  canDelete,
+  postId,
+  canModerate,
   onRemoved,
+  onCountChanged,
+  depth = 0,
 }: {
   comment: CommentResponse;
-  canDelete: boolean;
+  postId: number;
+  canModerate: boolean;
   onRemoved: () => void;
+  onCountChanged?: (delta: number) => void;
+  depth?: number;
 }) {
   const session = useSession();
   const [replies, setReplies] = useState<CommentResponse[] | null>(null);
+  const [repliesOpen, setRepliesOpen] = useState(depth === 0);
   const [composerOpen, setComposerOpen] = useState(false);
   const [replyDraft, setReplyDraft] = useState("");
   const [pending, setPending] = useState(false);
   const [replyFile, setReplyFile] = useState<File | null>(null);
 
-  /*
-    Replies load once on mount so children always render below the parent.
-    The live server does not nest them in the root list payload (verified:
-    `replies` is null there even with replyCount > 0), so a fetch is the only
-    way to know. Derive the no-replies case instead of setting it in an
-    effect: null means "unknown or loading", [] means none.
-  */
   useEffect(() => {
-    if (comment.replyCount === 0) return;
+    if (!repliesOpen || comment.replyCount === 0) return;
     const controller = new AbortController();
-    /* Live-verified: this endpoint is ONE based (page=0 clamps to page 1). */
     listCommentReplies(comment.id, 1, 20, controller.signal)
       .then((res) => {
         if (!controller.signal.aborted) setReplies(res.content);
@@ -543,32 +559,53 @@ function CommentRow({
         if (!controller.signal.aborted) setReplies([]);
       });
     return () => controller.abort();
-  }, [comment.id, comment.replyCount]);
+  }, [comment.id, repliesOpen, comment.replyCount]);
+
+  function handleToggleReplyComposer() {
+    setComposerOpen((v) => {
+      const next = !v;
+      if (next && depth > 0) {
+        setReplyDraft(`@${comment.profileName} `);
+      }
+      return next;
+    });
+  }
 
   function submitReply() {
     if (!replyDraft.trim() || pending) return;
     setPending(true);
     createComment(
-      comment.communityPostId,
+      postId,
       { content: replyDraft.trim(), parentCommentId: comment.id },
       replyFile ?? undefined,
     )
-      .then(() => listCommentReplies(comment.id, 1))
-      .then((res) => {
-        setReplies(res.content);
+      .then((created) => {
         setReplyDraft("");
         setReplyFile(null);
         setPending(false);
         setComposerOpen(false);
+        setRepliesOpen(true);
+        onCountChanged?.(1);
+        setReplies((curr) => (curr ? [created, ...curr] : [created]));
+        return listCommentReplies(comment.id, 1);
+      })
+      .then((res) => {
+        if (res) setReplies(res.content);
       })
       .catch(() => setPending(false));
   }
 
-  function removeReply(replyId: number) {
-    deleteComment(replyId)
+  function removeChildReply(childId: number) {
+    setReplies((curr) => (curr ? curr.filter((r) => r.id !== childId) : curr));
+    onCountChanged?.(-1);
+    deleteComment(childId)
       .then(() => listCommentReplies(comment.id, 1))
       .then((res) => setReplies(res.content))
-      .catch(() => undefined);
+      .catch(() => {
+        listCommentReplies(comment.id, 1)
+          .then((res) => setReplies(res.content))
+          .catch(() => undefined);
+      });
   }
 
   function remove() {
@@ -577,17 +614,30 @@ function CommentRow({
       .catch(() => undefined);
   }
 
-  const replyCount = replies?.length ?? comment.replyCount;
+  const canDelete = canModerate || session?.user.id === comment.profileId;
+  const avatarSize = depth === 0 ? "h-8 w-8" : "h-7 w-7";
+  const indentClass =
+    depth === 0
+      ? ""
+      : depth < 4
+        ? "ml-6 sm:ml-8 border-l border-line pl-3 sm:pl-3.5"
+        : "ml-3 sm:ml-4 border-l border-line pl-2 sm:pl-2.5";
+  const shownReplies = comment.replyCount === 0 && replies === null ? [] : replies;
+  const replyCount = shownReplies !== null ? shownReplies.length : comment.replyCount;
 
   return (
-    <li className="flex flex-col gap-2">
+    <li className={cn("flex flex-col gap-2", indentClass)}>
       <div className="flex gap-2.5">
-        <Avatar name={comment.profileName} src={comment.profileAvatar} className="h-8 w-8" />
+        <Avatar
+          name={comment.profileName}
+          src={comment.profileAvatar}
+          className={cn(avatarSize, "shrink-0")}
+        />
         <div className="min-w-0 flex-1">
           <div className="w-fit max-w-full rounded-field bg-surface-2 px-3.5 py-2.5">
             <p className="text-xs font-semibold text-ink">{comment.profileName}</p>
             <p className="whitespace-pre-line text-sm leading-relaxed text-ink/90">
-              {comment.content}
+              {renderCommentContent(comment.content)}
             </p>
             {comment.attachmentUrl ? (
               <ServerAttachment
@@ -597,11 +647,12 @@ function CommentRow({
               />
             ) : null}
           </div>
-          <div className="mt-1 flex items-center gap-3 pl-1 text-xs text-muted">
+
+          <div className="mt-1 flex flex-wrap items-center gap-3 pl-1 text-xs text-muted">
             <span>{formatDay(comment.createdAt)}</span>
             <button
               type="button"
-              onClick={() => setComposerOpen((v) => !v)}
+              onClick={handleToggleReplyComposer}
               aria-expanded={composerOpen}
               className="font-medium transition-colors hover:text-ink"
             >
@@ -616,6 +667,25 @@ function CommentRow({
                 Xoá
               </button>
             ) : null}
+            {replyCount > 0 ? (
+              <button
+                type="button"
+                onClick={() => setRepliesOpen((v) => !v)}
+                className="inline-flex items-center gap-1 font-medium text-accent-text transition-colors hover:underline"
+              >
+                {repliesOpen ? (
+                  <>
+                    <CaretUp size={12} weight="bold" />
+                    <span>Ẩn câu trả lời</span>
+                  </>
+                ) : (
+                  <>
+                    <CaretDown size={12} weight="bold" />
+                    <span>Xem {replyCount} câu trả lời</span>
+                  </>
+                )}
+              </button>
+            ) : null}
           </div>
 
           {composerOpen ? (
@@ -624,10 +694,10 @@ function CommentRow({
                 <textarea
                   rows={1}
                   value={replyDraft}
-                  placeholder="Trả lời..."
+                  placeholder={`Trả lời ${comment.profileName}...`}
                   onChange={(e) => setReplyDraft(e.target.value)}
                   disabled={pending}
-                  aria-label="Trả lời bình luận"
+                  aria-label={`Trả lời ${comment.profileName}`}
                   autoFocus
                   className="flex-1 resize-none rounded-full border border-line bg-surface-2 px-3.5 py-1.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-60"
                 />
@@ -638,6 +708,18 @@ function CommentRow({
                 >
                   {pending ? "..." : "Gửi"}
                 </Button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setComposerOpen(false);
+                    setReplyDraft("");
+                    setReplyFile(null);
+                  }}
+                  disabled={pending}
+                  className="text-xs text-muted transition-colors hover:text-ink"
+                >
+                  Huỷ
+                </button>
               </div>
               <AttachmentPicker
                 disabled={pending}
@@ -650,47 +732,28 @@ function CommentRow({
         </div>
       </div>
 
-      {/* Child comments always render below the parent, indented. */}
-      {replyCount > 0 ? (
-        <ul className="ml-10 flex flex-col gap-2 border-l border-line pl-3">
-          {replies === null ? (
-            <li className="pl-1 text-xs text-muted">Đang tải trả lời...</li>
-          ) : replies.length === 0 ? (
-            <li className="pl-1 text-xs text-muted">Chưa có trả lời.</li>
+      {/* Recursive nested child replies */}
+      {repliesOpen && replyCount > 0 ? (
+        <ul className="flex flex-col gap-2 pt-1">
+          {shownReplies === null ? (
+            <li className={cn("text-xs text-muted", depth === 0 ? "ml-10 pl-3" : "ml-6 pl-3")}>
+              Đang tải trả lời...
+            </li>
+          ) : shownReplies.length === 0 ? (
+            <li className={cn("text-xs text-muted", depth === 0 ? "ml-10 pl-3" : "ml-6 pl-3")}>
+              Chưa có trả lời.
+            </li>
           ) : (
-            replies.map((reply) => (
-              <li key={reply.id} className="flex gap-2">
-                <Avatar
-                  name={reply.profileName}
-                  src={reply.profileAvatar}
-                  className="h-6 w-6"
-                />
-                <div className="w-fit max-w-full rounded-field bg-surface-2 px-3 py-2">
-                  <p className="text-xs font-semibold text-ink">
-                    {reply.profileName}
-                  </p>
-                  <p className="whitespace-pre-line text-sm leading-relaxed text-ink/90">
-                    {reply.content}
-                  </p>
-                  {reply.attachmentUrl ? (
-                    <ServerAttachment
-                      url={reply.attachmentUrl}
-                      name={reply.attachmentName}
-                      className="mt-1"
-                    />
-                  ) : null}
-                  {canDelete || session?.user.id === reply.profileId ? (
-                    <button
-                      type="button"
-                      onClick={() => removeReply(reply.id)}
-                      aria-label="Xoá trả lời"
-                      className="ml-2 align-middle text-xs text-muted transition-colors hover:text-danger"
-                    >
-                      Xoá
-                    </button>
-                  ) : null}
-                </div>
-              </li>
+            shownReplies.map((child) => (
+              <CommentRow
+                key={child.id}
+                comment={child}
+                postId={postId}
+                canModerate={canModerate}
+                depth={depth + 1}
+                onRemoved={() => removeChildReply(child.id)}
+                onCountChanged={onCountChanged}
+              />
             ))
           )}
         </ul>

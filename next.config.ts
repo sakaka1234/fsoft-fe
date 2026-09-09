@@ -44,6 +44,9 @@ const nextConfig: NextConfig = {
     "localhost:3000",
     "127.0.0.1:3000",
     "192.168.1.7:3000",
+     "172.31.144.1",
+    "172.31.144.1:3000",
+    "172.31.144.1:4000",
   ],
   /*
    * No `images.remotePatterns` on purpose. Every illustration now lives in
