@@ -108,7 +108,10 @@ export function FsrsVocabularyReviewView() {
         <div className="flex items-center justify-between">
           <button
             type="button"
-            onClick={() => setIsStudying(false)}
+            onClick={() => {
+              setIsStudying(false);
+              queueState.reload();
+            }}
             className="text-xs font-semibold text-muted hover:text-ink transition-colors cursor-pointer"
           >
             ← Quay lại màn hình tổng quan
